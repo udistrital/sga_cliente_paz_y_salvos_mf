@@ -43,23 +43,23 @@
   }
 }
 
-// .semaforo-grid {
-//   width: 100%;
-//   height: 500px;
-//   border-radius: 8px;
-//   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+.semaforo-grid {
+  width: 100%;
+  height: 500px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 
-//   ::ng-deep .ag-header-cell-label {
-//     justify-content: center;
-//   }
+  ::ng-deep .ag-header-cell-label {
+    justify-content: center;
+  }
 
-//   ::ng-deep .ag-cell {
-//     padding: 8px;
-//     font-size: 0.85rem;
-//   }
+  ::ng-deep .ag-cell {
+    padding: 8px;
+    font-size: 0.85rem;
+  }
 
 
-// }
+}
 
 ::ng-deep .ag-cell {
   display: flex;
