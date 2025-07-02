@@ -1,15 +1,17 @@
 {
   "name": "paz-y-salvos-mf",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "scripts": {
     "ng": "ng",
     "start": "ng serve --port=4221",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "serve:ssr:paz-y-salvos-mf": "node dist/paz-y-salvos-mf/server/server.mjs",
-    "build:single-spa:paz-y-salvos-mf": "ng build paz-y-salvos-mf --configuration production",
-    "serve:single-spa:paz-y-salvos-mf": "ng s --project paz-y-salvos-mf --disable-host-check --port 4221 --live-reload false"
+    "prepare": "husky",
+    "build:single-spa:sga-paz-y-salvos-mf": "ng build sga-cliente-evaluacion-docente-mf --configuration production",
+    "serve:single-spa:sga-paz-y-salvos-mf": "ng s --project sga-cliente-evaluacion-docente-mf --disable-host-check --port 4221 --live-reload false",
+    "build:prod": "ng build --progress --configuration=production",
+    "build:test": "ng build --progress --configuration=development"
   },
   "private": true,
   "dependencies": {
@@ -26,6 +28,7 @@
     "@angular/router": "^17.3.0",
     "@angular/ssr": "^17.3.6",
     "@ngx-translate/core": "^16.0.4",
+    "dotenv": "^16.5.0",
     "ag-grid-angular": "^33.3.0",
     "ag-grid-community": "^33.3.1",
     "crypto-js": "^4.2.0",

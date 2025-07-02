@@ -5,28 +5,33 @@ import { RequestManager } from '../managers/requestManager';
 @Injectable({
     providedIn: 'root'
 })
-export class EventosService {
+export class SemaforoService {
     constructor(private requestManager: RequestManager) {
-        this.requestManager.setPath("EVENTOS_CRUD");
+        this.requestManager.setPath("SGA_PAZ_Y_SALVOS_CRUD_SERVICE");
     }
 
     get(endpoint: string): Observable<any> {
-        this.requestManager.setPath("EVENTOS_CRUD");
+        this.requestManager.setPath("SGA_PAZ_Y_SALVOS_MID_SERVICE");
         return this.requestManager.get(endpoint);
     }
 
     post(endpoint: string, element: any): Observable<any> {
-        this.requestManager.setPath("EVENTOS_CRUD");
+        this.requestManager.setPath("SGA_PAZ_Y_SALVOS_CRUD_SERVICE");
         return this.requestManager.post(endpoint, element);
     }
 
     put(endpoint: string, id: any, element: any): Observable<any> {
-        this.requestManager.setPath("EVENTOS_CRUD");
+        this.requestManager.setPath("SGA_PAZ_Y_SALVOS_CRUD_SERVICE");
         return this.requestManager.put(`${endpoint}/${id}`, element);
     }
 
     delete(endpoint: string, id: any): Observable<any> {
-        this.requestManager.setPath("EVENTOS_CRUD");
+        this.requestManager.setPath("SGA_PAZ_Y_SALVOS_CRUD_SERVICE");
         return this.requestManager.delete(endpoint, id);
+    }
+
+    patch(endpoint: string, id: any, changes: Partial<any>): Observable<any> {
+        this.requestManager.setPath("SGA_PAZ_Y_SALVOS_CRUD_SERVICE");
+        return this.requestManager.patch(`${endpoint}/${id}`, changes);
     }
 }

@@ -181,4 +181,16 @@ export class RequestManager {
       catchError(this.errManager.handleError),
     );
   }
+
+  /**
+ * Perform a PATCH http request
+ */
+  public patch(endpoint: string, body: any): Observable<any> {
+    return this.http
+      .patch<any>(`${this.path}${endpoint}`, body, this.httpOptions)
+      .pipe(
+        map(res => (res instanceof HttpResponse ? res.body : res)),
+        catchError(this.errManager.handleError.bind(this))
+      );
+  }
 };

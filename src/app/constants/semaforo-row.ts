@@ -1,13 +1,20 @@
-import { ColDef, ICellRendererParams, CellClickedEvent } from 'ag-grid-community';
+import { ColDef, ICellRendererParams } from 'ag-grid-community';
+
+const semaforoCellRenderer = (params: ICellRendererParams) => {
+  return `<span class="semaforo-icon ${params.value ? 'ok' : 'fail'}">
+    ${params.value ? '✔️' : '❌'}
+  </span>`;
+};
+
 
 export const SEMAFORO_ROW: ColDef[] = [
   {
-    headerName: 'CODIGO',
+    headerName: 'CÓDIGO',
     field: 'CodigoEstudiante',
     editable: false,
     filter: 'agTextColumnFilter',
-    floatingFilter: false,
-    width: 100
+    floatingFilter: true,
+    width: 140
   },
   {
     headerName: 'NOMBRE',
@@ -17,94 +24,100 @@ export const SEMAFORO_ROW: ColDef[] = [
     floatingFilter: true,
     cellEditor: 'agTextCellEditor',
     cellEditorParams: {
-      maxLength: 50
+      maxLength: 100
     },
   },
   {
-    headerName: 'PROGRAMA',
-    field: 'Programa',
-    editable: true,
+    headerName: 'FACULTAD',
+    field: 'NombreFacultad',
+    editable: false,
+    filter: 'agTextColumnFilter',
+    floatingFilter: true,
     cellEditor: 'agTextCellEditor',
     cellEditorParams: {
-      maxLength: 50
+      maxLength: 100
     },
+  },
+  {
+    headerName: 'PROYECTO CURRICULAR',
+    field: 'NombreProyecto',
+    editable: false,
+    filter: 'agTextColumnFilter',
+    floatingFilter: true,
+    cellEditor: 'agTextCellEditor',
+    cellEditorParams: {
+      maxLength: 100
+    },
+  },
+  {
+    headerName: 'AÑO INSCRIPCIÓN',
+    field: 'AnioInsGrado',
+    editable: false,
+    width: 180,
+    filter: 'agNumberColumnFilter',
+    floatingFilter: true,
+  },
+  {
+    headerName: 'PERIODO INSCRIPCIÓN',
+    field: 'PerInsGrado',
+    editable: false,
+    width: 180,
+    filter: 'agNumberColumnFilter',
+    floatingFilter: true,
   },
   {
     headerName: 'ACADÉMICO',
     field: 'Academico',
-    cellRenderer: (params: ICellRendererParams) => {
-      return `<input type="checkbox" ${params.value ? 'checked' : ''} />`;
-      // return `<input type="checkbox" ${params.value ? 'checked' : ''} onchange = "window.dispatchEvent(new CustomEvent('checkbox-toggled', { detail: ${JSON.stringify(params.data)} }))" />`;
-    },
+    cellRenderer: semaforoCellRenderer,
     editable: true,
   },
   {
-    headerName: 'FINANCIERO ',
+    headerName: 'FINANCIERO',
     field: 'Financiero',
-    cellRenderer: (params: ICellRendererParams) => {
-      return `<input type="checkbox" ${params.value ? 'checked' : ''} />`;
-    },
+    cellRenderer: semaforoCellRenderer,
     editable: true,
-    // onCellClicked: (params: CellClickedEvent) => {
-    //   params.node.setDataValue('Financiero', !params.value);
-    // }
   },
   {
     headerName: 'BIBLIOTECA',
     field: 'Biblioteca',
-    cellRenderer: (params: ICellRendererParams) => {
-      return `<input type="checkbox" ${params.value ? 'checked' : ''} />`;
-    },
+    cellRenderer: semaforoCellRenderer,
     editable: true,
-    // onCellClicked: (params: CellClickedEvent) => {
-    //   params.node.setDataValue('Biblioteca', !params.value);
-    // }
   },
   {
     headerName: 'LABORATORIOS',
     field: 'Laboratorios',
-    cellRenderer: (params: ICellRendererParams) => {
-      return `<input type="checkbox" ${params.value ? 'checked' : ''} />`;
-    },
+    cellRenderer: semaforoCellRenderer,
     editable: true,
-    // onCellClicked: (params: CellClickedEvent) => {
-    //   params.node.setDataValue('Laboratorios', !params.value);
-    // }
   },
   {
     headerName: 'BIENESTAR',
     field: 'Bienestar',
-    cellRenderer: (params: ICellRendererParams) => {
-      return `<input type="checkbox" ${params.value ? 'checked' : ''} />`;
-    },
+    cellRenderer: semaforoCellRenderer,
     editable: true,
-    // onCellClicked: (params: CellClickedEvent) => {
-    //   params.node.setDataValue('checkBienestar', !params.value);
-    // }
   },
   {
     headerName: 'URELINTER',
     field: 'Urelinter',
-    cellRenderer: (params: ICellRendererParams) => {
-      return `<input type="checkbox" ${params.value ? 'checked' : ''} />`;
-    },
+    cellRenderer: semaforoCellRenderer,
     editable: true,
-    // onCellClicked: (params: CellClickedEvent) => {
-    //   params.node.setDataValue('Urelinter', !params.value);
-    // }
   },
   {
     headerName: 'REGISTRO Y CONTROL',
     field: 'Orc',
-    cellRenderer: (params: ICellRendererParams) => {
-      return `<input type="checkbox" ${params.value ? 'checked' : ''} />`;
+    cellRenderer: semaforoCellRenderer,
+    editable: true
+  },
+  {
+    headerName: 'OBSERVACIÓN',
+    field: 'Observacion',
+    editable: true,
+    cellEditor: 'agLargeTextCellEditor',
+    cellEditorParams: {
+      maxLength: 250,
+      rows: 3,
+      cols: 40,
     },
-    editable: false,
-    // onCellClicked: (params: CellClickedEvent) => {
-    //   params.node.setDataValue('Orc', !params.value);
-    // }
-    cellClass: (params) => {
-      return params.value ? 'cell-checked' : 'cell-unchecked';
-    }
+    width: 160
+
   }
 ];

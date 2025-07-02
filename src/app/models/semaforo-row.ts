@@ -1,15 +1,14 @@
-export interface SemaforoRow {
-  Id: number;
-  CodigoEstudiante: number;
-  NombreEstudiante: string;
-  Programa: string;
-  IdFacultadOikos: number;
-  IdProyectoOikos: number;
-  IdFacultadGedep: number;
-  IdProyectoAccra: number;
-  EstadoEstudiante: string;
-  AnioInsGrado: number;
-  PerInsGrado: number;
+export interface Semaforo {
+  Id: number; // int64
+  CodigoEstudiante: number; // double
+  IdFacultadOikos: number; // int32
+  IdProyectoOikos: number; // int32
+  IdFacultadGedep: number; // int32
+  IdProyectoAccra: number; // int32
+
+  AnioInsGrado: number; // double
+  PerInsGrado: number; // double
+
   Academico: boolean;
   Financiero: boolean;
   Biblioteca: boolean;
@@ -17,7 +16,14 @@ export interface SemaforoRow {
   Bienestar: boolean;
   Urelinter: boolean;
   Orc: boolean;
+
   Activo: boolean;
-  FechaCreacion: string;
-  FechaModificacion: string;
+  Observacion: string;
+  FechaCreacion: string; // datetime
+  FechaModificacion: string; // datetime
+}
+export interface SemaforoRow extends Semaforo {
+  NombreEstudiante: string;
+  NombreFacultad: string;
+  NombreProyecto: string;
 }

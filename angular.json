@@ -45,21 +45,38 @@
           },
           "configurations": {
             "production": {
-              "budgets": [
+               "optimization": true,
+              "outputHashing": "none",
+              "sourceMap": false,
+              "namedChunks": false,
+              "aot": true,
+              "extractLicenses": true,
+              "buildOptimizer": true,
+              "fileReplacements": [
                 {
-                  "type": "initial",
-                  "maximumWarning": "500kb",
-                  "maximumError": "1mb"
-                },
-                {
-                  "type": "anyComponentStyle",
-                  "maximumWarning": "2kb",
-                  "maximumError": "4kb"
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.production.ts"
                 }
               ],
-              "outputHashing": "none"
+              "deployUrl": "https://sgapazysalvos.portaloas.udistrital.edu.co/"
             },
             "development": {
+              "optimization": true,
+              "outputHashing": "none",
+              "sourceMap": false,
+              "namedChunks": false,
+              "aot": true,
+              "extractLicenses": true,
+              "buildOptimizer": true,
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.development.ts"
+                }
+              ],
+              "deployUrl": "https://pruebassgapazysalvos.portaloas.udistrital.edu.co/"
+            },
+             "local": {
               "buildOptimizer": false,
               "optimization": false,
               "vendorChunk": true,
@@ -67,15 +84,10 @@
               "sourceMap": true,
               "namedChunks": true,
               "outputHashing": "none",
-              "fileReplacements": [
-                {
-                  "replace": "src/environments/environment.ts",
-                  "with": "src/environments/environment.development.ts"
-                }
-              ]
+              "deployUrl": "http://localhost:4221/"
             }
           },
-          "defaultConfiguration": "production"
+          "defaultConfiguration": "local"
         },
         "serve": {
           "builder": "@angular-builders/custom-webpack:dev-server",
@@ -85,9 +97,12 @@
             },
             "development": {
               "browserTarget": "paz-y-salvos-mf:build:development"
+            },
+             "local": {
+              "browserTarget": "paz-y-salvos-mf:build:local"
             }
           },
-          "defaultConfiguration": "development"
+          "defaultConfiguration": "local"
         },
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
@@ -116,5 +131,8 @@
         }
       }
     }
+  },
+  "cli": {
+    "analytics": "3c6f47a2-f37f-4977-9bfa-2b2559f1b9be"
   }
 }
