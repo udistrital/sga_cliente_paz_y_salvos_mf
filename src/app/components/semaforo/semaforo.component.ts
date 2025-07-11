@@ -66,7 +66,7 @@ export class SemaforoComponent {
           }
           if (
             col.field === 'Orc' &&
-            this.userRoles.includes('ADMIN_SGA') &&
+            this.userRoles.includes('ADMISIONES_REG') &&
             !params.data.Orc &&
             !this.allDependenciesCleared(params.data)
           ) {
@@ -198,12 +198,12 @@ export class SemaforoComponent {
   }
 
   private canEditColumn(colField: string, rowData: SemaforoRow): boolean {
-    // ADMIN_SGA siempre puede editar Observacion
-    if (this.userRoles.includes('ADMIN_SGA') && colField === 'Observacion') {
+    // ADMISIONES_REG siempre puede editar Observacion
+    if (this.userRoles.includes('ADMISIONES_REG') && colField === 'Observacion') {
       return true;
     }
 
-    // Si Orc está en true, solo ADMIN_SGA puede editar Orc y Observacion
+    // Si Orc está en true, solo ADMISIONES_REG puede editar Orc y Observacion
     if (rowData.Orc) {
       return (
         this.userRoles.includes('ADMISIONES_REG') &&
@@ -211,7 +211,7 @@ export class SemaforoComponent {
       );
     }
 
-    // Si Orc NO está en true, ADMIN_SGA puede editar Orc solo si todas las dependencias están en true
+    // Si Orc NO está en true, ADMISIONES_REG puede editar Orc solo si todas las dependencias están en true
     if (
       this.userRoles.includes('ADMISIONES_REG') &&
       colField === 'Orc'
