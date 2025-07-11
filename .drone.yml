@@ -29,7 +29,7 @@ steps:
 - name: publish_s3_release
   image: plugins/s3
   settings:
-    bucket: cliente-pruebas
+    bucket: cliente-pruebas-sga
     access_key:
       from_secret: aws_access_key_id
     secret_key:
@@ -47,7 +47,7 @@ steps:
 - name: publish_s3_master
   image: plugins/s3
   settings:
-    bucket: cliente-core-prod
+    bucket: cliente-prod-sga
     access_key:
       from_secret: aws_access_key_id
     secret_key:
