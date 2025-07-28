@@ -113,10 +113,10 @@ export class SemaforoComponent {
         return;
       }
     } else if (this.userRoles.includes('SECRETARIA_ACADEMICA')) {
-      const id = await this.userService.getPersonaId();
+      const id = await this.userService.getUserDocument();
       endpoint = `semaforo/facultad/${id}`;
     } else if (this.userRoles.includes('COORDINADOR')) {
-      const id = await this.userService.getPersonaId();
+      const id = await this.userService.getUserDocument();
       endpoint = `semaforo/proyecto/${id}`;
     }
     this.semaforoService.get(endpoint).subscribe({
