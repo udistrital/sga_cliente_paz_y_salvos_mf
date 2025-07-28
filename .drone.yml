@@ -37,7 +37,7 @@ steps:
     region: us-east-1
     source: dist/**/*
     target: /${DRONE_REPO_NAME}
-    strip_prefix: dist/paz-y-salvos-mf
+    strip_prefix: dist/
   when:
     branch:
     - release/*
