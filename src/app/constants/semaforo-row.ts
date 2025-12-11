@@ -1,8 +1,10 @@
 import { ColDef, ICellRendererParams } from 'ag-grid-community';
 
 const semaforoCellRenderer = (params: ICellRendererParams) => {
-  return `<span class="semaforo-icon ${params.value ? 'ok' : 'fail'}">
-    ${params.value ? '✔️' : '❌'}
+  const iconName = params.value ? 'check_circle' : 'cancel';
+  const cssClass = params.value ? 'ok' : 'fail';
+  return `<span class="semaforo-icon ${cssClass}">
+    <mat-icon class="material-icons">${iconName}</mat-icon>
   </span>`;
 };
 

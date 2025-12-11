@@ -64,4 +64,19 @@ export class AlertService {
       },
     });
   }
+
+  showLoading(text: string = "Cargando datos...") {
+    Swal.fire({
+      title: text,
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      didOpen: () => {
+        Swal.showLoading();
+      },
+    });
+  }
+
+  closeLoading() {
+    Swal.close();
+  }
 }

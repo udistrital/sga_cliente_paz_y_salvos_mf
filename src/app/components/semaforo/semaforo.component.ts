@@ -17,6 +17,12 @@ export class SemaforoComponent {
   loading = false;
   userRoles: string[] = [];
   rowData: SemaforoRow[] = [];
+  
+  // Paginación
+  currentPage = 0;
+  pageSize = 20;
+  totalRecords = 0;
+  Math = Math; // Para usar Math.min en el template
 
   // Boolean fields for special handling
   readonly booleanFields = [
@@ -31,6 +37,10 @@ export class SemaforoComponent {
     private semaforoService: SemaforoService,
     private alertaService: AlertService
   ) { }
+
+  get totalPages(): number {
+    return Math.ceil(this.totalRecords / this.pageSize);
+  }
 
 
   async ngOnInit() {
@@ -99,6 +109,7 @@ export class SemaforoComponent {
   }
 
   onRefreshClick(): void {
+    this.currentPage = 0;
     this.loadData();
   }
 
@@ -119,14 +130,31 @@ export class SemaforoComponent {
       const id = await this.userService.getUserDocument();
       endpoint = `semaforo/proyecto/${id}`;
     }
-    this.semaforoService.get(endpoint).subscribe({
+
+    this.loading = true;
+    this.alertaService.showLoading('Cargando estudiantes...');
+    const offset = this.currentPage * this.pageSize;
+    
+    this.semaforoService.get(endpoint, {
+      limit: this.pageSize,
+      offset: offset
+    }).subscribe({
       next: response => {
-        this.rowData = (response.Data || []).map((item: any) => ({
+        // Extraer datos y total del response
+        const responseData = response.Data || response;
+        const data = responseData.Data || responseData;
+        this.totalRecords = responseData.TotalCount || 0;
+        
+        this.rowData = (Array.isArray(data) ? data : []).map((item: any) => ({
           Id: item.Id,
           CodigoEstudiante: item.CodigoEstudiante,
           NombreEstudiante: item.NombreEstudiante,
           NombreFacultad: item.NombreFacultad,
           NombreProyecto: item.NombreProyecto,
+          IdFacultadOikos: item.IdFacultadOikos || 0,
+          IdProyectoOikos: item.IdProyectoOikos || 0,
+          IdFacultadGedep: item.IdFacultadGedep || 0,
+          IdProyectoAccra: item.IdProyectoAccra || 0,
           AnioInsGrado: item.AnioInsGrado,
           PerInsGrado: item.PerInsGrado,
           Observacion: item.Observacion,
@@ -137,13 +165,50 @@ export class SemaforoComponent {
           Bienestar: !!item.Bienestar,
           Urelinter: !!item.Urelinter,
           Orc: !!item.Orc,
+          Activo: item.Activo !== false,
+          FechaCreacion: item.FechaCreacion || '',
+          FechaModificacion: item.FechaModificacion || '',
         }));
+        this.loading = false;
+        this.alertaService.closeLoading();
       },
       error: error => {
         console.error('Error loading data:', error);
+        this.alertaService.closeLoading();
         this.alertaService.showAlert('Error', 'No se pudieron cargar los datos');
+        this.loading = false;
       }
     });
+  }
+
+  // Métodos de navegación de paginación
+  nextPage(): void {
+    if (this.currentPage < this.totalPages - 1) {
+      this.currentPage++;
+      this.loadData();
+    }
+  }
+
+  previousPage(): void {
+    if (this.currentPage > 0) {
+      this.currentPage--;
+      this.loadData();
+    }
+  }
+
+  goToFirstPage(): void {
+    this.currentPage = 0;
+    this.loadData();
+  }
+
+  goToLastPage(): void {
+    this.currentPage = this.totalPages - 1;
+    this.loadData();
+  }
+
+  onPageSizeChange(): void {
+    this.currentPage = 0; // Reset a la primera página al cambiar el tamaño
+    this.loadData();
   }
 
   // Handles both boolean and text field updates
@@ -172,6 +237,7 @@ export class SemaforoComponent {
 
   private saveRow(row: SemaforoRow, node: any) {
     this.loading = true;
+    this.alertaService.showLoading('Guardando cambios...');
     const putStruct: Partial<Semaforo> = {
       Observacion: row.Observacion,
       Academico: row.Academico,
@@ -184,9 +250,13 @@ export class SemaforoComponent {
     };
 
     this.semaforoService.patch('semaforo', row.Id, putStruct).subscribe({
-      next: () => { this.loading = false; },
+      next: () => { 
+        this.loading = false;
+        this.alertaService.closeLoading();
+      },
       error: err => {
         console.error('Error updating row:', err);
+        this.alertaService.closeLoading();
         this.alertaService.showAlert('Error', 'Error al actualizar datos');
         this.loading = false;
       }

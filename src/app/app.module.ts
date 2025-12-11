@@ -1,5 +1,12 @@
 import { NgModule, Component } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
+import { FormsModule } from '@angular/forms';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+
+// Angular Material
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
@@ -16,9 +23,14 @@ ModuleRegistry.registerModules([AllCommunityModule]);
   ],
   imports: [
     BrowserModule,
+    BrowserAnimationsModule,
     AppRoutingModule,
     AgGridModule,
-    HttpClientModule
+    HttpClientModule,
+    FormsModule,
+    MatIconModule,
+    MatButtonModule,
+    MatTooltipModule
   ],
   providers: [
     UserService

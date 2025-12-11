@@ -1,8 +1,9 @@
 <div class="semaforo-container">
   <div class="semaforo-header">
     <h2>Semáforo Paz y Salvos</h2>
-    <button (click)="onRefreshClick()" class="refresh-btn">
-      🔄 Recargar datos
+    <button mat-raised-button color="primary" (click)="onRefreshClick()" class="refresh-btn">
+      <mat-icon>refresh</mat-icon>
+      Recargar datos
     </button>
   </div>
 
@@ -12,8 +13,39 @@
     [rowData]="rowData"
     [columnDefs]="columnDefs"
     [defaultColDef]="{ resizable: true }"
+    [suppressPaginationPanel]="true"
     [stopEditingWhenCellsLoseFocus]="true"
     (cellValueChanged)="updateRow($event)"
     (gridReady)="onGridReady($event)">
   </ag-grid-angular>
+
+  <div class="pagination-controls">
+    <div class="pagination-info">
+      Mostrando {{ (currentPage * pageSize) + 1 }} - {{ Math.min((currentPage + 1) * pageSize, totalRecords) }} de {{ totalRecords }} registros
+    </div>
+    <div class="pagination-buttons">
+      <button mat-icon-button [disabled]="currentPage === 0" (click)="goToFirstPage()" matTooltip="Primera página">
+        <mat-icon>first_page</mat-icon>
+      </button>
+      <button mat-icon-button [disabled]="currentPage === 0" (click)="previousPage()" matTooltip="Página anterior">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+      <span class="page-number">Página {{ currentPage + 1 }} de {{ totalPages }}</span>
+      <button mat-icon-button [disabled]="currentPage >= totalPages - 1" (click)="nextPage()" matTooltip="Página siguiente">
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+      <button mat-icon-button [disabled]="currentPage >= totalPages - 1" (click)="goToLastPage()" matTooltip="Última página">
+        <mat-icon>last_page</mat-icon>
+      </button>
+    </div>
+    <div class="page-size-selector">
+      <label>Registros por página:</label>
+      <select [(ngModel)]="pageSize" (change)="onPageSizeChange()">
+        <option [value]="10">10</option>
+        <option [value]="20">20</option>
+        <option [value]="50">50</option>
+        <option [value]="100">100</option>
+      </select>
+    </div>
+  </div>
 </div>
