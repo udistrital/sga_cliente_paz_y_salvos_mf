@@ -14,16 +14,12 @@ export const SEMAFORO_ROW: ColDef[] = [
     headerName: 'CÓDIGO',
     field: 'CodigoEstudiante',
     editable: false,
-    filter: 'agTextColumnFilter',
-    floatingFilter: true,
     width: 140
   },
   {
     headerName: 'NOMBRE',
     field: 'NombreEstudiante',
     editable: false,
-    filter: 'agTextColumnFilter',
-    floatingFilter: true,
     cellEditor: 'agTextCellEditor',
     cellEditorParams: {
       maxLength: 100
@@ -33,8 +29,6 @@ export const SEMAFORO_ROW: ColDef[] = [
     headerName: 'FACULTAD',
     field: 'NombreFacultad',
     editable: false,
-    filter: 'agTextColumnFilter',
-    floatingFilter: true,
     cellEditor: 'agTextCellEditor',
     cellEditorParams: {
       maxLength: 100
@@ -44,8 +38,6 @@ export const SEMAFORO_ROW: ColDef[] = [
     headerName: 'PROYECTO CURRICULAR',
     field: 'NombreProyecto',
     editable: false,
-    filter: 'agTextColumnFilter',
-    floatingFilter: true,
     cellEditor: 'agTextCellEditor',
     cellEditorParams: {
       maxLength: 100
@@ -56,16 +48,12 @@ export const SEMAFORO_ROW: ColDef[] = [
     field: 'AnioInsGrado',
     editable: false,
     width: 180,
-    filter: 'agNumberColumnFilter',
-    floatingFilter: true,
   },
   {
     headerName: 'PERIODO INSCRIPCIÓN',
     field: 'PerInsGrado',
     editable: false,
     width: 180,
-    filter: 'agNumberColumnFilter',
-    floatingFilter: true,
   },
   {
     headerName: 'ACADÉMICO',

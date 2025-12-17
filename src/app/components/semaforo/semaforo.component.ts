@@ -17,6 +17,7 @@ export class SemaforoComponent {
   loading = false;
   userRoles: string[] = [];
   rowData: SemaforoRow[] = [];
+  filteredRowData: SemaforoRow[] = [];
   
   // Paginación
   currentPage = 0;
@@ -28,6 +29,18 @@ export class SemaforoComponent {
   readonly booleanFields = [
     'Academico', 'Financiero', 'Biblioteca', 'Laboratorios', 'Bienestar', 'Urelinter', 'Orc'
   ];
+
+  // Filtros
+  filtersExpanded = false;
+  filters = {
+    codigoEstudiante: '',
+    nombreEstudiante: '',
+    nombreFacultad: '',
+    nombreProyecto: '',
+    anioInsGrado: null as number | null,
+    perInsGrado: null as number | null,
+    estadoGeneral: ''
+  };
 
   // Clone columnDefs to allow runtime changes
   columnDefs: ColDef[] = SEMAFORO_ROW.map(col => ({ ...col }));
@@ -169,6 +182,7 @@ export class SemaforoComponent {
           FechaCreacion: item.FechaCreacion || '',
           FechaModificacion: item.FechaModificacion || '',
         }));
+        this.applyLocalFilters();
         this.loading = false;
         this.alertaService.closeLoading();
       },
@@ -307,5 +321,92 @@ export class SemaforoComponent {
     }
     // SECRETARIA_ACADEMICA y ESTUDIANTE solo consulta
     return false;
+  }
+
+  // Métodos de filtrado
+  onFilterChange(): void {
+    // Opcionalmente se puede aplicar filtrado en tiempo real
+    // Para este caso esperaremos a que presione el botón buscar
+  }
+
+  applyFilters(): void {
+    this.currentPage = 0;
+    this.applyLocalFilters();
+  }
+
+  private applyLocalFilters(): void {
+    let filtered = [...this.rowData];
+
+    // Filtro por código de estudiante
+    if (this.filters.codigoEstudiante) {
+      const codigo = this.filters.codigoEstudiante.toLowerCase();
+      filtered = filtered.filter(row => 
+        row.CodigoEstudiante?.toString().toLowerCase().includes(codigo)
+      );
+    }
+
+    // Filtro por nombre de estudiante
+    if (this.filters.nombreEstudiante) {
+      const nombre = this.filters.nombreEstudiante.toLowerCase();
+      filtered = filtered.filter(row => 
+        row.NombreEstudiante?.toLowerCase().includes(nombre)
+      );
+    }
+
+    // Filtro por facultad
+    if (this.filters.nombreFacultad) {
+      const facultad = this.filters.nombreFacultad.toLowerCase();
+      filtered = filtered.filter(row => 
+        row.NombreFacultad?.toLowerCase().includes(facultad)
+      );
+    }
+
+    // Filtro por proyecto curricular
+    if (this.filters.nombreProyecto) {
+      const proyecto = this.filters.nombreProyecto.toLowerCase();
+      filtered = filtered.filter(row => 
+        row.NombreProyecto?.toLowerCase().includes(proyecto)
+      );
+    }
+
+    // Filtro por año de inscripción
+    if (this.filters.anioInsGrado) {
+      filtered = filtered.filter(row => 
+        row.AnioInsGrado === this.filters.anioInsGrado
+      );
+    }
+
+    // Filtro por periodo de inscripción
+    if (this.filters.perInsGrado) {
+      filtered = filtered.filter(row => 
+        row.PerInsGrado === this.filters.perInsGrado
+      );
+    }
+
+    // Filtro por estado general
+    if (this.filters.estadoGeneral === 'completo') {
+      filtered = filtered.filter(row => 
+        this.allDependenciesCleared(row) && row.Orc
+      );
+    } else if (this.filters.estadoGeneral === 'pendiente') {
+      filtered = filtered.filter(row => 
+        !this.allDependenciesCleared(row) || !row.Orc
+      );
+    }
+
+    this.filteredRowData = filtered;
+  }
+
+  clearFilters(): void {
+    this.filters = {
+      codigoEstudiante: '',
+      nombreEstudiante: '',
+      nombreFacultad: '',
+      nombreProyecto: '',
+      anioInsGrado: null,
+      perInsGrado: null,
+      estadoGeneral: ''
+    };
+    this.applyFilters();
   }
 }

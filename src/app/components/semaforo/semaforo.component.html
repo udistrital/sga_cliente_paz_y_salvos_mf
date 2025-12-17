@@ -7,10 +7,81 @@
     </button>
   </div>
 
+  <!-- Filtros superiores -->
+  <div class="filters-section">
+    <mat-expansion-panel [expanded]="filtersExpanded" class="filters-panel">
+      <mat-expansion-panel-header>
+        <mat-panel-title>
+          <mat-icon>filter_list</mat-icon>
+          Filtros de búsqueda
+        </mat-panel-title>
+      </mat-expansion-panel-header>
+      
+      <div class="filters-container">
+        <mat-form-field appearance="outline" class="filter-field">
+          <mat-label>Código Estudiante</mat-label>
+          <input matInput [(ngModel)]="filters.codigoEstudiante" (ngModelChange)="onFilterChange()" placeholder="Ej: 20201234567">
+          <mat-icon matSuffix>badge</mat-icon>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="filter-field">
+          <mat-label>Nombre Estudiante</mat-label>
+          <input matInput [(ngModel)]="filters.nombreEstudiante" (ngModelChange)="onFilterChange()" placeholder="Buscar por nombre">
+          <mat-icon matSuffix>person</mat-icon>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="filter-field">
+          <mat-label>Facultad</mat-label>
+          <input matInput [(ngModel)]="filters.nombreFacultad" (ngModelChange)="onFilterChange()" placeholder="Buscar por facultad">
+          <mat-icon matSuffix>school</mat-icon>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="filter-field">
+          <mat-label>Proyecto Curricular</mat-label>
+          <input matInput [(ngModel)]="filters.nombreProyecto" (ngModelChange)="onFilterChange()" placeholder="Buscar por proyecto">
+          <mat-icon matSuffix>work</mat-icon>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="filter-field">
+          <mat-label>Año Inscripción</mat-label>
+          <input matInput type="number" [(ngModel)]="filters.anioInsGrado" (ngModelChange)="onFilterChange()" placeholder="Ej: 2024">
+          <mat-icon matSuffix>calendar_today</mat-icon>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="filter-field">
+          <mat-label>Periodo Inscripción</mat-label>
+          <input matInput type="number" [(ngModel)]="filters.perInsGrado" (ngModelChange)="onFilterChange()" placeholder="Ej: 1">
+          <mat-icon matSuffix>event</mat-icon>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="filter-field">
+          <mat-label>Estado General</mat-label>
+          <mat-select [(ngModel)]="filters.estadoGeneral" (ngModelChange)="onFilterChange()">
+            <mat-option [value]="''">Todos</mat-option>
+            <mat-option [value]="'completo'">Paz y Salvo Completo</mat-option>
+            <mat-option [value]="'pendiente'">Con Pendientes</mat-option>
+          </mat-select>
+          <mat-icon matSuffix>assessment</mat-icon>
+        </mat-form-field>
+
+        <div class="filter-actions">
+          <button mat-raised-button color="accent" (click)="applyFilters()" class="apply-filters-btn">
+            <mat-icon>search</mat-icon>
+            Buscar
+          </button>
+          <button mat-stroked-button (click)="clearFilters()" class="clear-filters-btn">
+            <mat-icon>clear</mat-icon>
+            Limpiar
+          </button>
+        </div>
+      </div>
+    </mat-expansion-panel>
+  </div>
+
   <ag-grid-angular
     class="ag-theme-alpine semaforo-grid"
     [theme]="'legacy'"
-    [rowData]="rowData"
+    [rowData]="filteredRowData"
     [columnDefs]="columnDefs"
     [defaultColDef]="{ resizable: true }"
     [suppressPaginationPanel]="true"
