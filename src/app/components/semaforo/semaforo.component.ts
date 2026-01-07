@@ -5,6 +5,7 @@ import { SemaforoRow, Semaforo } from '../../models/semaforo-row';
 
 import { UserService } from '../../services/user.service';
 import { SemaforoService } from '../../services/semaforo.service';
+import { OikosService } from '../../services/oikos.service';
 import { AlertService } from '../../services/alert.service';
 
 @Component({
@@ -34,13 +35,17 @@ export class SemaforoComponent {
   filtersExpanded = false;
   filters = {
     codigoEstudiante: '',
-    nombreEstudiante: '',
-    nombreFacultad: '',
-    nombreProyecto: '',
+    idFacultad: null as number | null,
+    idProyecto: null as number | null,
     anioInsGrado: null as number | null,
-    perInsGrado: null as number | null,
-    estadoGeneral: ''
+    perInsGrado: null as number | null
   };
+
+  // Listas para dropdowns
+  facultades: Array<{id: number, nombre: string}> = [];
+  proyectos: Array<{id: number, nombre: string}> = [];
+  loadingFacultades = false;
+  loadingProyectos = false;
 
   // Clone columnDefs to allow runtime changes
   columnDefs: ColDef[] = SEMAFORO_ROW.map(col => ({ ...col }));
@@ -48,6 +53,7 @@ export class SemaforoComponent {
   constructor(
     private userService: UserService,
     private semaforoService: SemaforoService,
+    private oikosService: OikosService,
     private alertaService: AlertService
   ) { }
 
@@ -55,10 +61,40 @@ export class SemaforoComponent {
     return Math.ceil(this.totalRecords / this.pageSize);
   }
 
+  // Validación de filtros por rol
+  canUseCodigoFilter(): boolean {
+    // Todos excepto ESTUDIANTE
+    return !this.userRoles.includes('ESTUDIANTE');
+  }
+
+  canUseFacultadFilter(): boolean {
+    // Solo roles globales: BIBLIOTECA, ADMIN_BIENESTAR, URELINTER, ADMISIONES_REG
+    return this.userRoles.includes('BIBLIOTECA') ||
+           this.userRoles.includes('ADMIN_BIENESTAR') ||
+           this.userRoles.includes('URELINTER') ||
+           this.userRoles.includes('ADMISIONES_REG');
+  }
+
+  canUseProyectoFilter(): boolean {
+    // Todos excepto ESTUDIANTE y COORDINADOR
+    return !this.userRoles.includes('ESTUDIANTE') && 
+           !this.userRoles.includes('COORDINADOR');
+  }
+
+  canUseAnioFilter(): boolean {
+    // Todos excepto ESTUDIANTE
+    return !this.userRoles.includes('ESTUDIANTE');
+  }
+
+  canUsePeriodoFilter(): boolean {
+    // Todos excepto ESTUDIANTE
+    return !this.userRoles.includes('ESTUDIANTE');
+  }
 
   async ngOnInit() {
     await this.loadUserInfo();
     this.setupColumnDefs();
+    await this.loadFacultades();
     this.loadData();
   }
 
@@ -128,6 +164,8 @@ export class SemaforoComponent {
 
   private async loadData() {
     let endpoint = 'semaforo';
+    
+    // Determinar endpoint según rol del usuario
     if (this.userRoles.includes('ESTUDIANTE')) {
       try {
         const codigo = await this.userService.getCodigoEstudiante();
@@ -136,29 +174,93 @@ export class SemaforoComponent {
         this.alertaService.showAlert('Error', 'No se pudo obtener el código del estudiante');
         return;
       }
-    } else if (this.userRoles.includes('SECRETARIA_ACADEMICA')) {
-      const id = await this.userService.getUserDocument();
-      endpoint = `semaforo/facultad/${id}`;
     } else if (this.userRoles.includes('COORDINADOR')) {
-      const id = await this.userService.getUserDocument();
-      endpoint = `semaforo/proyecto/${id}`;
+      try {
+        const id = await this.userService.getUserDocument();
+        endpoint = `semaforo/proyecto/${id}`;
+      } catch (error) {
+        this.alertaService.showAlert('Error', 'No se pudo obtener el ID del coordinador');
+        return;
+      }
+    } else if (this.userRoles.includes('SECRETARIA_ACADEMICA') || this.userRoles.includes('SECRETARIO_ACADEMICO')) {
+      try {
+        const id = await this.userService.getPersonaId();
+        endpoint = `semaforo/facultad/${id}`;
+      } catch (error) {
+        this.alertaService.showAlert('Error', 'No se pudo obtener el ID del secretario');
+        return;
+      }
+    } else if (this.userRoles.includes('LABORATORIOS') || this.userRoles.includes('JEFE_LABORATORIO')) {
+      try {
+        const id = await this.userService.getPersonaId();
+        endpoint = `semaforo/laboratorios/${id}`;
+      } catch (error) {
+        this.alertaService.showAlert('Error', 'No se pudo obtener el ID del jefe de laboratorios');
+        return;
+      }
     }
+    // Para ADMISIONES_REG, BIBLIOTECA, BIENESTAR, URELINTER se usa el endpoint por defecto 'semaforo'
 
     this.loading = true;
     this.alertaService.showLoading('Cargando estudiantes...');
     const offset = this.currentPage * this.pageSize;
     
-    this.semaforoService.get(endpoint, {
+    // Construir parámetros con filtros activos
+    const params: any = {
       limit: this.pageSize,
       offset: offset
-    }).subscribe({
+    };
+
+    // Agregar filtros al query si están activos
+    if (this.filters.codigoEstudiante) {
+      params.codigo = this.filters.codigoEstudiante;
+    }
+    if (this.filters.idFacultad !== null && this.filters.idFacultad !== undefined) {
+      params.idFacultad = this.filters.idFacultad;
+    }
+    if (this.filters.idProyecto !== null && this.filters.idProyecto !== undefined) {
+      params.idProyecto = this.filters.idProyecto;
+    }
+    if (this.filters.anioInsGrado !== null && this.filters.anioInsGrado !== undefined) {
+      params.anio = this.filters.anioInsGrado;
+    }
+    if (this.filters.perInsGrado !== null && this.filters.perInsGrado !== undefined) {
+      params.periodo = this.filters.perInsGrado;
+    }
+
+    this.semaforoService.get(endpoint, params).subscribe({
       next: response => {
+        // Verificar si la respuesta es exitosa
+        if (response.Success === false || response.Status === 404) {
+          // No se encontraron datos
+          this.rowData = [];
+          this.filteredRowData = [];
+          this.totalRecords = 0;
+          this.loading = false;
+          this.alertaService.closeLoading();
+          // Mostrar mensaje informativo (opcional)
+          if (this.hasActiveFilters()) {
+            this.alertaService.showAlert('Sin resultados', 'No se encontraron estudiantes con los filtros aplicados.');
+          }
+          return;
+        }
+
         // Extraer datos y total del response
         const responseData = response.Data || response;
         const data = responseData.Data || responseData;
         this.totalRecords = responseData.TotalCount || 0;
         
-        this.rowData = (Array.isArray(data) ? data : []).map((item: any) => ({
+        // Validar que data sea un array y tenga elementos
+        if (!Array.isArray(data) || data.length === 0) {
+          this.rowData = [];
+          this.filteredRowData = [];
+          this.totalRecords = 0;
+          this.loading = false;
+          this.alertaService.closeLoading();
+          return;
+        }
+        
+        this.rowData = data.map((item: any) => ({
           Id: item.Id,
           CodigoEstudiante: item.CodigoEstudiante,
           NombreEstudiante: item.NombreEstudiante,
@@ -182,12 +284,16 @@ export class SemaforoComponent {
           FechaCreacion: item.FechaCreacion || '',
           FechaModificacion: item.FechaModificacion || '',
         }));
-        this.applyLocalFilters();
+        // Asignar directamente a filteredRowData (sin filtrado local)
+        this.filteredRowData = this.rowData;
         this.loading = false;
         this.alertaService.closeLoading();
       },
       error: error => {
         console.error('Error loading data:', error);
+        this.rowData = [];
+        this.filteredRowData = [];
+        this.totalRecords = 0;
         this.alertaService.closeLoading();
         this.alertaService.showAlert('Error', 'No se pudieron cargar los datos');
         this.loading = false;
@@ -323,90 +429,101 @@ export class SemaforoComponent {
     return false;
   }
 
+  // Métodos de carga de catálogos
+  private async loadFacultades() {
+    this.loadingFacultades = true;
+    try {
+      this.oikosService.getFacultades().subscribe({
+        next: (response: any) => {
+          const data = response.Data || response;
+          if (Array.isArray(data)) {
+            this.facultades = data.map((item: any) => ({
+              id: item.DependenciaId?.Id || item.Id,
+              nombre: item.DependenciaId?.Nombre || item.Nombre
+            })).filter(f => f.id && f.nombre);
+          }
+          this.loadingFacultades = false;
+        },
+        error: (error: any) => {
+          console.error('Error loading facultades:', error);
+          this.loadingFacultades = false;
+        }
+      });
+    } catch (error) {
+      console.error('Error in loadFacultades:', error);
+      this.loadingFacultades = false;
+    }
+  }
+
+  onFacultadChange(): void {
+    // Limpiar proyecto seleccionado
+    this.filters.idProyecto = null;
+    this.proyectos = [];
+    
+    // Cargar proyectos de la facultad seleccionada
+    if (this.filters.idFacultad) {
+      this.loadProyectosByFacultad(this.filters.idFacultad);
+    }
+  }
+
+  private loadProyectosByFacultad(idFacultad: number) {
+    this.loadingProyectos = true;
+    try {
+      this.oikosService.getProyectosByFacultad(idFacultad).subscribe({
+        next: (response: any) => {
+          const data = response.Data || response;
+          if (Array.isArray(data)) {
+            this.proyectos = data.map((item: any) => ({
+              id: item.DependenciaId?.Id || item.Id,
+              nombre: item.DependenciaId?.Nombre || item.Nombre
+            })).filter(p => p.id && p.nombre);
+          }
+          this.loadingProyectos = false;
+        },
+        error: (error: any) => {
+          console.error('Error loading proyectos:', error);
+          this.loadingProyectos = false;
+        }
+      });
+    } catch (error) {
+      console.error('Error in loadProyectosByFacultad:', error);
+      this.loadingProyectos = false;
+    }
+  }
+
   // Métodos de filtrado
   onFilterChange(): void {
     // Opcionalmente se puede aplicar filtrado en tiempo real
     // Para este caso esperaremos a que presione el botón buscar
   }
 
+  private hasActiveFilters(): boolean {
+    return !!(
+      this.filters.codigoEstudiante ||
+      this.filters.idFacultad ||
+      this.filters.idProyecto ||
+      this.filters.anioInsGrado ||
+      this.filters.perInsGrado
+    );
+  }
+
   applyFilters(): void {
     this.currentPage = 0;
-    this.applyLocalFilters();
+    this.loadData();
   }
 
-  private applyLocalFilters(): void {
-    let filtered = [...this.rowData];
 
-    // Filtro por código de estudiante
-    if (this.filters.codigoEstudiante) {
-      const codigo = this.filters.codigoEstudiante.toLowerCase();
-      filtered = filtered.filter(row => 
-        row.CodigoEstudiante?.toString().toLowerCase().includes(codigo)
-      );
-    }
-
-    // Filtro por nombre de estudiante
-    if (this.filters.nombreEstudiante) {
-      const nombre = this.filters.nombreEstudiante.toLowerCase();
-      filtered = filtered.filter(row => 
-        row.NombreEstudiante?.toLowerCase().includes(nombre)
-      );
-    }
-
-    // Filtro por facultad
-    if (this.filters.nombreFacultad) {
-      const facultad = this.filters.nombreFacultad.toLowerCase();
-      filtered = filtered.filter(row => 
-        row.NombreFacultad?.toLowerCase().includes(facultad)
-      );
-    }
-
-    // Filtro por proyecto curricular
-    if (this.filters.nombreProyecto) {
-      const proyecto = this.filters.nombreProyecto.toLowerCase();
-      filtered = filtered.filter(row => 
-        row.NombreProyecto?.toLowerCase().includes(proyecto)
-      );
-    }
-
-    // Filtro por año de inscripción
-    if (this.filters.anioInsGrado) {
-      filtered = filtered.filter(row => 
-        row.AnioInsGrado === this.filters.anioInsGrado
-      );
-    }
-
-    // Filtro por periodo de inscripción
-    if (this.filters.perInsGrado) {
-      filtered = filtered.filter(row => 
-        row.PerInsGrado === this.filters.perInsGrado
-      );
-    }
-
-    // Filtro por estado general
-    if (this.filters.estadoGeneral === 'completo') {
-      filtered = filtered.filter(row => 
-        this.allDependenciesCleared(row) && row.Orc
-      );
-    } else if (this.filters.estadoGeneral === 'pendiente') {
-      filtered = filtered.filter(row => 
-        !this.allDependenciesCleared(row) || !row.Orc
-      );
-    }
-
-    this.filteredRowData = filtered;
-  }
 
   clearFilters(): void {
     this.filters = {
       codigoEstudiante: '',
-      nombreEstudiante: '',
-      nombreFacultad: '',
-      nombreProyecto: '',
+      idFacultad: null,
+      idProyecto: null,
       anioInsGrado: null,
-      perInsGrado: null,
-      estadoGeneral: ''
+      perInsGrado: null
     };
-    this.applyFilters();
+    this.proyectos = [];
+    this.currentPage = 0;
+    this.loadData();
   }
 }
