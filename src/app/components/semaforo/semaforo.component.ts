@@ -42,8 +42,8 @@ export class SemaforoComponent {
   };
 
   // Listas para dropdowns
-  facultades: Array<{id: number, nombre: string}> = [];
-  proyectos: Array<{id: number, nombre: string}> = [];
+  facultades: Array<{id: number | null, nombre: string}> = [];
+  proyectos: Array<{id: number | null, nombre: string}> = [];
   loadingFacultades = false;
   loadingProyectos = false;
 
@@ -184,7 +184,7 @@ export class SemaforoComponent {
       }
     } else if (this.userRoles.includes('SECRETARIA_ACADEMICA') || this.userRoles.includes('SECRETARIO_ACADEMICO')) {
       try {
-        const id = await this.userService.getPersonaId();
+        const id = await this.userService.getUserDocument();
         endpoint = `semaforo/facultad/${id}`;
       } catch (error) {
         this.alertaService.showAlert('Error', 'No se pudo obtener el ID del secretario');
@@ -192,7 +192,7 @@ export class SemaforoComponent {
       }
     } else if (this.userRoles.includes('LABORATORIOS') || this.userRoles.includes('JEFE_LABORATORIO')) {
       try {
-        const id = await this.userService.getPersonaId();
+        const id = await this.userService.getUserDocument();
         endpoint = `semaforo/laboratorios/${id}`;
       } catch (error) {
         this.alertaService.showAlert('Error', 'No se pudo obtener el ID del jefe de laboratorios');
@@ -286,6 +286,10 @@ export class SemaforoComponent {
         }));
         // Asignar directamente a filteredRowData (sin filtrado local)
         this.filteredRowData = this.rowData;
+        
+        // Cargar proyectos de la facultad para roles con restricción de facultad
+        this.loadProyectosFromFacultad(responseData);
+        
         this.loading = false;
         this.alertaService.closeLoading();
       },
@@ -437,10 +441,12 @@ export class SemaforoComponent {
         next: (response: any) => {
           const data = response.Data || response;
           if (Array.isArray(data)) {
-            this.facultades = data.map((item: any) => ({
+            const facultadesData = data.map((item: any) => ({
               id: item.DependenciaId?.Id || item.Id,
               nombre: item.DependenciaId?.Nombre || item.Nombre
             })).filter(f => f.id && f.nombre);
+            
+            this.facultades = [{id: null, nombre: 'Todas'}, ...facultadesData];
           }
           this.loadingFacultades = false;
         },
@@ -473,10 +479,12 @@ export class SemaforoComponent {
         next: (response: any) => {
           const data = response.Data || response;
           if (Array.isArray(data)) {
-            this.proyectos = data.map((item: any) => ({
+            const proyectosData = data.map((item: any) => ({
               id: item.DependenciaId?.Id || item.Id,
               nombre: item.DependenciaId?.Nombre || item.Nombre
             })).filter(p => p.id && p.nombre);
+            
+            this.proyectos = [{id: null, nombre: 'Todos'}, ...proyectosData];
           }
           this.loadingProyectos = false;
         },
@@ -525,5 +533,45 @@ export class SemaforoComponent {
     this.proyectos = [];
     this.currentPage = 0;
     this.loadData();
+  }
+
+  private loadProyectosFromFacultad(responseData: any) {
+    if (this.userRoles.includes('SECRETARIA_ACADEMICA') || 
+        this.userRoles.includes('SECRETARIO_ACADEMICO') ||
+        this.userRoles.includes('LABORATORIOS') || 
+        this.userRoles.includes('JEFE_LABORATORIO')) {
+      
+      // Intentar extraer el ID de facultad de diferentes campos posibles en la respuesta
+      const facultadId = responseData.IdFacultad || 
+                         responseData.FacultadId || 
+                         responseData.IdFacultadOikos ||
+                         (this.rowData.length > 0 ? this.rowData[0].IdFacultadOikos : null);
+      
+      if (facultadId) {
+        this.loadProyectosByFacultad(facultadId);
+      } else {
+        // Fallback: extraer proyectos únicos de los datos
+        this.loadProyectosFromData();
+      }
+    }
+  }
+
+  private loadProyectosFromData() {
+    // Fallback: Extraer proyectos únicos de los datos cargados
+    const proyectosUnicos = new Map<number, string>();
+    this.rowData.forEach(row => {
+      if (row.IdProyectoOikos && row.NombreProyecto) {
+        proyectosUnicos.set(row.IdProyectoOikos, row.NombreProyecto);
+      }
+    });
+    
+    // Convertir a array de objetos para el dropdown
+    const proyectosData = Array.from(proyectosUnicos.entries()).map(([id, nombre]) => ({
+      id,
+      nombre
+    })).sort((a, b) => a.nombre.localeCompare(b.nombre));
+    
+    // Agregar opción "Todos" al inicio
+    this.proyectos = [{id: null, nombre: 'Todos'}, ...proyectosData];
   }
 }

@@ -381,3 +381,166 @@ $bg-light: #f8f9fa;
     }
   }
 }
+
+// Estilos para ng-select
+.ng-select-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  .ng-select-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: $text-medium;
+    margin-bottom: 0.25rem;
+  }
+
+  ::ng-deep .ng-select {
+    .ng-select-container {
+      min-height: 40px;
+      border-radius: 4px;
+      border: 1px solid $border-color;
+      background-color: white;
+
+      &:hover {
+        border-color: $primary-light;
+      }
+    }
+
+    &.ng-select-focused {
+      .ng-select-container {
+        border-color: $primary-color;
+        box-shadow: 0 0 0 2px rgba(3, 103, 143, 0.1);
+      }
+    }
+
+    &.ng-select-disabled {
+      .ng-select-container {
+        background-color: #f5f5f5;
+        cursor: not-allowed;
+      }
+    }
+
+    .ng-value-container {
+      padding: 0 12px;
+
+      .ng-placeholder {
+        color: #999;
+      }
+
+      .ng-input {
+        padding: 0;
+        
+        input {
+          padding: 0;
+        }
+      }
+    }
+
+    .ng-clear-wrapper {
+      color: $text-medium;
+      
+      &:hover {
+        color: $danger-color;
+      }
+    }
+
+    .ng-arrow-wrapper {
+      padding-right: 8px;
+
+      .ng-arrow {
+        border-color: $text-medium transparent transparent;
+      }
+    }
+
+    &.ng-select-opened {
+      .ng-arrow {
+        border-color: transparent transparent $text-medium;
+      }
+    }
+  }
+
+  ::ng-deep .ng-dropdown-panel {
+    border: 1px solid $border-color;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    margin-top: 4px;
+
+    .ng-dropdown-panel-items {
+      .ng-option {
+        padding: 10px 12px;
+        color: $text-dark;
+        transition: background-color 0.2s;
+
+        &:hover {
+          background-color: rgba(3, 103, 143, 0.08);
+        }
+
+        &.ng-option-selected {
+          background-color: rgba(3, 103, 143, 0.12);
+          color: $primary-color;
+          font-weight: 500;
+        }
+
+        &.ng-option-marked {
+          background-color: rgba(3, 103, 143, 0.06);
+        }
+      }
+    }
+
+    .ng-option-disabled {
+      color: #ccc;
+      cursor: not-allowed;
+    }
+  }
+
+  .ng-select-hint {
+    font-size: 0.75rem;
+    color: $text-medium;
+    margin-top: 0.25rem;
+  }
+}
+
+// Estilos para inputs normales (código, año, periodo)
+.input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  .input-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: $text-medium;
+    margin-bottom: 0.25rem;
+  }
+
+  .filter-input {
+    min-height: 40px;
+    padding: 0 12px;
+    border-radius: 4px;
+    border: 1px solid $border-color;
+    background-color: white;
+    font-size: 0.875rem;
+    color: $text-dark;
+    transition: all 0.2s;
+
+    &::placeholder {
+      color: #999;
+    }
+
+    &:hover {
+      border-color: $primary-light;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: $primary-color;
+      box-shadow: 0 0 0 2px rgba(3, 103, 143, 0.1);
+    }
+
+    &:disabled {
+      background-color: #f5f5f5;
+      cursor: not-allowed;
+    }
+  }
+}

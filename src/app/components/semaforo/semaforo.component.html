@@ -18,48 +18,80 @@
       </mat-expansion-panel-header>
       
       <div class="filters-container">
-        <mat-form-field *ngIf="canUseCodigoFilter()" appearance="outline" class="filter-field">
-          <mat-label>Código Estudiante</mat-label>
-          <input matInput [(ngModel)]="filters.codigoEstudiante" (ngModelChange)="onFilterChange()" placeholder="Ej: 20201234567">
-          <mat-icon matSuffix>badge</mat-icon>
-        </mat-form-field>
+        <div *ngIf="canUseCodigoFilter()" class="filter-field input-wrapper">
+          <label class="input-label">Código Estudiante</label>
+          <input 
+            type="text" 
+            class="filter-input"
+            [(ngModel)]="filters.codigoEstudiante" 
+            (ngModelChange)="onFilterChange()" 
+            placeholder="Ej: 20201234567">
+        </div>
 
-        <mat-form-field *ngIf="canUseFacultadFilter()" appearance="outline" class="filter-field">
-          <mat-label>Facultad</mat-label>
-          <mat-select [(ngModel)]="filters.idFacultad" (ngModelChange)="onFacultadChange()" [disabled]="loadingFacultades">
-            <mat-option [value]="null">Todas</mat-option>
-            <mat-option *ngFor="let facultad of facultades" [value]="facultad.id">
-              {{ facultad.nombre }}
-            </mat-option>
-          </mat-select>
-          <mat-icon matSuffix>school</mat-icon>
-          <mat-hint *ngIf="loadingFacultades">Cargando facultades...</mat-hint>
-        </mat-form-field>
+        <div *ngIf="canUseFacultadFilter()" class="filter-field ng-select-wrapper">
+          <label class="ng-select-label">Facultad</label>
+          <ng-select
+            [(ngModel)]="filters.idFacultad"
+            (change)="onFacultadChange()"
+            [items]="facultades"
+            bindLabel="nombre"
+            bindValue="id"
+            [disabled]="loadingFacultades"
+            [loading]="loadingFacultades"
+            [searchable]="true"
+            [clearable]="true"
+            appendTo="body"
+            placeholder="Seleccione una facultad"
+            notFoundText="No se encontraron facultades">
+            <ng-template ng-option-tmp let-item="item">
+              {{ item.nombre }}
+            </ng-template>
+          </ng-select>
+        </div>
 
-        <mat-form-field *ngIf="canUseProyectoFilter()" appearance="outline" class="filter-field">
-          <mat-label>Proyecto Curricular</mat-label>
-          <mat-select [(ngModel)]="filters.idProyecto" (ngModelChange)="onFilterChange()" [disabled]="(!filters.idFacultad && canUseFacultadFilter()) || loadingProyectos">
-            <mat-option [value]="null">Todos</mat-option>
-            <mat-option *ngFor="let proyecto of proyectos" [value]="proyecto.id">
-              {{ proyecto.nombre }}
-            </mat-option>
-          </mat-select>
-          <mat-icon matSuffix>work</mat-icon>
-          <mat-hint *ngIf="!filters.idFacultad && !loadingProyectos && canUseFacultadFilter()">Seleccione una facultad primero</mat-hint>
-          <mat-hint *ngIf="loadingProyectos">Cargando proyectos...</mat-hint>
-        </mat-form-field>
+        <div *ngIf="canUseProyectoFilter()" class="filter-field ng-select-wrapper">
+          <label class="ng-select-label">Proyecto Curricular</label>
+          <ng-select
+            [(ngModel)]="filters.idProyecto"
+            (change)="onFilterChange()"
+            [items]="proyectos"
+            bindLabel="nombre"
+            bindValue="id"
+            [disabled]="(!filters.idFacultad && canUseFacultadFilter()) || loadingProyectos"
+            [loading]="loadingProyectos"
+            [searchable]="true"
+            [clearable]="true"
+            appendTo="body"
+            placeholder="Seleccione un proyecto"
+            notFoundText="No se encontraron proyectos">
+            <ng-template ng-option-tmp let-item="item">
+              {{ item.nombre }}
+            </ng-template>
+          </ng-select>
+          <small class="ng-select-hint" *ngIf="!filters.idFacultad && !loadingProyectos && canUseFacultadFilter()">
+            Seleccione una facultad primero
+          </small>
+        </div>
 
-        <mat-form-field *ngIf="canUseAnioFilter()" appearance="outline" class="filter-field">
-          <mat-label>Año Inscripción</mat-label>
-          <input matInput type="number" [(ngModel)]="filters.anioInsGrado" (ngModelChange)="onFilterChange()" placeholder="Ej: 2024">
-          <mat-icon matSuffix>calendar_today</mat-icon>
-        </mat-form-field>
+        <div *ngIf="canUseAnioFilter()" class="filter-field input-wrapper">
+          <label class="input-label">Año Inscripción</label>
+          <input 
+            type="number" 
+            class="filter-input"
+            [(ngModel)]="filters.anioInsGrado" 
+            (ngModelChange)="onFilterChange()" 
+            placeholder="Ej: 2024">
+        </div>
 
-        <mat-form-field *ngIf="canUsePeriodoFilter()" appearance="outline" class="filter-field">
-          <mat-label>Periodo Inscripción</mat-label>
-          <input matInput type="number" [(ngModel)]="filters.perInsGrado" (ngModelChange)="onFilterChange()" placeholder="Ej: 1">
-          <mat-icon matSuffix>event</mat-icon>
-        </mat-form-field>
+        <div *ngIf="canUsePeriodoFilter()" class="filter-field input-wrapper">
+          <label class="input-label">Periodo Inscripción</label>
+          <input 
+            type="number" 
+            class="filter-input"
+            [(ngModel)]="filters.perInsGrado" 
+            (ngModelChange)="onFilterChange()" 
+            placeholder="Ej: 1">
+        </div>
 
         <div class="filter-actions">
           <button mat-raised-button color="accent" (click)="applyFilters()" class="apply-filters-btn">
