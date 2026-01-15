@@ -156,6 +156,25 @@ export class SemaforoComponent {
       if (col.field === 'Observacion') {
         col.editable = (params: any) => this.canEditColumn('Observacion', params.data);
       }
+      // Configurar editabilidad de campos de observaciones por dependencia
+      if (col.field === 'ObservacionCoordinacion') {
+        col.editable = (params: any) => this.canEditColumn('ObservacionCoordinacion', params.data);
+      }
+      if (col.field === 'ObservacionBiblioteca') {
+        col.editable = (params: any) => this.canEditColumn('ObservacionBiblioteca', params.data);
+      }
+      if (col.field === 'ObservacionLaboratorios') {
+        col.editable = (params: any) => this.canEditColumn('ObservacionLaboratorios', params.data);
+      }
+      if (col.field === 'ObservacionBienestar') {
+        col.editable = (params: any) => this.canEditColumn('ObservacionBienestar', params.data);
+      }
+      if (col.field === 'ObservacionUrelinter') {
+        col.editable = (params: any) => this.canEditColumn('ObservacionUrelinter', params.data);
+      }
+      if (col.field === 'ObservacionOrc') {
+        col.editable = (params: any) => this.canEditColumn('ObservacionOrc', params.data);
+      }
     });
   }
 
@@ -215,6 +234,12 @@ export class SemaforoComponent {
       Bienestar: !!item.Bienestar,
       Urelinter: !!item.Urelinter,
       Orc: !!item.Orc,
+      ObservacionCoordinacion: item.ObservacionCoordinacion || '',
+      ObservacionBiblioteca: item.ObservacionBiblioteca || '',
+      ObservacionLaboratorios: item.ObservacionLaboratorios || '',
+      ObservacionBienestar: item.ObservacionBienestar || '',
+      ObservacionUrelinter: item.ObservacionUrelinter || '',
+      ObservacionOrc: item.ObservacionOrc || '',
       Activo: item.Activo !== false,
       FechaCreacion: item.FechaCreacion || '',
       FechaModificacion: item.FechaModificacion || '',
@@ -445,7 +470,13 @@ export class SemaforoComponent {
       Laboratorios: row.Laboratorios,
       Bienestar: row.Bienestar,
       Urelinter: row.Urelinter,
-      Orc: row.Orc
+      Orc: row.Orc,
+      ObservacionCoordinacion: row.ObservacionCoordinacion,
+      ObservacionBiblioteca: row.ObservacionBiblioteca,
+      ObservacionLaboratorios: row.ObservacionLaboratorios,
+      ObservacionBienestar: row.ObservacionBienestar,
+      ObservacionUrelinter: row.ObservacionUrelinter,
+      ObservacionOrc: row.ObservacionOrc
     };
 
     this.semaforoService.patch('semaforo', row.Id, putStruct).subscribe({
@@ -489,24 +520,30 @@ export class SemaforoComponent {
 
     // Permisos por rol
     if (this.userRoles.includes('CONTRATISTA')) {
-      return colField === 'Academico' || colField === 'Financiero';
+      return colField === 'Academico' || colField === 'Financiero'|| colField === 'ObservacionCoordinacion';
     }
     if (this.userRoles.includes('COORDINADOR')) {
-      return colField === 'Academico' || colField === 'Financiero';
+      return colField === 'Academico' || colField === 'Financiero' || colField === 'ObservacionCoordinacion';
+    }
+    if (this.userRoles.includes('SECRETARIA_ACADEMICA') || this.userRoles.includes('SECRETARIO_ACADEMICO')) {
+      return colField === 'Academico' || colField === 'ObservacionCoordinacion';
     }
     if (this.userRoles.includes('BIBLIOTECA')) {
-      return colField === 'Biblioteca';
+      return colField === 'Biblioteca' || colField === 'ObservacionBiblioteca';
     }
-    if (this.userRoles.includes('LABORATORIOS')) {
-      return colField === 'Laboratorios';
+    if (this.userRoles.includes('LABORATORIOS') || this.userRoles.includes('JEFE_LABORATORIO')) {
+      return colField === 'Laboratorios' || colField === 'ObservacionLaboratorios';
     }
     if (this.userRoles.includes('ADMIN_BIENESTAR')) {
-      return colField === 'Bienestar';
+      return colField === 'Bienestar' || colField === 'ObservacionBienestar';
     }
     if (this.userRoles.includes('URELINTER')) {
-      return colField === 'Urelinter';
+      return colField === 'Urelinter' || colField === 'ObservacionUrelinter';
     }
-    // SECRETARIA_ACADEMICA y ESTUDIANTE solo consulta
+    if (this.userRoles.includes('ADMISIONES_REG')) {
+      return colField === 'Orc' || colField === 'Observacion' || colField === 'ObservacionOrc';
+    }
+    // ESTUDIANTE solo consulta
     return false;
   }
 

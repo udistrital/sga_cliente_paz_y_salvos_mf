@@ -19,6 +19,12 @@ export interface Semaforo {
 
   Activo: boolean;
   Observacion: string;
+  ObservacionCoordinacion: string;
+  ObservacionBiblioteca: string;
+  ObservacionLaboratorios: string;
+  ObservacionBienestar: string;
+  ObservacionUrelinter: string;
+  ObservacionOrc: string;
   FechaCreacion: string; // datetime
   FechaModificacion: string; // datetime
 }
