@@ -98,8 +98,8 @@ export const SEMAFORO_ROW: ColDef[] = [
     editable: false,
   },
   {
-    headerName: 'OBSERVACIÓN',
-    field: 'Observacion',
+    headerName: 'OBSERVACIÓN COORDINACIÓN',
+    field: 'ObservacionCoordinacion',
     editable: false,
     cellEditor: 'agLargeTextCellEditor',
     cellEditorParams: {
@@ -107,7 +107,66 @@ export const SEMAFORO_ROW: ColDef[] = [
       rows: 3,
       cols: 40,
     },
-    width: 160
-
+    width: 220
+  },
+  {
+    headerName: 'OBSERVACIÓN BIBLIOTECA',
+    field: 'ObservacionBiblioteca',
+    editable: false,
+    cellEditor: 'agLargeTextCellEditor',
+    cellEditorParams: {
+      maxLength: 250,
+      rows: 3,
+      cols: 40,
+    },
+    width: 220
+  },
+  {
+    headerName: 'OBSERVACIÓN LABORATORIOS',
+    field: 'ObservacionLaboratorios',
+    editable: false,
+    cellEditor: 'agLargeTextCellEditor',
+    cellEditorParams: {
+      maxLength: 250,
+      rows: 3,
+      cols: 40,
+    },
+    width: 220
+  },
+  {
+    headerName: 'OBSERVACIÓN BIENESTAR',
+    field: 'ObservacionBienestar',
+    editable: false,
+    cellEditor: 'agLargeTextCellEditor',
+    cellEditorParams: {
+      maxLength: 250,
+      rows: 3,
+      cols: 40,
+    },
+    width: 220
+  },
+  {
+    headerName: 'OBSERVACIÓN URELINTER',
+    field: 'ObservacionUrelinter',
+    editable: false,
+    cellEditor: 'agLargeTextCellEditor',
+    cellEditorParams: {
+      maxLength: 250,
+      rows: 3,
+      cols: 40,
+    },
+    width: 220
+  },
+  {
+    headerName: 'OBSERVACIÓN REGISTRO Y CONTROL',
+    field: 'ObservacionOrc',
+    editable: false,
+    cellEditor: 'agLargeTextCellEditor',
+    cellEditorParams: {
+      maxLength: 250,
+      rows: 3,
+      cols: 40,
+    },
+    width: 220
   }
 ];
