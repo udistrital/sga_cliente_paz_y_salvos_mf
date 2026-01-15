@@ -1,8 +1,10 @@
 import { ColDef, ICellRendererParams } from 'ag-grid-community';
 
 const semaforoCellRenderer = (params: ICellRendererParams) => {
-  return `<span class="semaforo-icon ${params.value ? 'ok' : 'fail'}">
-    ${params.value ? '✔️' : '❌'}
+  const iconName = params.value ? 'check_circle' : 'cancel';
+  const cssClass = params.value ? 'ok' : 'fail';
+  return `<span class="semaforo-icon ${cssClass}">
+    <mat-icon class="material-icons">${iconName}</mat-icon>
   </span>`;
 };
 
@@ -12,16 +14,12 @@ export const SEMAFORO_ROW: ColDef[] = [
     headerName: 'CÓDIGO',
     field: 'CodigoEstudiante',
     editable: false,
-    filter: 'agTextColumnFilter',
-    floatingFilter: true,
     width: 140
   },
   {
     headerName: 'NOMBRE',
     field: 'NombreEstudiante',
     editable: false,
-    filter: 'agTextColumnFilter',
-    floatingFilter: true,
     cellEditor: 'agTextCellEditor',
     cellEditorParams: {
       maxLength: 100
@@ -31,8 +29,6 @@ export const SEMAFORO_ROW: ColDef[] = [
     headerName: 'FACULTAD',
     field: 'NombreFacultad',
     editable: false,
-    filter: 'agTextColumnFilter',
-    floatingFilter: true,
     cellEditor: 'agTextCellEditor',
     cellEditorParams: {
       maxLength: 100
@@ -42,8 +38,6 @@ export const SEMAFORO_ROW: ColDef[] = [
     headerName: 'PROYECTO CURRICULAR',
     field: 'NombreProyecto',
     editable: false,
-    filter: 'agTextColumnFilter',
-    floatingFilter: true,
     cellEditor: 'agTextCellEditor',
     cellEditorParams: {
       maxLength: 100
@@ -54,16 +48,12 @@ export const SEMAFORO_ROW: ColDef[] = [
     field: 'AnioInsGrado',
     editable: false,
     width: 180,
-    filter: 'agNumberColumnFilter',
-    floatingFilter: true,
   },
   {
     headerName: 'PERIODO INSCRIPCIÓN',
     field: 'PerInsGrado',
     editable: false,
     width: 180,
-    filter: 'agNumberColumnFilter',
-    floatingFilter: true,
   },
   {
     headerName: 'ACADÉMICO',
@@ -108,8 +98,8 @@ export const SEMAFORO_ROW: ColDef[] = [
     editable: false,
   },
   {
-    headerName: 'OBSERVACIÓN',
-    field: 'Observacion',
+    headerName: 'OBSERVACIÓN COORDINACIÓN',
+    field: 'ObservacionCoordinacion',
     editable: false,
     cellEditor: 'agLargeTextCellEditor',
     cellEditorParams: {
@@ -117,7 +107,66 @@ export const SEMAFORO_ROW: ColDef[] = [
       rows: 3,
       cols: 40,
     },
-    width: 160
-
+    width: 220
+  },
+  {
+    headerName: 'OBSERVACIÓN BIBLIOTECA',
+    field: 'ObservacionBiblioteca',
+    editable: false,
+    cellEditor: 'agLargeTextCellEditor',
+    cellEditorParams: {
+      maxLength: 250,
+      rows: 3,
+      cols: 40,
+    },
+    width: 220
+  },
+  {
+    headerName: 'OBSERVACIÓN LABORATORIOS',
+    field: 'ObservacionLaboratorios',
+    editable: false,
+    cellEditor: 'agLargeTextCellEditor',
+    cellEditorParams: {
+      maxLength: 250,
+      rows: 3,
+      cols: 40,
+    },
+    width: 220
+  },
+  {
+    headerName: 'OBSERVACIÓN BIENESTAR',
+    field: 'ObservacionBienestar',
+    editable: false,
+    cellEditor: 'agLargeTextCellEditor',
+    cellEditorParams: {
+      maxLength: 250,
+      rows: 3,
+      cols: 40,
+    },
+    width: 220
+  },
+  {
+    headerName: 'OBSERVACIÓN URELINTER',
+    field: 'ObservacionUrelinter',
+    editable: false,
+    cellEditor: 'agLargeTextCellEditor',
+    cellEditorParams: {
+      maxLength: 250,
+      rows: 3,
+      cols: 40,
+    },
+    width: 220
+  },
+  {
+    headerName: 'OBSERVACIÓN REGISTRO Y CONTROL',
+    field: 'ObservacionOrc',
+    editable: false,
+    cellEditor: 'agLargeTextCellEditor',
+    cellEditorParams: {
+      maxLength: 250,
+      rows: 3,
+      cols: 40,
+    },
+    width: 220
   }
 ];

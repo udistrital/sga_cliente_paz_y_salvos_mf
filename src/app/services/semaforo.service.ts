@@ -10,8 +10,14 @@ export class SemaforoService {
         this.requestManager.setPath("SGA_PAZ_Y_SALVOS_CRUD_SERVICE");
     }
 
-    get(endpoint: string): Observable<any> {
+    get(endpoint: string, params?: any): Observable<any> {
         this.requestManager.setPath("SGA_PAZ_Y_SALVOS_MID_SERVICE");
+        if (params) {
+            const queryString = Object.keys(params)
+                .map(key => `${key}=${params[key]}`)
+                .join('&');
+            return this.requestManager.get(`${endpoint}?${queryString}`);
+        }
         return this.requestManager.get(endpoint);
     }
 

@@ -3,6 +3,15 @@ const singleSpaAngularWebpack = require('single-spa-angular/lib/webpack').defaul
 module.exports = (config, options) => {
   const singleSpaWebpackConfig = singleSpaAngularWebpack(config, options);
 
-  // Feel free to modify this webpack config however you'd like to
+  // Excluir archivos problemáticos del source-map-loader
+  singleSpaWebpackConfig.module.rules.forEach(rule => {
+    if (rule.use && rule.use.some(use => use.loader && use.loader.includes('source-map-loader'))) {
+      rule.exclude = [
+        /node_modules\/webpack/,
+        /node_modules\/@ng-select/
+      ];
+    }
+  });
+
   return singleSpaWebpackConfig;
 };
