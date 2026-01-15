@@ -109,4 +109,25 @@ export class UserService {
             }
         });
     }
+
+    public getUserFacultad(): Promise<number | null> {
+        return new Promise((resolve, reject) => {
+            try {
+                const { user, userService } = this.decodeUser();
+                const facultadId = user.IdFacultad || userService.IdFacultad || 
+                                   user.FacultadId || userService.FacultadId ||
+                                   user.id_facultad || userService.id_facultad ||
+                                   user.IdDependencia || userService.IdDependencia ||
+                                   user.DependenciaId || userService.DependenciaId ||
+                                   user.dependencia_id || userService.dependencia_id;
+                if (facultadId) {
+                    resolve(parseInt(String(facultadId), 10));
+                } else {
+                    resolve(null);
+                }
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
 }

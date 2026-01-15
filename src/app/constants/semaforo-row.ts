@@ -1,8 +1,10 @@
 import { ColDef, ICellRendererParams } from 'ag-grid-community';
 
 const semaforoCellRenderer = (params: ICellRendererParams) => {
-  return `<span class="semaforo-icon ${params.value ? 'ok' : 'fail'}">
-    ${params.value ? '✔️' : '❌'}
+  const iconName = params.value ? 'check_circle' : 'cancel';
+  const cssClass = params.value ? 'ok' : 'fail';
+  return `<span class="semaforo-icon ${cssClass}">
+    <mat-icon class="material-icons">${iconName}</mat-icon>
   </span>`;
 };
 
@@ -12,16 +14,12 @@ export const SEMAFORO_ROW: ColDef[] = [
     headerName: 'CÓDIGO',
     field: 'CodigoEstudiante',
     editable: false,
-    filter: 'agTextColumnFilter',
-    floatingFilter: true,
     width: 140
   },
   {
     headerName: 'NOMBRE',
     field: 'NombreEstudiante',
     editable: false,
-    filter: 'agTextColumnFilter',
-    floatingFilter: true,
     cellEditor: 'agTextCellEditor',
     cellEditorParams: {
       maxLength: 100
@@ -31,8 +29,6 @@ export const SEMAFORO_ROW: ColDef[] = [
     headerName: 'FACULTAD',
     field: 'NombreFacultad',
     editable: false,
-    filter: 'agTextColumnFilter',
-    floatingFilter: true,
     cellEditor: 'agTextCellEditor',
     cellEditorParams: {
       maxLength: 100
@@ -42,8 +38,6 @@ export const SEMAFORO_ROW: ColDef[] = [
     headerName: 'PROYECTO CURRICULAR',
     field: 'NombreProyecto',
     editable: false,
-    filter: 'agTextColumnFilter',
-    floatingFilter: true,
     cellEditor: 'agTextCellEditor',
     cellEditorParams: {
       maxLength: 100
@@ -54,16 +48,12 @@ export const SEMAFORO_ROW: ColDef[] = [
     field: 'AnioInsGrado',
     editable: false,
     width: 180,
-    filter: 'agNumberColumnFilter',
-    floatingFilter: true,
   },
   {
     headerName: 'PERIODO INSCRIPCIÓN',
     field: 'PerInsGrado',
     editable: false,
     width: 180,
-    filter: 'agNumberColumnFilter',
-    floatingFilter: true,
   },
   {
     headerName: 'ACADÉMICO',

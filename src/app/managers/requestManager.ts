@@ -43,7 +43,6 @@ export class RequestManager {
    */
   public setPath(service: string) {
     const value = environment[service as keyof typeof environment];
-    console.log("Setting path for service:", service, "to", value);
     if (typeof value === 'string') {
       this.path = value;
     } else {

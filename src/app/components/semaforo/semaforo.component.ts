@@ -5,6 +5,7 @@ import { SemaforoRow, Semaforo } from '../../models/semaforo-row';
 
 import { UserService } from '../../services/user.service';
 import { SemaforoService } from '../../services/semaforo.service';
+import { OikosService } from '../../services/oikos.service';
 import { AlertService } from '../../services/alert.service';
 
 @Component({
@@ -17,11 +18,36 @@ export class SemaforoComponent {
   loading = false;
   userRoles: string[] = [];
   rowData: SemaforoRow[] = [];
+  filteredRowData: SemaforoRow[] = [];
+  
+  // Paginación
+  currentPage = 0;
+  pageSize = 20;
+  totalRecords = 0;
+  Math = Math; // Para usar Math.min en el template
 
   // Boolean fields for special handling
   readonly booleanFields = [
     'Academico', 'Financiero', 'Biblioteca', 'Laboratorios', 'Bienestar', 'Urelinter', 'Orc'
   ];
+
+  // Filtros
+  filtersExpanded = false;
+  filters = {
+    codigoEstudiante: '',
+    idFacultad: null as number | null,
+    idProyecto: null as number | null,
+    anioInsGrado: null as number | null,
+    perInsGrado: null as number | null
+  };
+
+  facultades: Array<{id: number | null, nombre: string}> = [];
+  proyectos: Array<{id: number | null, nombre: string}> = [];
+  loadingFacultades = false;
+  loadingProyectos = false;
+
+  esAsistente = false;
+  proyectosAsignados: Array<{idOikos: number, codigo: string, nombre: string}> = [];
 
   // Clone columnDefs to allow runtime changes
   columnDefs: ColDef[] = SEMAFORO_ROW.map(col => ({ ...col }));
@@ -29,14 +55,54 @@ export class SemaforoComponent {
   constructor(
     private userService: UserService,
     private semaforoService: SemaforoService,
+    private oikosService: OikosService,
     private alertaService: AlertService
   ) { }
 
+  get totalPages(): number {
+    return Math.ceil(this.totalRecords / this.pageSize);
+  }
+
+  // Validación de filtros por rol
+  canUseCodigoFilter(): boolean {
+    // Todos excepto ESTUDIANTE
+    return !this.userRoles.includes('ESTUDIANTE');
+  }
+
+  canUseFacultadFilter(): boolean {
+    // Solo roles globales: BIBLIOTECA, ADMIN_BIENESTAR, URELINTER, ADMISIONES_REG
+    return this.userRoles.includes('BIBLIOTECA') ||
+           this.userRoles.includes('ADMIN_BIENESTAR') ||
+           this.userRoles.includes('URELINTER') ||
+           this.userRoles.includes('ADMISIONES_REG');
+  }
+
+  canUseProyectoFilter(): boolean {
+    if (this.userRoles.includes('CONTRATISTA')) return true;
+    // Todos excepto ESTUDIANTE y COORDINADOR
+    return !this.userRoles.includes('ESTUDIANTE') && 
+           !this.userRoles.includes('COORDINADOR');
+  }
+
+  canUseAnioFilter(): boolean {
+    // Todos excepto ESTUDIANTE
+    return !this.userRoles.includes('ESTUDIANTE');
+  }
+
+  canUsePeriodoFilter(): boolean {
+    // Todos excepto ESTUDIANTE
+    return !this.userRoles.includes('ESTUDIANTE');
+  }
 
   async ngOnInit() {
     await this.loadUserInfo();
     this.setupColumnDefs();
-    this.loadData();
+    if (this.userRoles.includes('CONTRATISTA')) {
+      this.loadData();
+    } else {
+      await this.loadFacultades();
+      this.loadData();
+    }
   }
 
   private async loadUserInfo() {
@@ -44,7 +110,7 @@ export class SemaforoComponent {
       this.userRoles = await this.userService.getUserRoles();
       await this.userService.getPersonaId(); // Only for logging
     } catch (error) {
-      console.error('Error loading user info:', error);
+      // Error loading user info
     }
   }
 
@@ -99,11 +165,145 @@ export class SemaforoComponent {
   }
 
   onRefreshClick(): void {
+    this.currentPage = 0;
     this.loadData();
+  }
+
+  // Construir parámetros de query con filtros activos
+  private buildQueryParams(): any {
+    const params: any = {
+      limit: this.pageSize,
+      offset: this.currentPage * this.pageSize
+    };
+
+    if (this.filters.codigoEstudiante) params.codigo = this.filters.codigoEstudiante;
+    if (this.filters.idProyecto !== null && this.filters.idProyecto !== undefined) {
+      params.idProyecto = this.filters.idProyecto;
+    }
+    if (this.filters.anioInsGrado !== null && this.filters.anioInsGrado !== undefined) {
+      params.anio = this.filters.anioInsGrado;
+    }
+    if (this.filters.perInsGrado !== null && this.filters.perInsGrado !== undefined) {
+      params.periodo = this.filters.perInsGrado;
+    }
+    if (this.filters.idFacultad !== null && this.filters.idFacultad !== undefined) {
+      params.idFacultad = this.filters.idFacultad;
+    }
+
+    return params;
+  }
+
+  // Mapear datos de respuesta a formato de tabla
+  private mapResponseToRowData(data: any[]): SemaforoRow[] {
+    return data.map((item: any) => ({
+      Id: item.Id,
+      CodigoEstudiante: item.CodigoEstudiante,
+      NombreEstudiante: item.NombreEstudiante,
+      NombreFacultad: item.NombreFacultad,
+      NombreProyecto: item.NombreProyecto,
+      IdFacultadOikos: item.IdFacultadOikos || 0,
+      IdProyectoOikos: item.IdProyectoOikos || 0,
+      IdFacultadGedep: item.IdFacultadGedep || 0,
+      IdProyectoAccra: item.IdProyectoAccra || 0,
+      AnioInsGrado: item.AnioInsGrado,
+      PerInsGrado: item.PerInsGrado,
+      Observacion: item.Observacion,
+      Academico: !!item.Academico,
+      Financiero: !!item.Financiero,
+      Biblioteca: !!item.Biblioteca,
+      Laboratorios: !!item.Laboratorios,
+      Bienestar: !!item.Bienestar,
+      Urelinter: !!item.Urelinter,
+      Orc: !!item.Orc,
+      Activo: item.Activo !== false,
+      FechaCreacion: item.FechaCreacion || '',
+      FechaModificacion: item.FechaModificacion || '',
+    }));
+  }
+
+  // Procesar proyectos asignados para CONTRATISTA
+  private procesarProyectosAsignados(responseData: any): void {
+    this.esAsistente = !!responseData.EsAsistente;
+    this.proyectosAsignados = Array.isArray(responseData.ProyectosAsignados)
+      ? responseData.ProyectosAsignados.map((p: any) => ({
+          idOikos: p.IdOikos,
+          codigo: p.Codigo,
+          nombre: p.Nombre
+        }))
+      : [];
+    
+    this.proyectos = this.proyectosAsignados.length > 0
+      ? [{id: null, nombre: 'Todos'}, ...this.proyectosAsignados.map(p => ({id: p.idOikos, nombre: p.nombre}))]
+      : [];
+  }
+
+  // Manejar respuesta sin datos
+  private handleEmptyResponse(): void {
+    this.rowData = [];
+    this.filteredRowData = [];
+    this.totalRecords = 0;
+    this.loading = false;
+    this.alertaService.closeLoading();
+    
+    const message = this.hasActiveFilters()
+      ? { title: 'Sin resultados', text: 'No se encontraron estudiantes con los filtros aplicados.' }
+      : { title: 'Sin estudiantes', text: this.userRoles.includes('CONTRATISTA') 
+          ? 'No hay estudiantes activos en los proyectos asignados.'
+          : 'No se encontraron estudiantes activos.' };
+    
+    this.alertaService.showAlert(message.title, message.text);
   }
 
   private async loadData() {
     let endpoint = 'semaforo';
+    
+    if (this.userRoles.includes('CONTRATISTA')) {
+      try {
+        const cedula = await this.userService.getUserDocument();
+        endpoint = `semaforo/asistente_proyecto/${cedula}`;
+      } catch (error) {
+        this.alertaService.showAlert('Error', 'No se pudo obtener la cédula del asistente');
+        return;
+      }
+
+      this.loading = true;
+      this.alertaService.showLoading('Cargando estudiantes...');
+      const params = this.buildQueryParams();
+
+      this.semaforoService.get(endpoint, params).subscribe({
+        next: response => {
+          const responseData = response.Data || response;
+          
+          this.procesarProyectosAsignados(responseData);
+
+          this.totalRecords = responseData.TotalCount || 0;
+          const data = responseData.Semaforos || [];
+          this.rowData = this.mapResponseToRowData(data);
+          this.filteredRowData = this.rowData;
+          
+          this.loading = false;
+          this.alertaService.closeLoading();
+        },
+        error: error => {
+          if (error.Status === 404 && error?.Data) {
+            this.procesarProyectosAsignados(error.Data);
+            this.handleEmptyResponse();
+          } else {
+            this.rowData = [];
+            this.filteredRowData = [];
+            this.totalRecords = 0;
+            this.proyectosAsignados = [];
+            this.proyectos = [];
+            this.alertaService.closeLoading();
+            this.alertaService.showAlert('Error', 'No se pudieron cargar los datos');
+            this.loading = false;
+          }
+        }
+      });
+      return;
+    }
+    
+    // Determinar endpoint según rol del usuario
     if (this.userRoles.includes('ESTUDIANTE')) {
       try {
         const codigo = await this.userService.getCodigoEstudiante();
@@ -112,38 +312,102 @@ export class SemaforoComponent {
         this.alertaService.showAlert('Error', 'No se pudo obtener el código del estudiante');
         return;
       }
-    } else if (this.userRoles.includes('SECRETARIA_ACADEMICA')) {
-      const id = await this.userService.getUserDocument();
-      endpoint = `semaforo/facultad/${id}`;
     } else if (this.userRoles.includes('COORDINADOR')) {
-      const id = await this.userService.getUserDocument();
-      endpoint = `semaforo/proyecto/${id}`;
+      try {
+        const id = await this.userService.getUserDocument();
+        endpoint = `semaforo/proyecto/${id}`;
+      } catch (error) {
+        this.alertaService.showAlert('Error', 'No se pudo obtener el ID del coordinador');
+        return;
+      }
+    } else if (this.userRoles.includes('SECRETARIA_ACADEMICA') || this.userRoles.includes('SECRETARIO_ACADEMICO')) {
+      try {
+        const id = await this.userService.getUserDocument();
+        endpoint = `semaforo/facultad/${id}`;
+      } catch (error) {
+        this.alertaService.showAlert('Error', 'No se pudo obtener el ID del secretario');
+        return;
+      }
+    } else if (this.userRoles.includes('LABORATORIOS') || this.userRoles.includes('JEFE_LABORATORIO')) {
+      try {
+        const id = await this.userService.getUserDocument();
+        endpoint = `semaforo/laboratorios/${id}`;
+      } catch (error) {
+        this.alertaService.showAlert('Error', 'No se pudo obtener el ID del jefe de laboratorios');
+        return;
+      }
     }
-    this.semaforoService.get(endpoint).subscribe({
+    // Para ADMISIONES_REG, BIBLIOTECA, BIENESTAR, URELINTER se usa el endpoint por defecto 'semaforo'
+
+    this.loading = true;
+    this.alertaService.showLoading('Cargando estudiantes...');
+    const params = this.buildQueryParams();
+
+    this.semaforoService.get(endpoint, params).subscribe({
       next: response => {
-        this.rowData = (response.Data || []).map((item: any) => ({
-          Id: item.Id,
-          CodigoEstudiante: item.CodigoEstudiante,
-          NombreEstudiante: item.NombreEstudiante,
-          NombreFacultad: item.NombreFacultad,
-          NombreProyecto: item.NombreProyecto,
-          AnioInsGrado: item.AnioInsGrado,
-          PerInsGrado: item.PerInsGrado,
-          Observacion: item.Observacion,
-          Academico: !!item.Academico,
-          Financiero: !!item.Financiero,
-          Biblioteca: !!item.Biblioteca,
-          Laboratorios: !!item.Laboratorios,
-          Bienestar: !!item.Bienestar,
-          Urelinter: !!item.Urelinter,
-          Orc: !!item.Orc,
-        }));
+  
+        // Extraer y procesar datos
+        const responseData = response.Data || response;
+        const data = responseData.Data || responseData;
+        this.totalRecords = responseData.TotalCount || 0;
+        
+        // Validar que data sea un array y tenga elementos
+        if (!Array.isArray(data) || data.length === 0) {
+          this.handleEmptyResponse();
+          return;
+        }
+        
+        // Mapear datos y cargar proyectos de facultad
+        this.rowData = this.mapResponseToRowData(data);
+        this.filteredRowData = this.rowData;
+        this.loadProyectosFromFacultad(responseData);
+        
+        this.loading = false;
+        this.alertaService.closeLoading();
       },
       error: error => {
-        console.error('Error loading data:', error);
-        this.alertaService.showAlert('Error', 'No se pudieron cargar los datos');
+        if (error.Status === 404) {
+          this.handleEmptyResponse();
+        } else {
+          this.rowData = [];
+          this.filteredRowData = [];
+          this.totalRecords = 0;
+          this.alertaService.closeLoading();
+          this.alertaService.showAlert('Error', 'No se pudieron cargar los datos');
+          this.loading = false;
+        }
       }
     });
+  }
+
+  // Métodos de navegación de paginación
+  nextPage(): void {
+    if (this.currentPage < this.totalPages - 1) {
+      this.currentPage++;
+      this.loadData();
+    }
+  }
+
+  previousPage(): void {
+    if (this.currentPage > 0) {
+      this.currentPage--;
+      this.loadData();
+    }
+  }
+
+  goToFirstPage(): void {
+    this.currentPage = 0;
+    this.loadData();
+  }
+
+  goToLastPage(): void {
+    this.currentPage = this.totalPages - 1;
+    this.loadData();
+  }
+
+  onPageSizeChange(): void {
+    this.currentPage = 0; // Reset a la primera página al cambiar el tamaño
+    this.loadData();
   }
 
   // Handles both boolean and text field updates
@@ -172,6 +436,7 @@ export class SemaforoComponent {
 
   private saveRow(row: SemaforoRow, node: any) {
     this.loading = true;
+    this.alertaService.showLoading('Guardando cambios...');
     const putStruct: Partial<Semaforo> = {
       Observacion: row.Observacion,
       Academico: row.Academico,
@@ -184,9 +449,12 @@ export class SemaforoComponent {
     };
 
     this.semaforoService.patch('semaforo', row.Id, putStruct).subscribe({
-      next: () => { this.loading = false; },
+      next: () => { 
+        this.loading = false;
+        this.alertaService.closeLoading();
+      },
       error: err => {
-        console.error('Error updating row:', err);
+        this.alertaService.closeLoading();
         this.alertaService.showAlert('Error', 'Error al actualizar datos');
         this.loading = false;
       }
@@ -220,6 +488,9 @@ export class SemaforoComponent {
     }
 
     // Permisos por rol
+    if (this.userRoles.includes('CONTRATISTA')) {
+      return colField === 'Academico' || colField === 'Financiero';
+    }
     if (this.userRoles.includes('COORDINADOR')) {
       return colField === 'Academico' || colField === 'Financiero';
     }
@@ -237,5 +508,141 @@ export class SemaforoComponent {
     }
     // SECRETARIA_ACADEMICA y ESTUDIANTE solo consulta
     return false;
+  }
+
+  // Métodos de carga de catálogos
+  private async loadFacultades() {
+    this.loadingFacultades = true;
+    try {
+      this.oikosService.getFacultades().subscribe({
+        next: (response: any) => {
+          const data = response.Data || response;
+          if (Array.isArray(data)) {
+            const facultadesData = data.map((item: any) => ({
+              id: item.DependenciaId?.Id || item.Id,
+              nombre: item.DependenciaId?.Nombre || item.Nombre
+            })).filter(f => f.id && f.nombre);
+            
+            this.facultades = [{id: null, nombre: 'Todas'}, ...facultadesData];
+          }
+          this.loadingFacultades = false;
+        },
+        error: (error: any) => {
+          this.loadingFacultades = false;
+        }
+      });
+    } catch (error) {
+      this.loadingFacultades = false;
+    }
+  }
+
+  onFacultadChange(): void {
+    // Limpiar proyecto seleccionado
+    this.filters.idProyecto = null;
+    this.proyectos = [];
+    
+    // Cargar proyectos de la facultad seleccionada
+    if (this.filters.idFacultad) {
+      this.loadProyectosByFacultad(this.filters.idFacultad);
+    }
+  }
+
+  private loadProyectosByFacultad(idFacultad: number) {
+    this.loadingProyectos = true;
+    try {
+      this.oikosService.getProyectosByFacultad(idFacultad).subscribe({
+        next: (response: any) => {
+          const data = response.Data || response;
+          if (Array.isArray(data)) {
+            const proyectosData = data.map((item: any) => ({
+              id: item.DependenciaId?.Id || item.Id,
+              nombre: item.DependenciaId?.Nombre || item.Nombre
+            })).filter(p => p.id && p.nombre);
+            
+            this.proyectos = [{id: null, nombre: 'Todos'}, ...proyectosData];
+          }
+          this.loadingProyectos = false;
+        },
+        error: (error: any) => {
+          this.loadingProyectos = false;
+        }
+      });
+    } catch (error) {
+      this.loadingProyectos = false;
+    }
+  }
+
+  onFilterChange(): void {
+
+  }
+
+  private hasActiveFilters(): boolean {
+    return !!(
+      this.filters.codigoEstudiante ||
+      this.filters.idFacultad ||
+      this.filters.idProyecto ||
+      this.filters.anioInsGrado ||
+      this.filters.perInsGrado
+    );
+  }
+
+  applyFilters(): void {
+    this.currentPage = 0;
+    this.loadData();
+  }
+
+
+
+  clearFilters(): void {
+    this.filters = {
+      codigoEstudiante: '',
+      idFacultad: null,
+      idProyecto: null,
+      anioInsGrado: null,
+      perInsGrado: null
+    };
+    this.proyectos = [];
+    this.currentPage = 0;
+    this.loadData();
+  }
+
+  private loadProyectosFromFacultad(responseData: any) {
+    if (this.userRoles.includes('SECRETARIA_ACADEMICA') || 
+        this.userRoles.includes('SECRETARIO_ACADEMICO') ||
+        this.userRoles.includes('LABORATORIOS') || 
+        this.userRoles.includes('JEFE_LABORATORIO')) {
+      
+      // Intentar extraer el ID de facultad de diferentes campos posibles en la respuesta
+      const facultadId = responseData.IdFacultad || 
+                         responseData.FacultadId || 
+                         responseData.IdFacultadOikos ||
+                         (this.rowData.length > 0 ? this.rowData[0].IdFacultadOikos : null);
+      
+      if (facultadId) {
+        this.loadProyectosByFacultad(facultadId);
+      } else {
+        // Fallback: extraer proyectos únicos de los datos
+        this.loadProyectosFromData();
+      }
+    }
+  }
+
+  private loadProyectosFromData() {
+    // Fallback: Extraer proyectos únicos de los datos cargados
+    const proyectosUnicos = new Map<number, string>();
+    this.rowData.forEach(row => {
+      if (row.IdProyectoOikos && row.NombreProyecto) {
+        proyectosUnicos.set(row.IdProyectoOikos, row.NombreProyecto);
+      }
+    });
+    
+    // Convertir a array de objetos para el dropdown
+    const proyectosData = Array.from(proyectosUnicos.entries()).map(([id, nombre]) => ({
+      id,
+      nombre
+    })).sort((a, b) => a.nombre.localeCompare(b.nombre));
+    
+    // Agregar opción "Todos" al inicio
+    this.proyectos = [{id: null, nombre: 'Todos'}, ...proyectosData];
   }
 }
