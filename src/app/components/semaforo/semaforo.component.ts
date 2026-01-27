@@ -57,7 +57,7 @@ export class SemaforoComponent {
     private semaforoService: SemaforoService,
     private oikosService: OikosService,
     private alertaService: AlertService
-  ) { }
+  ) {}
 
   get totalPages(): number {
     return Math.ceil(this.totalRecords / this.pageSize);
