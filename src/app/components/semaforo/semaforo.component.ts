@@ -1,7 +1,9 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { ColDef, CellClickedEvent, GridReadyEvent, GridApi } from 'ag-grid-community';
 import { SEMAFORO_ROW } from '../../constants/semaforo-row';
 import { SemaforoRow, Semaforo } from '../../models/semaforo-row';
+import { TranslateService } from '@ngx-translate/core';
+import { Subscription } from 'rxjs';
 
 import { UserService } from '../../services/user.service';
 import { SemaforoService } from '../../services/semaforo.service';
@@ -13,8 +15,9 @@ import { AlertService } from '../../services/alert.service';
   templateUrl: './semaforo.component.html',
   styleUrl: './semaforo.component.scss'
 })
-export class SemaforoComponent {
+export class SemaforoComponent implements OnInit, OnDestroy {
   private gridApi!: GridApi;
+  private langChangeSubscription?: Subscription;
   loading = false;
   userRoles: string[] = [];
   rowData: SemaforoRow[] = [];
@@ -56,7 +59,8 @@ export class SemaforoComponent {
     private userService: UserService,
     private semaforoService: SemaforoService,
     private oikosService: OikosService,
-    private alertaService: AlertService
+    private alertaService: AlertService,
+    private translate: TranslateService
   ) {}
 
   get totalPages(): number {
@@ -96,13 +100,78 @@ export class SemaforoComponent {
 
   async ngOnInit() {
     await this.loadUserInfo();
+    await this.translateColumnHeaders();
     this.setupColumnDefs();
+    
+    // Suscribirse a cambios de idioma
+    this.langChangeSubscription = this.translate.onLangChange.subscribe(() => {
+      this.translateColumnHeaders();
+    });
+    
     if (this.userRoles.includes('CONTRATISTA')) {
       this.loadData();
     } else {
       await this.loadFacultades();
       this.loadData();
     }
+  }
+
+  ngOnDestroy() {
+    // Limpiar suscripción al destruir el componente
+    if (this.langChangeSubscription) {
+      this.langChangeSubscription.unsubscribe();
+    }
+  }
+
+  private async translateColumnHeaders() {
+    const columnTranslationKeys = [
+      'SEMAFORO.col_codigo',
+      'SEMAFORO.col_nombre',
+      'SEMAFORO.col_facultad',
+      'SEMAFORO.col_proyecto_curricular',
+      'SEMAFORO.col_anio_inscripcion',
+      'SEMAFORO.col_periodo_inscripcion',
+      'SEMAFORO.col_academico',
+      'SEMAFORO.col_financiero',
+      'SEMAFORO.col_biblioteca',
+      'SEMAFORO.col_laboratorios',
+      'SEMAFORO.col_bienestar',
+      'SEMAFORO.col_urelinter',
+      'SEMAFORO.col_orc',
+      'SEMAFORO.col_obs_coordinacion',
+      'SEMAFORO.col_obs_biblioteca',
+      'SEMAFORO.col_obs_laboratorios',
+      'SEMAFORO.col_obs_bienestar',
+      'SEMAFORO.col_obs_urelinter',
+      'SEMAFORO.col_obs_orc'
+    ];
+
+    this.translate.get(columnTranslationKeys).subscribe(translations => {
+      this.columnDefs[0].headerName = translations['SEMAFORO.col_codigo'];
+      this.columnDefs[1].headerName = translations['SEMAFORO.col_nombre'];
+      this.columnDefs[2].headerName = translations['SEMAFORO.col_facultad'];
+      this.columnDefs[3].headerName = translations['SEMAFORO.col_proyecto_curricular'];
+      this.columnDefs[4].headerName = translations['SEMAFORO.col_anio_inscripcion'];
+      this.columnDefs[5].headerName = translations['SEMAFORO.col_periodo_inscripcion'];
+      this.columnDefs[6].headerName = translations['SEMAFORO.col_academico'];
+      this.columnDefs[7].headerName = translations['SEMAFORO.col_financiero'];
+      this.columnDefs[8].headerName = translations['SEMAFORO.col_biblioteca'];
+      this.columnDefs[9].headerName = translations['SEMAFORO.col_laboratorios'];
+      this.columnDefs[10].headerName = translations['SEMAFORO.col_bienestar'];
+      this.columnDefs[11].headerName = translations['SEMAFORO.col_urelinter'];
+      this.columnDefs[12].headerName = translations['SEMAFORO.col_orc'];
+      this.columnDefs[13].headerName = translations['SEMAFORO.col_obs_coordinacion'];
+      this.columnDefs[14].headerName = translations['SEMAFORO.col_obs_biblioteca'];
+      this.columnDefs[15].headerName = translations['SEMAFORO.col_obs_laboratorios'];
+      this.columnDefs[16].headerName = translations['SEMAFORO.col_obs_bienestar'];
+      this.columnDefs[17].headerName = translations['SEMAFORO.col_obs_urelinter'];
+      this.columnDefs[18].headerName = translations['SEMAFORO.col_obs_orc'];
+      
+      // Actualizar la grilla si ya está lista
+      if (this.gridApi) {
+        this.gridApi.refreshHeader();
+      }
+    });
   }
 
   private async loadUserInfo() {
@@ -124,10 +193,12 @@ export class SemaforoComponent {
             col.field !== 'Observacion' &&
             this.canEditColumnIfOrcFalse(col.field as string, params.data)
           ) {
-            this.alertaService.showAlert(
-              'Edición no permitida',
-              'No puede editar este campo, ORC ya ha dado su visto bueno.'
-            );
+            this.translate.get(['SEMAFORO.sin_acceso', 'SEMAFORO.orc_visto_bueno']).subscribe(translations => {
+              this.alertaService.showAlert(
+                translations['SEMAFORO.sin_acceso'],
+                translations['SEMAFORO.orc_visto_bueno']
+              );
+            });
             return;
           }
           if (
@@ -136,17 +207,21 @@ export class SemaforoComponent {
             !params.data.Orc &&
             !this.allDependenciesCleared(params.data)
           ) {
-            this.alertaService.showAlert(
-              'Atención',
-              'Todas las dependencias deben dar visto bueno.'
-            );
+            this.translate.get(['GLOBAL.atencion', 'SEMAFORO.todas_dependencias']).subscribe(translations => {
+              this.alertaService.showAlert(
+                translations['GLOBAL.atencion'],
+                translations['SEMAFORO.todas_dependencias']
+              );
+            });
             return;
           }
           if (!this.canEditColumn(col.field as string, params.data)) {
-            this.alertaService.showAlert(
-              'Edición no permitida',
-              'No tiene permisos para editar este campo.'
-            );
+            this.translate.get(['SEMAFORO.sin_acceso', 'SEMAFORO.sin_acceso_texto']).subscribe(translations => {
+              this.alertaService.showAlert(
+                translations['SEMAFORO.sin_acceso'],
+                translations['SEMAFORO.sin_acceso_texto']
+              );
+            });
             return;
           }
           params.node.setDataValue(col.field as string, !params.value);
@@ -270,13 +345,25 @@ export class SemaforoComponent {
     this.loading = false;
     this.alertaService.closeLoading();
     
-    const message = this.hasActiveFilters()
-      ? { title: 'Sin resultados', text: 'No se encontraron estudiantes con los filtros aplicados.' }
-      : { title: 'Sin estudiantes', text: this.userRoles.includes('CONTRATISTA') 
-          ? 'No hay estudiantes activos en los proyectos asignados.'
-          : 'No se encontraron estudiantes activos.' };
-    
-    this.alertaService.showAlert(message.title, message.text);
+    if (this.hasActiveFilters()) {
+      this.translate.get(['SEMAFORO.sin_resultados', 'SEMAFORO.sin_resultados_filtros']).subscribe(translations => {
+        this.alertaService.showAlert(
+          translations['SEMAFORO.sin_resultados'],
+          translations['SEMAFORO.sin_resultados_filtros']
+        );
+      });
+    } else {
+      const textKey = this.userRoles.includes('CONTRATISTA') 
+        ? 'SEMAFORO.sin_estudiantes_proyectos'
+        : 'SEMAFORO.sin_estudiantes_activos';
+      
+      this.translate.get(['SEMAFORO.sin_estudiantes', textKey]).subscribe(translations => {
+        this.alertaService.showAlert(
+          translations['SEMAFORO.sin_estudiantes'],
+          translations[textKey]
+        );
+      });
+    }
   }
 
   private async loadData() {
@@ -287,12 +374,16 @@ export class SemaforoComponent {
         const cedula = await this.userService.getUserDocument();
         endpoint = `semaforo/asistente_proyecto/${cedula}`;
       } catch (error) {
-        this.alertaService.showAlert('Error', 'No se pudo obtener la cédula del asistente');
+        this.translate.get(['GLOBAL.error', 'SEMAFORO.error_cedula']).subscribe(translations => {
+          this.alertaService.showAlert(translations['GLOBAL.error'], translations['SEMAFORO.error_cedula']);
+        });
         return;
       }
 
       this.loading = true;
-      this.alertaService.showLoading('Cargando estudiantes...');
+      this.translate.get('SEMAFORO.cargando_estudiantes').subscribe(translation => {
+        this.alertaService.showLoading(translation);
+      });
       const params = this.buildQueryParams();
 
       this.semaforoService.get(endpoint, params).subscribe({
@@ -320,7 +411,9 @@ export class SemaforoComponent {
             this.proyectosAsignados = [];
             this.proyectos = [];
             this.alertaService.closeLoading();
-            this.alertaService.showAlert('Error', 'No se pudieron cargar los datos');
+            this.translate.get(['GLOBAL.error', 'SEMAFORO.error_cargar_datos']).subscribe(translations => {
+              this.alertaService.showAlert(translations['GLOBAL.error'], translations['SEMAFORO.error_cargar_datos']);
+            });
             this.loading = false;
           }
         }
@@ -334,7 +427,9 @@ export class SemaforoComponent {
         const codigo = await this.userService.getCodigoEstudiante();
         endpoint = `semaforo/estudiante/${codigo}`;
       } catch (error) {
-        this.alertaService.showAlert('Error', 'No se pudo obtener el código del estudiante');
+        this.translate.get(['GLOBAL.error', 'SEMAFORO.error_codigo']).subscribe(translations => {
+          this.alertaService.showAlert(translations['GLOBAL.error'], translations['SEMAFORO.error_codigo']);
+        });
         return;
       }
     } else if (this.userRoles.includes('COORDINADOR')) {
@@ -342,7 +437,9 @@ export class SemaforoComponent {
         const id = await this.userService.getUserDocument();
         endpoint = `semaforo/proyecto/${id}`;
       } catch (error) {
-        this.alertaService.showAlert('Error', 'No se pudo obtener el ID del coordinador');
+        this.translate.get(['GLOBAL.error', 'SEMAFORO.error_id_coordinador']).subscribe(translations => {
+          this.alertaService.showAlert(translations['GLOBAL.error'], translations['SEMAFORO.error_id_coordinador']);
+        });
         return;
       }
     } else if (this.userRoles.includes('SECRETARIA_ACADEMICA') || this.userRoles.includes('SECRETARIO_ACADEMICO')) {
@@ -350,7 +447,9 @@ export class SemaforoComponent {
         const id = await this.userService.getUserDocument();
         endpoint = `semaforo/facultad/${id}`;
       } catch (error) {
-        this.alertaService.showAlert('Error', 'No se pudo obtener el ID del secretario');
+        this.translate.get(['GLOBAL.error', 'SEMAFORO.error_id_secretario']).subscribe(translations => {
+          this.alertaService.showAlert(translations['GLOBAL.error'], translations['SEMAFORO.error_id_secretario']);
+        });
         return;
       }
     } else if (this.userRoles.includes('LABORATORIOS') || this.userRoles.includes('JEFE_LABORATORIO')) {
@@ -358,14 +457,18 @@ export class SemaforoComponent {
         const id = await this.userService.getUserDocument();
         endpoint = `semaforo/laboratorios/${id}`;
       } catch (error) {
-        this.alertaService.showAlert('Error', 'No se pudo obtener el ID del jefe de laboratorios');
+        this.translate.get(['GLOBAL.error', 'SEMAFORO.error_id_jefe']).subscribe(translations => {
+          this.alertaService.showAlert(translations['GLOBAL.error'], translations['SEMAFORO.error_id_jefe']);
+        });
         return;
       }
     }
     // Para ADMISIONES_REG, BIBLIOTECA, BIENESTAR, URELINTER se usa el endpoint por defecto 'semaforo'
 
     this.loading = true;
-    this.alertaService.showLoading('Cargando estudiantes...');
+    this.translate.get('SEMAFORO.cargando_estudiantes').subscribe(translation => {
+      this.alertaService.showLoading(translation);
+    });
     const params = this.buildQueryParams();
 
     this.semaforoService.get(endpoint, params).subscribe({
@@ -398,7 +501,9 @@ export class SemaforoComponent {
           this.filteredRowData = [];
           this.totalRecords = 0;
           this.alertaService.closeLoading();
-          this.alertaService.showAlert('Error', 'No se pudieron cargar los datos');
+          this.translate.get(['GLOBAL.error', 'SEMAFORO.error_cargar_datos']).subscribe(translations => {
+            this.alertaService.showAlert(translations['GLOBAL.error'], translations['SEMAFORO.error_cargar_datos']);
+          });
           this.loading = false;
         }
       }
@@ -442,10 +547,12 @@ export class SemaforoComponent {
 
     // Only validate when Orc is set to true
     if (row.Orc && !this.allDependenciesCleared(row)) {
-      this.alertaService.showAlert(
-        'Atención',
-        'El estudiante debe estar paz y salvo en todas las dependencias.'
-      );
+      this.translate.get(['GLOBAL.atencion', 'SEMAFORO.paz_salvo_todas_dependencias']).subscribe(translations => {
+        this.alertaService.showAlert(
+          translations['GLOBAL.atencion'],
+          translations['SEMAFORO.paz_salvo_todas_dependencias']
+        );
+      });
       node.setDataValue('Orc', false);
       return;
     }
@@ -461,7 +568,9 @@ export class SemaforoComponent {
 
   private saveRow(row: SemaforoRow, node: any) {
     this.loading = true;
-    this.alertaService.showLoading('Guardando cambios...');
+    this.translate.get('SEMAFORO.guardando_cambios').subscribe(translation => {
+      this.alertaService.showLoading(translation);
+    });
     const putStruct: Partial<Semaforo> = {
       Observacion: row.Observacion,
       Academico: row.Academico,
@@ -486,7 +595,9 @@ export class SemaforoComponent {
       },
       error: err => {
         this.alertaService.closeLoading();
-        this.alertaService.showAlert('Error', 'Error al actualizar datos');
+        this.translate.get(['GLOBAL.error', 'SEMAFORO.error_guardar']).subscribe(translations => {
+          this.alertaService.showAlert(translations['GLOBAL.error'], translations['SEMAFORO.error_guardar']);
+        });
         this.loading = false;
       }
     });
