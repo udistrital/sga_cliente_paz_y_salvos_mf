@@ -20,7 +20,16 @@ import { SemaforoComponent } from './components/semaforo/semaforo.component';
 import { AgGridModule } from "ag-grid-angular";
 import { ModuleRegistry, AllCommunityModule } from "ag-grid-community";
 import { UserService } from './services/user.service';
-import { HttpClientModule } from '@angular/common/http';
+import { HttpClientModule, HttpClient } from '@angular/common/http';
+import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
+import { TranslateHttpLoader } from '@ngx-translate/http-loader';
+import { environment } from '../environments/environment';
+
+// Función para crear el loader de traducciones
+export function createTranslateLoader(http: HttpClient) {
+  return new TranslateHttpLoader(http, environment.apiUrl + 'assets/i18n/', '.json');
+}
+
 ModuleRegistry.registerModules([AllCommunityModule]);
 @NgModule({
   declarations: [
@@ -42,7 +51,14 @@ ModuleRegistry.registerModules([AllCommunityModule]);
     MatInputModule,
     MatSelectModule,
     MatExpansionModule,
-    NgSelectModule
+    NgSelectModule,
+    TranslateModule.forRoot({
+      loader: {
+        provide: TranslateLoader,
+        useFactory: createTranslateLoader,
+        deps: [HttpClient]
+      }
+    })
   ],
   providers: [
     UserService
