@@ -179,6 +179,75 @@ $bg-light: #f8f9fa;
     display: none !important;
   }
 
+  ::ng-deep .ag-icon-asc,
+  ::ng-deep .ag-icon-desc {
+    position: relative;
+    width: 20px !important;
+    height: 20px !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    margin-left: 4px;
+    
+    &::before {
+      font-family: 'Material Icons';
+      font-size: 20px;
+      font-weight: normal;
+      font-style: normal;
+      line-height: 1;
+      letter-spacing: normal;
+      text-transform: none;
+      display: inline-block;
+      white-space: nowrap;
+      word-wrap: normal;
+      direction: ltr;
+      color: white;
+      opacity: 1;
+      transition: transform 0.2s ease, color 0.2s ease;
+    }
+  }
+
+  ::ng-deep .ag-icon-asc {
+    &::before {
+      content: 'arrow_upward';
+    }
+    
+    &:hover::before {
+      transform: translateY(-2px);
+      color: #4dd0e1;
+    }
+  }
+
+  ::ng-deep .ag-icon-desc {
+    &::before {
+      content: 'arrow_downward';
+    }
+    
+    &:hover::before {
+      transform: translateY(2px);
+      color: #4dd0e1;
+    }
+  }
+
+  ::ng-deep .ag-icon-asc svg,
+  ::ng-deep .ag-icon-desc svg {
+    display: none !important;
+  }
+
+  ::ng-deep .ag-header-cell-sorted-asc .ag-icon-asc::before,
+  ::ng-deep .ag-header-cell-sorted-desc .ag-icon-desc::before {
+    animation: sortPulse 0.3s ease;
+  }
+
+  @keyframes sortPulse {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.2);
+    }
+  }
+
   // Estilos de las celdas
   ::ng-deep .ag-cell {
     padding: 12px 8px;
