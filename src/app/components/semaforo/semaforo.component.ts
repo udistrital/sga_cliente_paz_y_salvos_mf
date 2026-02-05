@@ -187,35 +187,51 @@ export class SemaforoComponent implements OnInit, OnDestroy {
     this.columnDefs.forEach(col => {
       if (col.field && this.booleanFields.includes(col.field)) {
         col.onCellClicked = (params: CellClickedEvent) => {
-          if (
-            params.data.Orc &&
-            col.field !== 'Orc' &&
-            col.field !== 'Observacion' &&
-            this.canEditColumnIfOrcFalse(col.field as string, params.data)
-          ) {
-            this.translate.get(['SEMAFORO.sin_acceso', 'SEMAFORO.orc_visto_bueno']).subscribe(translations => {
-              this.alertaService.showAlert(
-                translations['SEMAFORO.sin_acceso'],
-                translations['SEMAFORO.orc_visto_bueno']
-              );
-            });
-            return;
-          }
+          // Caso especial: ADMISIONES_REG puede hacer clic en ORC para cambiar entre los 3 estados
           if (
             col.field === 'Orc' &&
-            this.userRoles.includes('ADMISIONES_REG') &&
-            !params.data.Orc &&
-            !this.allDependenciesCleared(params.data)
+            this.userRoles.includes('ADMISIONES_REG')
           ) {
-            this.translate.get(['GLOBAL.atencion', 'SEMAFORO.todas_dependencias']).subscribe(translations => {
-              this.alertaService.showAlert(
-                translations['GLOBAL.atencion'],
-                translations['SEMAFORO.todas_dependencias']
-              );
-            });
+            const todasDependenciasTrue = this.allDependenciesCleared(params.data);
+            const algunaDependenciaFalse = !todasDependenciasTrue;
+
+            // - Si todas las dependencias están en true: solo puede cambiar entre null y true
+            // - Si alguna dependencia está en false: solo puede cambiar entre null y false
+            if (params.data.Orc === null) {
+              // Desde null: ir a true si todas están en true, o a false si alguna está en false
+              if (todasDependenciasTrue) {
+                params.node.setDataValue('Orc', true);
+              } else {
+                params.node.setDataValue('Orc', false);
+              }
+            } else if (params.data.Orc === true) {
+              // Desde true: verificar si todas las dependencias siguen en true
+              if (todasDependenciasTrue) {
+                // Puede volver a null
+                params.node.setDataValue('Orc', null);
+              } else {
+                // No puede mantener true si alguna dependencia cambió a false
+                this.translate.get(['GLOBAL.atencion', 'SEMAFORO.orc_no_puede_true']).subscribe(translations => {
+                  this.alertaService.showAlert(
+                    translations['GLOBAL.atencion'],
+                    translations['SEMAFORO.orc_no_puede_true']
+                  );
+                });
+                return;
+              }
+            } else {
+              // Desde false: volver a null
+              params.node.setDataValue('Orc', null);
+            }
+            this.saveRow(params.data, params.node, 'Orc');
             return;
           }
-          if (!this.canEditColumn(col.field as string, params.data)) {
+
+          // Verificar primero si el campo le compete a la dependencia (ignorando el estado de ORC)
+          const fieldBelongsToUser = this.canEditColumnIfOrcNull(col.field as string, params.data);
+          
+          // Si el campo NO le compete, mostrar mensaje genérico
+          if (!fieldBelongsToUser) {
             this.translate.get(['SEMAFORO.sin_acceso', 'SEMAFORO.sin_acceso_texto']).subscribe(translations => {
               this.alertaService.showAlert(
                 translations['SEMAFORO.sin_acceso'],
@@ -224,8 +240,23 @@ export class SemaforoComponent implements OnInit, OnDestroy {
             });
             return;
           }
+
+          if (
+            params.data.Orc !== null &&
+            col.field !== 'Orc' &&
+            col.field !== 'Observacion'
+          ) {
+            this.translate.get(['SEMAFORO.sin_acceso', 'SEMAFORO.orc_bloqueado']).subscribe(translations => {
+              this.alertaService.showAlert(
+                translations['SEMAFORO.sin_acceso'],
+                translations['SEMAFORO.orc_bloqueado']
+              );
+            });
+            return;
+          }
+
           params.node.setDataValue(col.field as string, !params.value);
-          this.saveRow(params.data, params.node);
+          this.saveRow(params.data, params.node, col.field as string);
         };
       }
       if (col.field === 'Observacion') {
@@ -253,8 +284,8 @@ export class SemaforoComponent implements OnInit, OnDestroy {
     });
   }
 
-  private canEditColumnIfOrcFalse(colField: string, rowData: SemaforoRow): boolean {
-    const tempRow = { ...rowData, Orc: false };
+  private canEditColumnIfOrcNull(colField: string, rowData: SemaforoRow): boolean {
+    const tempRow = { ...rowData, Orc: null };
     return this.canEditColumn(colField, tempRow);
   }
 
@@ -308,7 +339,7 @@ export class SemaforoComponent implements OnInit, OnDestroy {
       Laboratorios: !!item.Laboratorios,
       Bienestar: !!item.Bienestar,
       Urelinter: !!item.Urelinter,
-      Orc: !!item.Orc,
+      Orc: item.Orc === null ? null : !!item.Orc,
       ObservacionCoordinacion: item.ObservacionCoordinacion || '',
       ObservacionBiblioteca: item.ObservacionBiblioteca || '',
       ObservacionLaboratorios: item.ObservacionLaboratorios || '',
@@ -544,20 +575,9 @@ export class SemaforoComponent implements OnInit, OnDestroy {
   updateRow(event: any) {
     const row: SemaforoRow = event.data;
     const node = event.node;
+    const changedField = event.colDef?.field;
 
-    // Only validate when Orc is set to true
-    if (row.Orc && !this.allDependenciesCleared(row)) {
-      this.translate.get(['GLOBAL.atencion', 'SEMAFORO.paz_salvo_todas_dependencias']).subscribe(translations => {
-        this.alertaService.showAlert(
-          translations['GLOBAL.atencion'],
-          translations['SEMAFORO.paz_salvo_todas_dependencias']
-        );
-      });
-      node.setDataValue('Orc', false);
-      return;
-    }
-
-    this.saveRow(row, node);
+    this.saveRow(row, node, changedField);
   }
 
   private allDependenciesCleared(row: SemaforoRow): boolean {
@@ -566,41 +586,97 @@ export class SemaforoComponent implements OnInit, OnDestroy {
       .every(f => !!(row as any)[f]);
   }
 
-  private saveRow(row: SemaforoRow, node: any) {
+  private saveRow(row: SemaforoRow, node: any, changedField?: string) {
+    // Prevenir múltiples llamadas simultáneas
+    if (this.loading) {
+      return;
+    }
+    
     this.loading = true;
     this.translate.get('SEMAFORO.guardando_cambios').subscribe(translation => {
       this.alertaService.showLoading(translation);
     });
-    const putStruct: Partial<Semaforo> = {
-      Observacion: row.Observacion,
-      Academico: row.Academico,
-      Financiero: row.Financiero,
-      Biblioteca: row.Biblioteca,
-      Laboratorios: row.Laboratorios,
-      Bienestar: row.Bienestar,
-      Urelinter: row.Urelinter,
-      Orc: row.Orc,
-      ObservacionCoordinacion: row.ObservacionCoordinacion,
-      ObservacionBiblioteca: row.ObservacionBiblioteca,
-      ObservacionLaboratorios: row.ObservacionLaboratorios,
-      ObservacionBienestar: row.ObservacionBienestar,
-      ObservacionUrelinter: row.ObservacionUrelinter,
-      ObservacionOrc: row.ObservacionOrc
-    };
+    
+    // Solo enviar el campo que cambió al backend
+    const putStruct: Partial<Semaforo> = {};
+    if (changedField) {
+      (putStruct as any)[changedField] = (row as any)[changedField];
+    } else {
+      // Fallback: si no se especifica el campo, enviar todos (comportamiento anterior)
+      putStruct.Observacion = row.Observacion;
+      putStruct.Academico = row.Academico;
+      putStruct.Financiero = row.Financiero;
+      putStruct.Biblioteca = row.Biblioteca;
+      putStruct.Laboratorios = row.Laboratorios;
+      putStruct.Bienestar = row.Bienestar;
+      putStruct.Urelinter = row.Urelinter;
+      putStruct.Orc = row.Orc;
+      putStruct.ObservacionCoordinacion = row.ObservacionCoordinacion;
+      putStruct.ObservacionBiblioteca = row.ObservacionBiblioteca;
+      putStruct.ObservacionLaboratorios = row.ObservacionLaboratorios;
+      putStruct.ObservacionBienestar = row.ObservacionBienestar;
+      putStruct.ObservacionUrelinter = row.ObservacionUrelinter;
+      putStruct.ObservacionOrc = row.ObservacionOrc;
+    }
 
     this.semaforoService.patch('semaforo', row.Id, putStruct).subscribe({
-      next: () => { 
+      next: (response) => { 
+        // Actualizar la fila con los datos del servidor (fuente de verdad)
+        if (response?.Data) {
+          const updatedRow = this.mapResponseToRowData([response.Data])[0];
+          node.setData(updatedRow);
+        }
         this.loading = false;
         this.alertaService.closeLoading();
       },
       error: err => {
         this.alertaService.closeLoading();
-        this.translate.get(['GLOBAL.error', 'SEMAFORO.error_guardar']).subscribe(translations => {
-          this.alertaService.showAlert(translations['GLOBAL.error'], translations['SEMAFORO.error_guardar']);
-        });
         this.loading = false;
+        
+        // Manejar conflictos (409) - refrescar datos
+        if (err.status === 409 || err.Status === '409') {
+          const errorMessage = err.error?.Message || err.Message || 'Conflicto de estado detectado';
+          
+          this.translate.get(['SEMAFORO.conflicto_estado', 'SEMAFORO.refrescando_datos']).subscribe(translations => {
+            this.alertaService.showAlert(
+              translations['SEMAFORO.conflicto_estado'],
+              errorMessage + '. ' + translations['SEMAFORO.refrescando_datos']
+            ).then(() => {
+              // Refrescar la tabla completa después de que el usuario cierre el alert
+              this.loadData();
+            });
+          });
+        } else {
+          // Otros errores
+          this.translate.get(['GLOBAL.error', 'SEMAFORO.error_guardar']).subscribe(translations => {
+            this.alertaService.showAlert(translations['GLOBAL.error'], translations['SEMAFORO.error_guardar']).then(() => {
+              // Refrescar la fila para revertir cambios en UI después de cerrar el alert
+              this.refreshRow(row.Id);
+            });
+          });
+        }
       }
     });
+  }
+
+  private refreshRow(rowId: number): void {
+    // Buscar y refrescar solo la fila específica
+    const rowNode = this.gridApi?.getRowNode(rowId.toString());
+    if (rowNode) {
+      // Recargar el registro desde el servidor
+      this.semaforoService.get(`semaforo/${rowId}`).subscribe({
+        next: (response) => {
+          if (response?.Data) {
+            const updatedRow = this.mapResponseToRowData([response.Data])[0];
+            rowNode.setData(updatedRow);
+          }
+        },
+        error: () => {
+          // Si falla, recargar toda la tabla
+          this.loadData();
+        }
+      });
+    }
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -613,20 +689,20 @@ export class SemaforoComponent implements OnInit, OnDestroy {
       return true;
     }
 
-    // Si Orc está en true, solo ADMISIONES_REG puede editar Orc y Observacion
-    if (rowData.Orc) {
+    // Si Orc NO es null (es true o false), solo ADMISIONES_REG puede editar Orc y Observacion
+    if (rowData.Orc !== null) {
       return (
         this.userRoles.includes('ADMISIONES_REG') &&
         (colField === 'Orc' || colField === 'Observacion')
       );
     }
 
-    // Si Orc NO está en true, ADMISIONES_REG puede editar Orc solo si todas las dependencias están en true
+    // Si Orc es null, ADMISIONES_REG puede editar Orc
     if (
       this.userRoles.includes('ADMISIONES_REG') &&
       colField === 'Orc'
     ) {
-      return this.allDependenciesCleared(rowData);
+      return true;
     }
 
     // Permisos por rol

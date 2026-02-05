@@ -19,8 +19,8 @@
     "no": "No"
   },
   "SEMAFORO": {
-    "titulo": "In Good Standing Traffic Light",
-    "subtitulo": "In Good Standing Management",
+    "titulo": "Academic Standing Status",
+    "subtitulo": "Academic Clearance Overview",
     "recargar_datos": "Reload data",
     "filtros_busqueda": "Search filters",
     "codigo_estudiante": "Student Code",
@@ -78,13 +78,17 @@
     "sin_acceso": "No access",
     "sin_acceso_texto": "You do not have permissions to edit this field",
     "orc_visto_bueno": "You cannot edit this field, ORC has already approved.",
+    "orc_bloqueado": "This field cannot be edited because ORC has already issued its clearance decision.",
+    "orc_no_puede_true": "Cannot approve. One or more departments are pending or rejected.",
     "todas_dependencias": "All departments must approve.",
     "paz_salvo_todas_dependencias": "The student must be cleared by all departments.",
     "sin_resultados": "No results",
     "sin_resultados_filtros": "No students found with the applied filters.",
     "sin_estudiantes": "No students",
     "sin_estudiantes_proyectos": "No active students in assigned projects.",
-    "sin_estudiantes_activos": "No active students found."
+    "sin_estudiantes_activos": "No active students found.",
+    "conflicto_estado": "State Conflict",
+    "refrescando_datos": "Refreshing data from server"
   },
   "ROLES": {
     "estudiante": "Student",
