@@ -621,10 +621,23 @@ export class SemaforoComponent implements OnInit, OnDestroy {
 
     this.semaforoService.patch('semaforo', row.Id, putStruct).subscribe({
       next: (response) => { 
-        // Actualizar la fila con los datos del servidor (fuente de verdad)
-        if (response?.Data) {
-          const updatedRow = this.mapResponseToRowData([response.Data])[0];
-          node.setData(updatedRow);
+        if (response?.Data && changedField) {
+          node.setDataValue(changedField, (response.Data as any)[changedField]);
+        } else if (response?.Data) {
+          const serverData = response.Data;
+          node.setDataValue('Academico', !!serverData.Academico);
+          node.setDataValue('Financiero', !!serverData.Financiero);
+          node.setDataValue('Biblioteca', !!serverData.Biblioteca);
+          node.setDataValue('Laboratorios', !!serverData.Laboratorios);
+          node.setDataValue('Bienestar', !!serverData.Bienestar);
+          node.setDataValue('Urelinter', !!serverData.Urelinter);
+          node.setDataValue('Orc', serverData.Orc === null ? null : !!serverData.Orc);
+          node.setDataValue('ObservacionCoordinacion', serverData.ObservacionCoordinacion || '');
+          node.setDataValue('ObservacionBiblioteca', serverData.ObservacionBiblioteca || '');
+          node.setDataValue('ObservacionLaboratorios', serverData.ObservacionLaboratorios || '');
+          node.setDataValue('ObservacionBienestar', serverData.ObservacionBienestar || '');
+          node.setDataValue('ObservacionUrelinter', serverData.ObservacionUrelinter || '');
+          node.setDataValue('ObservacionOrc', serverData.ObservacionOrc || '');
         }
         this.loading = false;
         this.alertaService.closeLoading();
