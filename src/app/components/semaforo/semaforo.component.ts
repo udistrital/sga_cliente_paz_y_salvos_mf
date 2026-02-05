@@ -195,7 +195,6 @@ export class SemaforoComponent implements OnInit, OnDestroy {
             const todasDependenciasTrue = this.allDependenciesCleared(params.data);
             const algunaDependenciaFalse = !todasDependenciasTrue;
 
-            // Ciclo de estados con restricciones:
             // - Si todas las dependencias están en true: solo puede cambiar entre null y true
             // - Si alguna dependencia está en false: solo puede cambiar entre null y false
             if (params.data.Orc === null) {
@@ -224,7 +223,7 @@ export class SemaforoComponent implements OnInit, OnDestroy {
               // Desde false: volver a null
               params.node.setDataValue('Orc', null);
             }
-            this.saveRow(params.data, params.node);
+            this.saveRow(params.data, params.node, 'Orc');
             return;
           }
 
@@ -242,7 +241,6 @@ export class SemaforoComponent implements OnInit, OnDestroy {
             return;
           }
 
-          // Si el campo SÍ le compete pero ORC está bloqueando (no es null), mostrar mensaje específico
           if (
             params.data.Orc !== null &&
             col.field !== 'Orc' &&
@@ -257,9 +255,8 @@ export class SemaforoComponent implements OnInit, OnDestroy {
             return;
           }
 
-          // Si pasó todas las validaciones, permitir la edición
           params.node.setDataValue(col.field as string, !params.value);
-          this.saveRow(params.data, params.node);
+          this.saveRow(params.data, params.node, col.field as string);
         };
       }
       if (col.field === 'Observacion') {
@@ -578,8 +575,9 @@ export class SemaforoComponent implements OnInit, OnDestroy {
   updateRow(event: any) {
     const row: SemaforoRow = event.data;
     const node = event.node;
+    const changedField = event.colDef?.field;
 
-    this.saveRow(row, node);
+    this.saveRow(row, node, changedField);
   }
 
   private allDependenciesCleared(row: SemaforoRow): boolean {
@@ -588,41 +586,97 @@ export class SemaforoComponent implements OnInit, OnDestroy {
       .every(f => !!(row as any)[f]);
   }
 
-  private saveRow(row: SemaforoRow, node: any) {
+  private saveRow(row: SemaforoRow, node: any, changedField?: string) {
+    // Prevenir múltiples llamadas simultáneas
+    if (this.loading) {
+      return;
+    }
+    
     this.loading = true;
     this.translate.get('SEMAFORO.guardando_cambios').subscribe(translation => {
       this.alertaService.showLoading(translation);
     });
-    const putStruct: Partial<Semaforo> = {
-      Observacion: row.Observacion,
-      Academico: row.Academico,
-      Financiero: row.Financiero,
-      Biblioteca: row.Biblioteca,
-      Laboratorios: row.Laboratorios,
-      Bienestar: row.Bienestar,
-      Urelinter: row.Urelinter,
-      Orc: row.Orc,
-      ObservacionCoordinacion: row.ObservacionCoordinacion,
-      ObservacionBiblioteca: row.ObservacionBiblioteca,
-      ObservacionLaboratorios: row.ObservacionLaboratorios,
-      ObservacionBienestar: row.ObservacionBienestar,
-      ObservacionUrelinter: row.ObservacionUrelinter,
-      ObservacionOrc: row.ObservacionOrc
-    };
+    
+    // Solo enviar el campo que cambió al backend
+    const putStruct: Partial<Semaforo> = {};
+    if (changedField) {
+      (putStruct as any)[changedField] = (row as any)[changedField];
+    } else {
+      // Fallback: si no se especifica el campo, enviar todos (comportamiento anterior)
+      putStruct.Observacion = row.Observacion;
+      putStruct.Academico = row.Academico;
+      putStruct.Financiero = row.Financiero;
+      putStruct.Biblioteca = row.Biblioteca;
+      putStruct.Laboratorios = row.Laboratorios;
+      putStruct.Bienestar = row.Bienestar;
+      putStruct.Urelinter = row.Urelinter;
+      putStruct.Orc = row.Orc;
+      putStruct.ObservacionCoordinacion = row.ObservacionCoordinacion;
+      putStruct.ObservacionBiblioteca = row.ObservacionBiblioteca;
+      putStruct.ObservacionLaboratorios = row.ObservacionLaboratorios;
+      putStruct.ObservacionBienestar = row.ObservacionBienestar;
+      putStruct.ObservacionUrelinter = row.ObservacionUrelinter;
+      putStruct.ObservacionOrc = row.ObservacionOrc;
+    }
 
     this.semaforoService.patch('semaforo', row.Id, putStruct).subscribe({
-      next: () => { 
+      next: (response) => { 
+        // Actualizar la fila con los datos del servidor (fuente de verdad)
+        if (response?.Data) {
+          const updatedRow = this.mapResponseToRowData([response.Data])[0];
+          node.setData(updatedRow);
+        }
         this.loading = false;
         this.alertaService.closeLoading();
       },
       error: err => {
         this.alertaService.closeLoading();
-        this.translate.get(['GLOBAL.error', 'SEMAFORO.error_guardar']).subscribe(translations => {
-          this.alertaService.showAlert(translations['GLOBAL.error'], translations['SEMAFORO.error_guardar']);
-        });
         this.loading = false;
+        
+        // Manejar conflictos (409) - refrescar datos
+        if (err.status === 409 || err.Status === '409') {
+          const errorMessage = err.error?.Message || err.Message || 'Conflicto de estado detectado';
+          
+          this.translate.get(['SEMAFORO.conflicto_estado', 'SEMAFORO.refrescando_datos']).subscribe(translations => {
+            this.alertaService.showAlert(
+              translations['SEMAFORO.conflicto_estado'],
+              errorMessage + '. ' + translations['SEMAFORO.refrescando_datos']
+            ).then(() => {
+              // Refrescar la tabla completa después de que el usuario cierre el alert
+              this.loadData();
+            });
+          });
+        } else {
+          // Otros errores
+          this.translate.get(['GLOBAL.error', 'SEMAFORO.error_guardar']).subscribe(translations => {
+            this.alertaService.showAlert(translations['GLOBAL.error'], translations['SEMAFORO.error_guardar']).then(() => {
+              // Refrescar la fila para revertir cambios en UI después de cerrar el alert
+              this.refreshRow(row.Id);
+            });
+          });
+        }
       }
     });
+  }
+
+  private refreshRow(rowId: number): void {
+    // Buscar y refrescar solo la fila específica
+    const rowNode = this.gridApi?.getRowNode(rowId.toString());
+    if (rowNode) {
+      // Recargar el registro desde el servidor
+      this.semaforoService.get(`semaforo/${rowId}`).subscribe({
+        next: (response) => {
+          if (response?.Data) {
+            const updatedRow = this.mapResponseToRowData([response.Data])[0];
+            rowNode.setData(updatedRow);
+          }
+        },
+        error: () => {
+          // Si falla, recargar toda la tabla
+          this.loadData();
+        }
+      });
+    }
   }
 
   onGridReady(params: GridReadyEvent) {

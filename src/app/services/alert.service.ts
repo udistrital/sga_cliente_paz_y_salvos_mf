@@ -2,6 +2,7 @@ import { Injectable } from "@angular/core";
 // @ts-ignore
 import Swal from "sweetalert2/dist/sweetalert2";
 import { TranslateService } from '@ngx-translate/core';
+import { firstValueFrom } from 'rxjs';
 
 @Injectable({
   providedIn: "root",
@@ -9,19 +10,18 @@ import { TranslateService } from '@ngx-translate/core';
 export class AlertService {
   constructor(private translate: TranslateService) { }
 
-  showAlert(title: string, text: string) {
-    this.translate.get(['GLOBAL.aceptar']).subscribe(translations => {
-      Swal.fire({
-        icon: "info",
-        title: title,
-        text: text,
-        confirmButtonText: translations['GLOBAL.aceptar'],
-        customClass: {
-          confirmButton: "alertaConfirmarBoton",
-          cancelButton: "alertaCancelarBoton",
-          icon: "alertaIconoWarn",
-        },
-      });
+  async showAlert(title: string, text: string): Promise<any> {
+    const translations = await firstValueFrom(this.translate.get(['GLOBAL.aceptar']));
+    return Swal.fire({
+      icon: "info",
+      title: title,
+      text: text,
+      confirmButtonText: translations['GLOBAL.aceptar'],
+      customClass: {
+        confirmButton: "alertaConfirmarBoton",
+        cancelButton: "alertaCancelarBoton",
+        icon: "alertaIconoWarn",
+      },
     });
   }
 
@@ -56,21 +56,20 @@ export class AlertService {
     });
   }
 
-  showConfirmAlert(text: string, title?: string): Promise<any> {
-    return this.translate.get(['GLOBAL.atencion', 'GLOBAL.aceptar', 'GLOBAL.cancelar']).toPromise().then(translations => {
-      return Swal.fire({
-        title: title || translations['GLOBAL.atencion'],
-        text: text,
-        icon: "warning",
-        showCancelButton: true,
-        cancelButtonText: translations['GLOBAL.cancelar'],
-        confirmButtonText: translations['GLOBAL.aceptar'],
-        customClass: {
-          confirmButton: "alertaConfirmarBoton",
-          cancelButton: "alertaCancelarBoton",
-          icon: "alertaIconoConfirmacion",
-        },
-      });
+  async showConfirmAlert(text: string, title?: string): Promise<any> {
+    const translations = await firstValueFrom(this.translate.get(['GLOBAL.atencion', 'GLOBAL.aceptar', 'GLOBAL.cancelar']));
+    return Swal.fire({
+      title: title || translations['GLOBAL.atencion'],
+      text: text,
+      icon: "warning",
+      showCancelButton: true,
+      cancelButtonText: translations['GLOBAL.cancelar'],
+      confirmButtonText: translations['GLOBAL.aceptar'],
+      customClass: {
+        confirmButton: "alertaConfirmarBoton",
+        cancelButton: "alertaCancelarBoton",
+        icon: "alertaIconoConfirmacion",
+      },
     });
   }
 

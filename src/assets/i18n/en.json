@@ -86,7 +86,9 @@
     "sin_resultados_filtros": "No students found with the applied filters.",
     "sin_estudiantes": "No students",
     "sin_estudiantes_proyectos": "No active students in assigned projects.",
-    "sin_estudiantes_activos": "No active students found."
+    "sin_estudiantes_activos": "No active students found.",
+    "conflicto_estado": "State Conflict",
+    "refrescando_datos": "Refreshing data from server"
   },
   "ROLES": {
     "estudiante": "Student",

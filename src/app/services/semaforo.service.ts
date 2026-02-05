@@ -11,7 +11,14 @@ export class SemaforoService {
     }
 
     get(endpoint: string, params?: any): Observable<any> {
-        this.requestManager.setPath("SGA_PAZ_Y_SALVOS_MID_SERVICE");
+        // Si el endpoint contiene un ID numérico (ej: semaforo/123), usar CRUD
+        // De lo contrario, usar MID para queries complejos
+        if (/^semaforo\/\d+$/.test(endpoint)) {
+            this.requestManager.setPath("SGA_PAZ_Y_SALVOS_CRUD_SERVICE");
+        } else {
+            this.requestManager.setPath("SGA_PAZ_Y_SALVOS_MID_SERVICE");
+        }
+        
         if (params) {
             const queryString = Object.keys(params)
                 .map(key => `${key}=${params[key]}`)
