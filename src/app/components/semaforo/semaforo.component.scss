@@ -288,6 +288,15 @@ $bg-light: #f8f9fa;
   }
 }
 
+::ng-deep .semaforo-icon.neutral {
+  background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+  box-shadow: 0 2px 4px rgba(149, 165, 166, 0.3);
+  
+  mat-icon, .material-icons {
+    color: white;
+  }
+}
+
 .pagination-controls {
   display: flex;
   justify-content: space-between;

@@ -15,7 +15,7 @@ export interface Semaforo {
   Laboratorios: boolean;
   Bienestar: boolean;
   Urelinter: boolean;
-  Orc: boolean;
+  Orc: boolean | null;
 
   Activo: boolean;
   Observacion: string;
