@@ -187,11 +187,66 @@ export class SemaforoComponent implements OnInit, OnDestroy {
     this.columnDefs.forEach(col => {
       if (col.field && this.booleanFields.includes(col.field)) {
         col.onCellClicked = (params: CellClickedEvent) => {
+          // Caso especial: ADMISIONES_REG puede hacer clic en ORC para cambiar entre los 3 estados
+          if (
+            col.field === 'Orc' &&
+            this.userRoles.includes('ADMISIONES_REG')
+          ) {
+            const todasDependenciasTrue = this.allDependenciesCleared(params.data);
+            const algunaDependenciaFalse = !todasDependenciasTrue;
+
+            // Ciclo de estados con restricciones:
+            // - Si todas las dependencias están en true: solo puede cambiar entre null y true
+            // - Si alguna dependencia está en false: solo puede cambiar entre null y false
+            if (params.data.Orc === null) {
+              // Desde null: ir a true si todas están en true, o a false si alguna está en false
+              if (todasDependenciasTrue) {
+                params.node.setDataValue('Orc', true);
+              } else {
+                params.node.setDataValue('Orc', false);
+              }
+            } else if (params.data.Orc === true) {
+              // Desde true: verificar si todas las dependencias siguen en true
+              if (todasDependenciasTrue) {
+                // Puede volver a null
+                params.node.setDataValue('Orc', null);
+              } else {
+                // No puede mantener true si alguna dependencia cambió a false
+                this.translate.get(['GLOBAL.atencion', 'SEMAFORO.orc_no_puede_true']).subscribe(translations => {
+                  this.alertaService.showAlert(
+                    translations['GLOBAL.atencion'],
+                    translations['SEMAFORO.orc_no_puede_true']
+                  );
+                });
+                return;
+              }
+            } else {
+              // Desde false: volver a null
+              params.node.setDataValue('Orc', null);
+            }
+            this.saveRow(params.data, params.node);
+            return;
+          }
+
+          // Verificar primero si el campo le compete a la dependencia (ignorando el estado de ORC)
+          const fieldBelongsToUser = this.canEditColumnIfOrcNull(col.field as string, params.data);
+          
+          // Si el campo NO le compete, mostrar mensaje genérico
+          if (!fieldBelongsToUser) {
+            this.translate.get(['SEMAFORO.sin_acceso', 'SEMAFORO.sin_acceso_texto']).subscribe(translations => {
+              this.alertaService.showAlert(
+                translations['SEMAFORO.sin_acceso'],
+                translations['SEMAFORO.sin_acceso_texto']
+              );
+            });
+            return;
+          }
+
+          // Si el campo SÍ le compete pero ORC está bloqueando (no es null), mostrar mensaje específico
           if (
             params.data.Orc !== null &&
             col.field !== 'Orc' &&
-            col.field !== 'Observacion' &&
-            this.canEditColumnIfOrcFalse(col.field as string, params.data)
+            col.field !== 'Observacion'
           ) {
             this.translate.get(['SEMAFORO.sin_acceso', 'SEMAFORO.orc_bloqueado']).subscribe(translations => {
               this.alertaService.showAlert(
@@ -201,30 +256,8 @@ export class SemaforoComponent implements OnInit, OnDestroy {
             });
             return;
           }
-          if (
-            col.field === 'Orc' &&
-            this.userRoles.includes('ADMISIONES_REG')
-          ) {
-            // Ciclo de tres estados: null -> true -> false -> null
-            if (params.data.Orc === null) {
-              params.node.setDataValue('Orc', true);
-            } else if (params.data.Orc === true) {
-              params.node.setDataValue('Orc', false);
-            } else {
-              params.node.setDataValue('Orc', null);
-            }
-            this.saveRow(params.data, params.node);
-            return;
-          }
-          if (!this.canEditColumn(col.field as string, params.data)) {
-            this.translate.get(['SEMAFORO.sin_acceso', 'SEMAFORO.sin_acceso_texto']).subscribe(translations => {
-              this.alertaService.showAlert(
-                translations['SEMAFORO.sin_acceso'],
-                translations['SEMAFORO.sin_acceso_texto']
-              );
-            });
-            return;
-          }
+
+          // Si pasó todas las validaciones, permitir la edición
           params.node.setDataValue(col.field as string, !params.value);
           this.saveRow(params.data, params.node);
         };
@@ -254,8 +287,8 @@ export class SemaforoComponent implements OnInit, OnDestroy {
     });
   }
 
-  private canEditColumnIfOrcFalse(colField: string, rowData: SemaforoRow): boolean {
-    const tempRow = { ...rowData, Orc: false };
+  private canEditColumnIfOrcNull(colField: string, rowData: SemaforoRow): boolean {
+    const tempRow = { ...rowData, Orc: null };
     return this.canEditColumn(colField, tempRow);
   }
 
