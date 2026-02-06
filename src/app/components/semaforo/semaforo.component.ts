@@ -725,9 +725,6 @@ export class SemaforoComponent implements OnInit, OnDestroy {
     if (this.userRoles.includes('COORDINADOR')) {
       return colField === 'Academico' || colField === 'Financiero' || colField === 'ObservacionCoordinacion';
     }
-    if (this.userRoles.includes('SECRETARIA_ACADEMICA') || this.userRoles.includes('SECRETARIO_ACADEMICO')) {
-      return colField === 'Academico' || colField === 'ObservacionCoordinacion';
-    }
     if (this.userRoles.includes('BIBLIOTECA')) {
       return colField === 'Biblioteca' || colField === 'ObservacionBiblioteca';
     }
@@ -741,9 +738,12 @@ export class SemaforoComponent implements OnInit, OnDestroy {
       return colField === 'Urelinter' || colField === 'ObservacionUrelinter';
     }
     if (this.userRoles.includes('ADMISIONES_REG')) {
-      return colField === 'Orc' || colField === 'Observacion' || colField === 'ObservacionOrc';
+      return colField === 'Orc' || colField === 'ObservacionOrc';
     }
-    // ESTUDIANTE solo consulta
+    // ESTUDIANTE Y SECRETARIOS solo consulta
+    if (this.userRoles.includes('SECRETARIA_ACADEMICA') || this.userRoles.includes('SECRETARIO_ACADEMICO')) {
+      // return colField === 'Academico' || colField === 'ObservacionCoordinacion';
+    }
     return false;
   }
 
