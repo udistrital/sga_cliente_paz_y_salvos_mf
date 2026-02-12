@@ -1,0 +1,104 @@
+$primary-color: #03678f;
+$primary-light: #4f95b1;
+$text-medium: #495057;
+$text-dark: #2c3e50;
+$border-color: #dfe6e9;
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.pagination-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(to right, #f8f9fa 0%, #ffffff 100%);
+  border-radius: 8px;
+  margin-top: 1rem;
+  border: 1px solid $border-color;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+
+  .pagination-info {
+    font-size: 0.9rem;
+    color: $text-medium;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    background-color: white;
+    border-radius: 6px;
+    border: 1px solid $border-color;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  .pagination-buttons {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+
+    button {
+      transition: all 0.2s ease;
+
+      &:not(:disabled) {
+        &:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 8px rgba(3, 103, 143, 0.2);
+        }
+      }
+    }
+
+    .page-number {
+      padding: 0.5rem 1.25rem;
+      font-weight: 700;
+      color: $primary-color;
+      background-color: white;
+      border-radius: 6px;
+      border: 2px solid $primary-color;
+      font-size: 0.95rem;
+      box-shadow: 0 2px 4px rgba(3, 103, 143, 0.1);
+    }
+  }
+
+  .page-size-selector {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+
+    label {
+      font-size: 0.9rem;
+      color: $text-medium;
+      font-weight: 600;
+    }
+
+    select {
+      padding: 0.5rem 2rem 0.5rem 0.75rem;
+      border: 2px solid $border-color;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      background-color: white;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      color: $text-dark;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      appearance: none;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2303678f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 0.5rem center;
+      background-size: 1.25em;
+
+      &:hover {
+        border-color: $primary-light;
+        box-shadow: 0 2px 6px rgba(3, 103, 143, 0.15);
+      }
+
+      &:focus {
+        outline: none;
+        border-color: $primary-color;
+        box-shadow: 0 0 0 3px rgba(3, 103, 143, 0.1);
+      }
+    }
+  }
+}

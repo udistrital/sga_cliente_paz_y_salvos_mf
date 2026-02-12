@@ -17,6 +17,9 @@ import { NgSelectModule } from '@ng-select/ng-select';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { SemaforoComponent } from './components/semaforo/semaforo.component';
+import { SemaforoFiltersComponent } from './components/semaforo/components/semaforo-filters/semaforo-filters.component';
+import { SemaforoGridComponent } from './components/semaforo/components/semaforo-grid/semaforo-grid.component';
+import { SemaforoPaginationComponent } from './components/semaforo/components/semaforo-pagination/semaforo-pagination.component';
 import { AgGridModule } from "ag-grid-angular";
 import { ModuleRegistry, AllCommunityModule } from "ag-grid-community";
 import { UserService } from './services/user.service';
@@ -34,7 +37,10 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 @NgModule({
   declarations: [
     AppComponent,
-    SemaforoComponent
+    SemaforoComponent,
+    SemaforoFiltersComponent,
+    SemaforoGridComponent,
+    SemaforoPaginationComponent
   ],
   imports: [
     BrowserModule,

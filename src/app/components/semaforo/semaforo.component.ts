@@ -1,25 +1,34 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
-import { ColDef, CellClickedEvent, GridReadyEvent, GridApi } from 'ag-grid-community';
-import { SEMAFORO_ROW } from '../../constants/semaforo-row';
-import { SemaforoRow, Semaforo } from '../../models/semaforo-row';
+import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
+import { SemaforoRow } from '../../models/semaforo-row';
+import { SemaforoFilters, CatalogoOption, ProyectoAsignado } from '../../models/semaforo-filters.model';
 import { TranslateService } from '@ngx-translate/core';
-import { Subscription } from 'rxjs';
+import { GridApi } from 'ag-grid-community';
 
 import { UserService } from '../../services/user.service';
 import { SemaforoService } from '../../services/semaforo.service';
 import { OikosService } from '../../services/oikos.service';
 import { AlertService } from '../../services/alert.service';
+import { SemaforoPermissionsService } from '../../services/semaforo-permissions.service';
+import { SemaforoDataMapperService } from '../../services/semaforo-data-mapper.service';
+import { SemaforoGridComponent } from './components/semaforo-grid/semaforo-grid.component';
 
+/**
+ * Componente principal del Semáforo de Paz y Salvos
+ * Orquesta los sub-componentes y gestiona el flujo de datos
+ */
 @Component({
   selector: 'app-semaforo',
   templateUrl: './semaforo.component.html',
   styleUrl: './semaforo.component.scss'
 })
 export class SemaforoComponent implements OnInit, OnDestroy {
-  private gridApi!: GridApi;
-  private langChangeSubscription?: Subscription;
+  @ViewChild(SemaforoGridComponent) gridComponent!: SemaforoGridComponent;
+
+  // Estado de carga
   loading = false;
   userRoles: string[] = [];
+
+  // Datos de la tabla
   rowData: SemaforoRow[] = [];
   filteredRowData: SemaforoRow[] = [];
   
@@ -27,86 +36,38 @@ export class SemaforoComponent implements OnInit, OnDestroy {
   currentPage = 0;
   pageSize = 20;
   totalRecords = 0;
-  Math = Math; // Para usar Math.min en el template
-
-  // Boolean fields for special handling
-  readonly booleanFields = [
-    'Academico', 'Financiero', 'Biblioteca', 'Laboratorios', 'Bienestar', 'Urelinter', 'Orc'
-  ];
 
   // Filtros
   filtersExpanded = false;
-  filters = {
-    codigoEstudiante: '',
-    idFacultad: null as number | null,
-    idProyecto: null as number | null,
-    anioInsGrado: null as number | null,
-    perInsGrado: null as number | null
-  };
-
-  facultades: Array<{id: number | null, nombre: string}> = [];
-  proyectos: Array<{id: number | null, nombre: string}> = [];
+  filters: SemaforoFilters;
+  
+  // Catálogos
+  facultades: CatalogoOption[] = [];
+  proyectos: CatalogoOption[] = [];
   loadingFacultades = false;
   loadingProyectos = false;
 
+  // Datos específicos de contratista
   esAsistente = false;
-  proyectosAsignados: Array<{idOikos: number, codigo: string, nombre: string}> = [];
+  proyectosAsignados: ProyectoAsignado[] = [];
 
-  // Clone columnDefs to allow runtime changes
-  columnDefs: ColDef[] = SEMAFORO_ROW.map(col => ({ ...col }));
+  // Grid API reference
+  private gridApi!: GridApi;
 
   constructor(
     private userService: UserService,
     private semaforoService: SemaforoService,
     private oikosService: OikosService,
-    private alertaService: AlertService,
-    private translate: TranslateService
-  ) {}
-
-  get totalPages(): number {
-    return Math.ceil(this.totalRecords / this.pageSize);
-  }
-
-  // Validación de filtros por rol
-  canUseCodigoFilter(): boolean {
-    // Todos excepto ESTUDIANTE
-    return !this.userRoles.includes('ESTUDIANTE');
-  }
-
-  canUseFacultadFilter(): boolean {
-    // Solo roles globales: BIBLIOTECA, ADMIN_BIENESTAR, URELINTER, ADMISIONES_REG
-    return this.userRoles.includes('BIBLIOTECA') ||
-           this.userRoles.includes('ADMIN_BIENESTAR') ||
-           this.userRoles.includes('URELINTER') ||
-           this.userRoles.includes('ADMISIONES_REG');
-  }
-
-  canUseProyectoFilter(): boolean {
-    if (this.userRoles.includes('CONTRATISTA')) return true;
-    // Todos excepto ESTUDIANTE y COORDINADOR
-    return !this.userRoles.includes('ESTUDIANTE') && 
-           !this.userRoles.includes('COORDINADOR');
-  }
-
-  canUseAnioFilter(): boolean {
-    // Todos excepto ESTUDIANTE
-    return !this.userRoles.includes('ESTUDIANTE');
-  }
-
-  canUsePeriodoFilter(): boolean {
-    // Todos excepto ESTUDIANTE
-    return !this.userRoles.includes('ESTUDIANTE');
+    private alertService: AlertService,
+    private translate: TranslateService,
+    private permissionsService: SemaforoPermissionsService,
+    private dataMapperService: SemaforoDataMapperService
+  ) {
+    this.filters = this.dataMapperService.createEmptyFilters();
   }
 
   async ngOnInit() {
     await this.loadUserInfo();
-    await this.translateColumnHeaders();
-    this.setupColumnDefs();
-    
-    // Suscribirse a cambios de idioma
-    this.langChangeSubscription = this.translate.onLangChange.subscribe(() => {
-      this.translateColumnHeaders();
-    });
     
     if (this.userRoles.includes('CONTRATISTA')) {
       this.loadData();
@@ -117,268 +78,150 @@ export class SemaforoComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
-    // Limpiar suscripción al destruir el componente
-    if (this.langChangeSubscription) {
-      this.langChangeSubscription.unsubscribe();
-    }
+    // Limpieza automática por sub-componentes
   }
 
-  private async translateColumnHeaders() {
-    const columnTranslationKeys = [
-      'SEMAFORO.col_codigo',
-      'SEMAFORO.col_nombre',
-      'SEMAFORO.col_facultad',
-      'SEMAFORO.col_proyecto_curricular',
-      'SEMAFORO.col_anio_inscripcion',
-      'SEMAFORO.col_periodo_inscripcion',
-      'SEMAFORO.col_academico',
-      'SEMAFORO.col_financiero',
-      'SEMAFORO.col_biblioteca',
-      'SEMAFORO.col_laboratorios',
-      'SEMAFORO.col_bienestar',
-      'SEMAFORO.col_urelinter',
-      'SEMAFORO.col_orc',
-      'SEMAFORO.col_obs_coordinacion',
-      'SEMAFORO.col_obs_biblioteca',
-      'SEMAFORO.col_obs_laboratorios',
-      'SEMAFORO.col_obs_bienestar',
-      'SEMAFORO.col_obs_urelinter',
-      'SEMAFORO.col_obs_orc'
-    ];
-
-    this.translate.get(columnTranslationKeys).subscribe(translations => {
-      this.columnDefs[0].headerName = translations['SEMAFORO.col_codigo'];
-      this.columnDefs[1].headerName = translations['SEMAFORO.col_nombre'];
-      this.columnDefs[2].headerName = translations['SEMAFORO.col_facultad'];
-      this.columnDefs[3].headerName = translations['SEMAFORO.col_proyecto_curricular'];
-      this.columnDefs[4].headerName = translations['SEMAFORO.col_anio_inscripcion'];
-      this.columnDefs[5].headerName = translations['SEMAFORO.col_periodo_inscripcion'];
-      this.columnDefs[6].headerName = translations['SEMAFORO.col_academico'];
-      this.columnDefs[7].headerName = translations['SEMAFORO.col_financiero'];
-      this.columnDefs[8].headerName = translations['SEMAFORO.col_biblioteca'];
-      this.columnDefs[9].headerName = translations['SEMAFORO.col_laboratorios'];
-      this.columnDefs[10].headerName = translations['SEMAFORO.col_bienestar'];
-      this.columnDefs[11].headerName = translations['SEMAFORO.col_urelinter'];
-      this.columnDefs[12].headerName = translations['SEMAFORO.col_orc'];
-      this.columnDefs[13].headerName = translations['SEMAFORO.col_obs_coordinacion'];
-      this.columnDefs[14].headerName = translations['SEMAFORO.col_obs_biblioteca'];
-      this.columnDefs[15].headerName = translations['SEMAFORO.col_obs_laboratorios'];
-      this.columnDefs[16].headerName = translations['SEMAFORO.col_obs_bienestar'];
-      this.columnDefs[17].headerName = translations['SEMAFORO.col_obs_urelinter'];
-      this.columnDefs[18].headerName = translations['SEMAFORO.col_obs_orc'];
-      
-      // Actualizar la grilla si ya está lista
-      if (this.gridApi) {
-        this.gridApi.refreshHeader();
-      }
-    });
-  }
+  // ============ GESTIÓN DE DATOS ============
 
   private async loadUserInfo() {
     try {
       this.userRoles = await this.userService.getUserRoles();
-      await this.userService.getPersonaId(); // Only for logging
+      await this.userService.getPersonaId();
     } catch (error) {
-      // Error loading user info
+      console.error('Error loading user info:', error);
     }
   }
 
-  private setupColumnDefs() {
-    this.columnDefs.forEach(col => {
-      if (col.field && this.booleanFields.includes(col.field)) {
-        col.onCellClicked = (params: CellClickedEvent) => {
-          // Caso especial: ADMISIONES_REG puede hacer clic en ORC para cambiar entre los 3 estados
-          if (
-            col.field === 'Orc' &&
-            this.userRoles.includes('ADMISIONES_REG')
-          ) {
-            const todasDependenciasTrue = this.allDependenciesCleared(params.data);
-            const algunaDependenciaFalse = !todasDependenciasTrue;
+  private async loadData() {
+    const endpoint = await this.buildEndpoint();
+    if (!endpoint) return;
 
-            // - Si todas las dependencias están en true: solo puede cambiar entre null y true
-            // - Si alguna dependencia está en false: solo puede cambiar entre null y false
-            if (params.data.Orc === null) {
-              // Desde null: ir a true si todas están en true, o a false si alguna está en false
-              if (todasDependenciasTrue) {
-                params.node.setDataValue('Orc', true);
-              } else {
-                params.node.setDataValue('Orc', false);
-              }
-            } else if (params.data.Orc === true) {
-              // Desde true: verificar si todas las dependencias siguen en true
-              if (todasDependenciasTrue) {
-                // Puede volver a null
-                params.node.setDataValue('Orc', null);
-              } else {
-                // No puede mantener true si alguna dependencia cambió a false
-                this.translate.get(['GLOBAL.atencion', 'SEMAFORO.orc_no_puede_true']).subscribe(translations => {
-                  this.alertaService.showAlert(
-                    translations['GLOBAL.atencion'],
-                    translations['SEMAFORO.orc_no_puede_true']
-                  );
-                });
-                return;
-              }
-            } else {
-              // Desde false: volver a null
-              params.node.setDataValue('Orc', null);
-            }
-            this.saveRow(params.data, params.node, 'Orc');
-            return;
-          }
+    this.loading = true;
+    this.translate.get('SEMAFORO.cargando_estudiantes').subscribe(translation => {
+      this.alertService.showLoading(translation);
+    });
 
-          // Verificar primero si el campo le compete a la dependencia (ignorando el estado de ORC)
-          const fieldBelongsToUser = this.canEditColumnIfOrcNull(col.field as string, params.data);
-          
-          // Si el campo NO le compete, mostrar mensaje genérico
-          if (!fieldBelongsToUser) {
-            this.translate.get(['SEMAFORO.sin_acceso', 'SEMAFORO.sin_acceso_texto']).subscribe(translations => {
-              this.alertaService.showAlert(
-                translations['SEMAFORO.sin_acceso'],
-                translations['SEMAFORO.sin_acceso_texto']
-              );
-            });
-            return;
-          }
+    const params = this.dataMapperService.buildQueryParams(this.filters, this.currentPage, this.pageSize);
 
-          if (
-            params.data.Orc !== null &&
-            col.field !== 'Orc' &&
-            col.field !== 'Observacion'
-          ) {
-            this.translate.get(['SEMAFORO.sin_acceso', 'SEMAFORO.orc_bloqueado']).subscribe(translations => {
-              this.alertaService.showAlert(
-                translations['SEMAFORO.sin_acceso'],
-                translations['SEMAFORO.orc_bloqueado']
-              );
-            });
-            return;
-          }
-
-          params.node.setDataValue(col.field as string, !params.value);
-          this.saveRow(params.data, params.node, col.field as string);
-        };
-      }
-      if (col.field === 'Observacion') {
-        col.editable = (params: any) => this.canEditColumn('Observacion', params.data);
-      }
-      // Configurar editabilidad de campos de observaciones por dependencia
-      if (col.field === 'ObservacionCoordinacion') {
-        col.editable = (params: any) => this.canEditColumn('ObservacionCoordinacion', params.data);
-      }
-      if (col.field === 'ObservacionBiblioteca') {
-        col.editable = (params: any) => this.canEditColumn('ObservacionBiblioteca', params.data);
-      }
-      if (col.field === 'ObservacionLaboratorios') {
-        col.editable = (params: any) => this.canEditColumn('ObservacionLaboratorios', params.data);
-      }
-      if (col.field === 'ObservacionBienestar') {
-        col.editable = (params: any) => this.canEditColumn('ObservacionBienestar', params.data);
-      }
-      if (col.field === 'ObservacionUrelinter') {
-        col.editable = (params: any) => this.canEditColumn('ObservacionUrelinter', params.data);
-      }
-      if (col.field === 'ObservacionOrc') {
-        col.editable = (params: any) => this.canEditColumn('ObservacionOrc', params.data);
-      }
+    this.semaforoService.get(endpoint, params).subscribe({
+      next: response => this.handleLoadDataSuccess(response),
+      error: error => this.handleLoadDataError(error)
     });
   }
 
-  private canEditColumnIfOrcNull(colField: string, rowData: SemaforoRow): boolean {
-    const tempRow = { ...rowData, Orc: null };
-    return this.canEditColumn(colField, tempRow);
-  }
-
-  onRefreshClick(): void {
-    this.currentPage = 0;
-    this.loadData();
-  }
-
-  // Construir parámetros de query con filtros activos
-  private buildQueryParams(): any {
-    const params: any = {
-      limit: this.pageSize,
-      offset: this.currentPage * this.pageSize
-    };
-
-    if (this.filters.codigoEstudiante) params.codigo = this.filters.codigoEstudiante;
-    if (this.filters.idProyecto !== null && this.filters.idProyecto !== undefined) {
-      params.idProyecto = this.filters.idProyecto;
-    }
-    if (this.filters.anioInsGrado !== null && this.filters.anioInsGrado !== undefined) {
-      params.anio = this.filters.anioInsGrado;
-    }
-    if (this.filters.perInsGrado !== null && this.filters.perInsGrado !== undefined) {
-      params.periodo = this.filters.perInsGrado;
-    }
-    if (this.filters.idFacultad !== null && this.filters.idFacultad !== undefined) {
-      params.idFacultad = this.filters.idFacultad;
-    }
-
-    return params;
-  }
-
-  // Mapear datos de respuesta a formato de tabla
-  private mapResponseToRowData(data: any[]): SemaforoRow[] {
-    return data.map((item: any) => ({
-      Id: item.Id,
-      CodigoEstudiante: item.CodigoEstudiante,
-      NombreEstudiante: item.NombreEstudiante,
-      NombreFacultad: item.NombreFacultad,
-      NombreProyecto: item.NombreProyecto,
-      IdFacultadOikos: item.IdFacultadOikos || 0,
-      IdProyectoOikos: item.IdProyectoOikos || 0,
-      IdFacultadGedep: item.IdFacultadGedep || 0,
-      IdProyectoAccra: item.IdProyectoAccra || 0,
-      AnioInsGrado: item.AnioInsGrado,
-      PerInsGrado: item.PerInsGrado,
-      Observacion: item.Observacion,
-      Academico: !!item.Academico,
-      Financiero: !!item.Financiero,
-      Biblioteca: !!item.Biblioteca,
-      Laboratorios: !!item.Laboratorios,
-      Bienestar: !!item.Bienestar,
-      Urelinter: !!item.Urelinter,
-      Orc: item.Orc === null ? null : !!item.Orc,
-      ObservacionCoordinacion: item.ObservacionCoordinacion || '',
-      ObservacionBiblioteca: item.ObservacionBiblioteca || '',
-      ObservacionLaboratorios: item.ObservacionLaboratorios || '',
-      ObservacionBienestar: item.ObservacionBienestar || '',
-      ObservacionUrelinter: item.ObservacionUrelinter || '',
-      ObservacionOrc: item.ObservacionOrc || '',
-      Activo: item.Activo !== false,
-      FechaCreacion: item.FechaCreacion || '',
-      FechaModificacion: item.FechaModificacion || '',
-    }));
-  }
-
-  // Procesar proyectos asignados para CONTRATISTA
-  private procesarProyectosAsignados(responseData: any): void {
-    this.esAsistente = !!responseData.EsAsistente;
-    this.proyectosAsignados = Array.isArray(responseData.ProyectosAsignados)
-      ? responseData.ProyectosAsignados.map((p: any) => ({
-          idOikos: p.IdOikos,
-          codigo: p.Codigo,
-          nombre: p.Nombre
-        }))
-      : [];
+  private async buildEndpoint(): Promise<string | null> {
+    const roleType = this.permissionsService.getEndpointForRole(this.userRoles);
     
-    this.proyectos = this.proyectosAsignados.length > 0
-      ? [{id: null, nombre: 'Todos'}, ...this.proyectosAsignados.map(p => ({id: p.idOikos, nombre: p.nombre}))]
-      : [];
+    try {
+      switch (roleType) {
+        case 'estudiante':
+          const codigo = await this.userService.getCodigoEstudiante();
+          return `semaforo/estudiante/${codigo}`;
+        
+        case 'contratista':
+          const cedulaContratista = await this.userService.getUserDocument();
+          return `semaforo/asistente_proyecto/${cedulaContratista}`;
+        
+        case 'coordinador':
+          const idCoordinador = await this.userService.getUserDocument();
+          return `semaforo/proyecto/${idCoordinador}`;
+        
+        case 'secretario':
+          const idSecretario = await this.userService.getUserDocument();
+          return `semaforo/facultad/${idSecretario}`;
+        
+        case 'laboratorios':
+          const idJefe = await this.userService.getUserDocument();
+          return `semaforo/laboratorios/${idJefe}`;
+        
+        default:
+          return 'semaforo';
+      }
+    } catch (error) {
+      this.showEndpointError(roleType);
+      return null;
+    }
   }
 
-  // Manejar respuesta sin datos
+  private showEndpointError(roleType: string) {
+    const errorKeyMap: {[key: string]: string} = {
+      'estudiante': 'SEMAFORO.error_codigo',
+      'contratista': 'SEMAFORO.error_cedula',
+      'coordinador': 'SEMAFORO.error_id_coordinador',
+      'secretario': 'SEMAFORO.error_id_secretario',
+      'laboratorios': 'SEMAFORO.error_id_jefe'
+    };
+    
+    const errorKey = errorKeyMap[roleType] || 'SEMAFORO.error_cargar_datos';
+    this.translate.get(['GLOBAL.error', errorKey]).subscribe(translations => {
+      this.alertService.showAlert(translations['GLOBAL.error'], translations[errorKey]);
+    });
+  }
+
+  private handleLoadDataSuccess(response: any) {
+    const responseData = response.Data || response;
+    
+    // Procesar proyectos asignados para contratistas
+    if (this.userRoles.includes('CONTRATISTA')) {
+      const proyectosData = this.dataMapperService.procesarProyectosAsignados(responseData);
+      this.esAsistente = proyectosData.esAsistente;
+      this.proyectosAsignados = proyectosData.proyectosAsignados;
+      this.proyectos = proyectosData.proyectos;
+    }
+
+    // Extraer datos
+    const data = responseData.Semaforos || responseData.Data || responseData;
+    this.totalRecords = responseData.TotalCount || 0;
+
+    if (!Array.isArray(data) || data.length === 0) {
+      this.handleEmptyResponse();
+      return;
+    }
+
+    this.rowData = this.dataMapperService.mapResponseToRowData(data);
+    this.filteredRowData = this.rowData;
+    
+    // Cargar proyectos si es necesario
+    if (this.permissionsService.shouldLoadProyectosFromFacultad(this.userRoles)) {
+      this.loadProyectosFromFacultad(responseData);
+    }
+
+    this.loading = false;
+    this.alertService.closeLoading();
+  }
+
+  private handleLoadDataError(error: any) {
+    if (error.Status === 404) {
+      // Para contratistas, procesar proyectos incluso en 404
+      if (error?.Data && this.userRoles.includes('CONTRATISTA')) {
+        const proyectosData = this.dataMapperService.procesarProyectosAsignados(error.Data);
+        this.esAsistente = proyectosData.esAsistente;
+        this.proyectosAsignados = proyectosData.proyectosAsignados;
+        this.proyectos = proyectosData.proyectos;
+      }
+      this.handleEmptyResponse();
+    } else {
+      this.rowData = [];
+      this.filteredRowData = [];
+      this.totalRecords = 0;
+      this.alertService.closeLoading();
+      this.translate.get(['GLOBAL.error', 'SEMAFORO.error_cargar_datos']).subscribe(translations => {
+        this.alertService.showAlert(translations['GLOBAL.error'], translations['SEMAFORO.error_cargar_datos']);
+      });
+      this.loading = false;
+    }
+  }
+
   private handleEmptyResponse(): void {
     this.rowData = [];
     this.filteredRowData = [];
     this.totalRecords = 0;
     this.loading = false;
-    this.alertaService.closeLoading();
+    this.alertService.closeLoading();
     
-    if (this.hasActiveFilters()) {
+    if (this.dataMapperService.hasActiveFilters(this.filters)) {
       this.translate.get(['SEMAFORO.sin_resultados', 'SEMAFORO.sin_resultados_filtros']).subscribe(translations => {
-        this.alertaService.showAlert(
+        this.alertService.showAlert(
           translations['SEMAFORO.sin_resultados'],
           translations['SEMAFORO.sin_resultados_filtros']
         );
@@ -389,7 +232,7 @@ export class SemaforoComponent implements OnInit, OnDestroy {
         : 'SEMAFORO.sin_estudiantes_activos';
       
       this.translate.get(['SEMAFORO.sin_estudiantes', textKey]).subscribe(translations => {
-        this.alertaService.showAlert(
+        this.alertService.showAlert(
           translations['SEMAFORO.sin_estudiantes'],
           translations[textKey]
         );
@@ -397,489 +240,194 @@ export class SemaforoComponent implements OnInit, OnDestroy {
     }
   }
 
-  private async loadData() {
-    let endpoint = 'semaforo';
-    
-    if (this.userRoles.includes('CONTRATISTA')) {
-      try {
-        const cedula = await this.userService.getUserDocument();
-        endpoint = `semaforo/asistente_proyecto/${cedula}`;
-      } catch (error) {
-        this.translate.get(['GLOBAL.error', 'SEMAFORO.error_cedula']).subscribe(translations => {
-          this.alertaService.showAlert(translations['GLOBAL.error'], translations['SEMAFORO.error_cedula']);
-        });
-        return;
-      }
+  // ============ EVENTOS DE SUB-COMPONENTES ============
 
-      this.loading = true;
-      this.translate.get('SEMAFORO.cargando_estudiantes').subscribe(translation => {
-        this.alertaService.showLoading(translation);
-      });
-      const params = this.buildQueryParams();
-
-      this.semaforoService.get(endpoint, params).subscribe({
-        next: response => {
-          const responseData = response.Data || response;
-          
-          this.procesarProyectosAsignados(responseData);
-
-          this.totalRecords = responseData.TotalCount || 0;
-          const data = responseData.Semaforos || [];
-          this.rowData = this.mapResponseToRowData(data);
-          this.filteredRowData = this.rowData;
-          
-          this.loading = false;
-          this.alertaService.closeLoading();
-        },
-        error: error => {
-          if (error.Status === 404 && error?.Data) {
-            this.procesarProyectosAsignados(error.Data);
-            this.handleEmptyResponse();
-          } else {
-            this.rowData = [];
-            this.filteredRowData = [];
-            this.totalRecords = 0;
-            this.proyectosAsignados = [];
-            this.proyectos = [];
-            this.alertaService.closeLoading();
-            this.translate.get(['GLOBAL.error', 'SEMAFORO.error_cargar_datos']).subscribe(translations => {
-              this.alertaService.showAlert(translations['GLOBAL.error'], translations['SEMAFORO.error_cargar_datos']);
-            });
-            this.loading = false;
-          }
-        }
-      });
-      return;
-    }
-    
-    // Determinar endpoint según rol del usuario
-    if (this.userRoles.includes('ESTUDIANTE')) {
-      try {
-        const codigo = await this.userService.getCodigoEstudiante();
-        endpoint = `semaforo/estudiante/${codigo}`;
-      } catch (error) {
-        this.translate.get(['GLOBAL.error', 'SEMAFORO.error_codigo']).subscribe(translations => {
-          this.alertaService.showAlert(translations['GLOBAL.error'], translations['SEMAFORO.error_codigo']);
-        });
-        return;
-      }
-    } else if (this.userRoles.includes('COORDINADOR')) {
-      try {
-        const id = await this.userService.getUserDocument();
-        endpoint = `semaforo/proyecto/${id}`;
-      } catch (error) {
-        this.translate.get(['GLOBAL.error', 'SEMAFORO.error_id_coordinador']).subscribe(translations => {
-          this.alertaService.showAlert(translations['GLOBAL.error'], translations['SEMAFORO.error_id_coordinador']);
-        });
-        return;
-      }
-    } else if (this.userRoles.includes('SECRETARIA_ACADEMICA') || this.userRoles.includes('SECRETARIO_ACADEMICO')) {
-      try {
-        const id = await this.userService.getUserDocument();
-        endpoint = `semaforo/facultad/${id}`;
-      } catch (error) {
-        this.translate.get(['GLOBAL.error', 'SEMAFORO.error_id_secretario']).subscribe(translations => {
-          this.alertaService.showAlert(translations['GLOBAL.error'], translations['SEMAFORO.error_id_secretario']);
-        });
-        return;
-      }
-    } else if (this.userRoles.includes('LABORATORIOS') || this.userRoles.includes('JEFE_LABORATORIO')) {
-      try {
-        const id = await this.userService.getUserDocument();
-        endpoint = `semaforo/laboratorios/${id}`;
-      } catch (error) {
-        this.translate.get(['GLOBAL.error', 'SEMAFORO.error_id_jefe']).subscribe(translations => {
-          this.alertaService.showAlert(translations['GLOBAL.error'], translations['SEMAFORO.error_id_jefe']);
-        });
-        return;
-      }
-    }
-    // Para ADMISIONES_REG, BIBLIOTECA, BIENESTAR, URELINTER se usa el endpoint por defecto 'semaforo'
-
-    this.loading = true;
-    this.translate.get('SEMAFORO.cargando_estudiantes').subscribe(translation => {
-      this.alertaService.showLoading(translation);
-    });
-    const params = this.buildQueryParams();
-
-    this.semaforoService.get(endpoint, params).subscribe({
-      next: response => {
-  
-        // Extraer y procesar datos
-        const responseData = response.Data || response;
-        const data = responseData.Data || responseData;
-        this.totalRecords = responseData.TotalCount || 0;
-        
-        // Validar que data sea un array y tenga elementos
-        if (!Array.isArray(data) || data.length === 0) {
-          this.handleEmptyResponse();
-          return;
-        }
-        
-        // Mapear datos y cargar proyectos de facultad
-        this.rowData = this.mapResponseToRowData(data);
-        this.filteredRowData = this.rowData;
-        this.loadProyectosFromFacultad(responseData);
-        
-        this.loading = false;
-        this.alertaService.closeLoading();
-      },
-      error: error => {
-        if (error.Status === 404) {
-          this.handleEmptyResponse();
-        } else {
-          this.rowData = [];
-          this.filteredRowData = [];
-          this.totalRecords = 0;
-          this.alertaService.closeLoading();
-          this.translate.get(['GLOBAL.error', 'SEMAFORO.error_cargar_datos']).subscribe(translations => {
-            this.alertaService.showAlert(translations['GLOBAL.error'], translations['SEMAFORO.error_cargar_datos']);
-          });
-          this.loading = false;
-        }
-      }
-    });
-  }
-
-  // Métodos de navegación de paginación
-  nextPage(): void {
-    if (this.currentPage < this.totalPages - 1) {
-      this.currentPage++;
-      this.loadData();
-    }
-  }
-
-  previousPage(): void {
-    if (this.currentPage > 0) {
-      this.currentPage--;
-      this.loadData();
-    }
-  }
-
-  goToFirstPage(): void {
+  onRefreshClick(): void {
     this.currentPage = 0;
     this.loadData();
   }
 
-  goToLastPage(): void {
-    this.currentPage = this.totalPages - 1;
-    this.loadData();
+  onFiltersChange(newFilters: SemaforoFilters): void {
+    this.filters = newFilters;
   }
 
-  onPageSizeChange(): void {
-    this.currentPage = 0; // Reset a la primera página al cambiar el tamaño
-    this.loadData();
-  }
-
-  // Handles both boolean and text field updates
-  updateRow(event: any) {
-    const row: SemaforoRow = event.data;
-    const node = event.node;
-    const changedField = event.colDef?.field;
-
-    this.saveRow(row, node, changedField);
-  }
-
-  private allDependenciesCleared(row: SemaforoRow): boolean {
-    return this.booleanFields
-      .filter(f => f !== 'Orc')
-      .every(f => !!(row as any)[f]);
-  }
-
-  private saveRow(row: SemaforoRow, node: any, changedField?: string) {
-    // Prevenir múltiples llamadas simultáneas
-    if (this.loading) {
-      return;
+  onFacultadChange(facultadId: number | null): void {
+    this.proyectos = [];
+    if (facultadId) {
+      this.loadProyectosByFacultad(facultadId);
     }
+  }
+
+  onSearchFilters(): void {
+    this.currentPage = 0;
+    this.loadData();
+  }
+
+  onClearFilters(): void {
+    this.filters = this.dataMapperService.createEmptyFilters();
+    this.proyectos = [];
+    this.currentPage = 0;
+    this.loadData();
+  }
+
+  onCellValueChanged(event: any): void {
+    this.saveRow(event.data, event.colDef?.field);
+  }
+
+  onCellClicked(event: {data: SemaforoRow, field: string}): void {
+    this.saveRow(event.data, event.field);
+  }
+
+  onGridReady(gridApi: GridApi): void {
+    this.gridApi = gridApi;
+  }
+
+  // ============ PAGINACIÓN ============
+
+  onPageSizeChange(newSize: number): void {
+    this.pageSize = newSize;
+    this.currentPage = 0;
+    this.loadData();
+  }
+
+  onFirstPage(): void {
+    this.currentPage = 0;
+    this.loadData();
+  }
+
+  onPreviousPage(): void {
+    this.currentPage--;
+    this.loadData();
+  }
+
+  onNextPage(): void {
+    this.currentPage++;
+    this.loadData();
+  }
+
+  onLastPage(): void {
+    this.currentPage = Math.ceil(this.totalRecords / this.pageSize) - 1;
+    this.loadData();
+  }
+
+  // ============ GUARDADO DE CAMBIOS ============
+
+  private saveRow(row: SemaforoRow, changedField?: string) {
+    if (this.loading) return;
     
     this.loading = true;
     this.translate.get('SEMAFORO.guardando_cambios').subscribe(translation => {
-      this.alertaService.showLoading(translation);
+      this.alertService.showLoading(translation);
     });
     
-    // Solo enviar el campo que cambió al backend
-    const putStruct: Partial<Semaforo> = {};
-    if (changedField) {
-      (putStruct as any)[changedField] = (row as any)[changedField];
-    } else {
-      // Fallback: si no se especifica el campo, enviar todos (comportamiento anterior)
-      putStruct.Observacion = row.Observacion;
-      putStruct.Academico = row.Academico;
-      putStruct.Financiero = row.Financiero;
-      putStruct.Biblioteca = row.Biblioteca;
-      putStruct.Laboratorios = row.Laboratorios;
-      putStruct.Bienestar = row.Bienestar;
-      putStruct.Urelinter = row.Urelinter;
-      putStruct.Orc = row.Orc;
-      putStruct.ObservacionCoordinacion = row.ObservacionCoordinacion;
-      putStruct.ObservacionBiblioteca = row.ObservacionBiblioteca;
-      putStruct.ObservacionLaboratorios = row.ObservacionLaboratorios;
-      putStruct.ObservacionBienestar = row.ObservacionBienestar;
-      putStruct.ObservacionUrelinter = row.ObservacionUrelinter;
-      putStruct.ObservacionOrc = row.ObservacionOrc;
-    }
+    const payload = this.dataMapperService.createPatchPayload(row, changedField);
 
-    this.semaforoService.patch('semaforo', row.Id, putStruct).subscribe({
-      next: (response) => { 
-        if (response?.Data && changedField) {
-          node.setDataValue(changedField, (response.Data as any)[changedField]);
-        } else if (response?.Data) {
-          const serverData = response.Data;
-          node.setDataValue('Academico', !!serverData.Academico);
-          node.setDataValue('Financiero', !!serverData.Financiero);
-          node.setDataValue('Biblioteca', !!serverData.Biblioteca);
-          node.setDataValue('Laboratorios', !!serverData.Laboratorios);
-          node.setDataValue('Bienestar', !!serverData.Bienestar);
-          node.setDataValue('Urelinter', !!serverData.Urelinter);
-          node.setDataValue('Orc', serverData.Orc === null ? null : !!serverData.Orc);
-          node.setDataValue('ObservacionCoordinacion', serverData.ObservacionCoordinacion || '');
-          node.setDataValue('ObservacionBiblioteca', serverData.ObservacionBiblioteca || '');
-          node.setDataValue('ObservacionLaboratorios', serverData.ObservacionLaboratorios || '');
-          node.setDataValue('ObservacionBienestar', serverData.ObservacionBienestar || '');
-          node.setDataValue('ObservacionUrelinter', serverData.ObservacionUrelinter || '');
-          node.setDataValue('ObservacionOrc', serverData.ObservacionOrc || '');
-        }
-        this.loading = false;
-        this.alertaService.closeLoading();
-      },
-      error: err => {
-        this.alertaService.closeLoading();
-        this.loading = false;
-        
-        // Manejar conflictos (409) - refrescar datos
-        if (err.status === 409 || err.Status === '409') {
-          const errorMessage = err.error?.Message || err.Message || 'Conflicto de estado detectado';
-          
-          this.translate.get(['SEMAFORO.conflicto_estado', 'SEMAFORO.refrescando_datos']).subscribe(translations => {
-            this.alertaService.showAlert(
-              translations['SEMAFORO.conflicto_estado'],
-              errorMessage + '. ' + translations['SEMAFORO.refrescando_datos']
-            ).then(() => {
-              // Refrescar la tabla completa después de que el usuario cierre el alert
-              this.loadData();
-            });
-          });
-        } else {
-          // Otros errores
-          this.translate.get(['GLOBAL.error', 'SEMAFORO.error_guardar']).subscribe(translations => {
-            this.alertaService.showAlert(translations['GLOBAL.error'], translations['SEMAFORO.error_guardar']).then(() => {
-              // Refrescar la fila para revertir cambios en UI después de cerrar el alert
-              this.refreshRow(row.Id);
-            });
-          });
-        }
-      }
+    this.semaforoService.patch('semaforo', row.Id, payload).subscribe({
+      next: response => this.handleSaveSuccess(response, row.Id, changedField),
+      error: error => this.handleSaveError(error, row.Id)
     });
+  }
+
+  private handleSaveSuccess(response: any, rowId: number, changedField?: string) {
+    if (response?.Data && this.gridComponent) {
+      if (changedField) {
+        this.gridComponent.updateCellValue(rowId, changedField, response.Data[changedField]);
+      } else {
+        const updatedRow = this.dataMapperService.mapResponseToRowData([response.Data])[0];
+        this.gridComponent.updateRowData(rowId, updatedRow);
+      }
+    }
+    this.loading = false;
+    this.alertService.closeLoading();
+  }
+
+  private handleSaveError(error: any, rowId: number) {
+    this.alertService.closeLoading();
+    this.loading = false;
+    
+    if (error.status === 409 || error.Status === '409') {
+      const errorMessage = error.error?.Message || error.Message || 'Conflicto de estado detectado';
+      this.translate.get(['SEMAFORO.conflicto_estado', 'SEMAFORO.refrescando_datos']).subscribe(translations => {
+        this.alertService.showAlert(
+          translations['SEMAFORO.conflicto_estado'],
+          errorMessage + '. ' + translations['SEMAFORO.refrescando_datos']
+        ).then(() => this.loadData());
+      });
+    } else {
+      this.translate.get(['GLOBAL.error', 'SEMAFORO.error_guardar']).subscribe(translations => {
+        this.alertService.showAlert(translations['GLOBAL.error'], translations['SEMAFORO.error_guardar']).then(() => {
+          this.refreshRow(rowId);
+        });
+      });
+    }
   }
 
   private refreshRow(rowId: number): void {
-    // Buscar y refrescar solo la fila específica
-    const rowNode = this.gridApi?.getRowNode(rowId.toString());
-    if (rowNode) {
-      // Recargar el registro desde el servidor
-      this.semaforoService.get(`semaforo/${rowId}`).subscribe({
-        next: (response) => {
-          if (response?.Data) {
-            const updatedRow = this.mapResponseToRowData([response.Data])[0];
-            rowNode.setData(updatedRow);
-          }
-        },
-        error: () => {
-          // Si falla, recargar toda la tabla
-          this.loadData();
+    this.semaforoService.get(`semaforo/${rowId}`).subscribe({
+      next: response => {
+        if (response?.Data && this.gridComponent) {
+          const updatedRow = this.dataMapperService.mapResponseToRowData([response.Data])[0];
+          this.gridComponent.updateRowData(rowId, updatedRow);
         }
-      });
-    }
+      },
+      error: () => this.loadData()
+    });
   }
 
-  onGridReady(params: GridReadyEvent) {
-    this.gridApi = params.api;
-  }
+  // ============ CATÁLOGOS ============
 
-  private canEditColumn(colField: string, rowData: SemaforoRow): boolean {
-    // ADMISIONES_REG siempre puede editar Observacion
-    if (this.userRoles.includes('ADMISIONES_REG') && colField === 'Observacion') {
-      return true;
-    }
-
-    // Si Orc NO es null (es true o false), solo ADMISIONES_REG puede editar Orc y Observacion
-    if (rowData.Orc !== null) {
-      return (
-        this.userRoles.includes('ADMISIONES_REG') &&
-        (colField === 'Orc' || colField === 'Observacion')
-      );
-    }
-
-    // Si Orc es null, ADMISIONES_REG puede editar Orc
-    if (
-      this.userRoles.includes('ADMISIONES_REG') &&
-      colField === 'Orc'
-    ) {
-      return true;
-    }
-
-    // Permisos por rol
-    if (this.userRoles.includes('CONTRATISTA')) {
-      return colField === 'Academico' || colField === 'Financiero'|| colField === 'ObservacionCoordinacion';
-    }
-    if (this.userRoles.includes('COORDINADOR')) {
-      return colField === 'Academico' || colField === 'Financiero' || colField === 'ObservacionCoordinacion';
-    }
-    if (this.userRoles.includes('BIBLIOTECA')) {
-      return colField === 'Biblioteca' || colField === 'ObservacionBiblioteca';
-    }
-    if (this.userRoles.includes('LABORATORIOS') || this.userRoles.includes('JEFE_LABORATORIO')) {
-      return colField === 'Laboratorios' || colField === 'ObservacionLaboratorios';
-    }
-    if (this.userRoles.includes('ADMIN_BIENESTAR')) {
-      return colField === 'Bienestar' || colField === 'ObservacionBienestar';
-    }
-    if (this.userRoles.includes('URELINTER')) {
-      return colField === 'Urelinter' || colField === 'ObservacionUrelinter';
-    }
-    if (this.userRoles.includes('ADMISIONES_REG')) {
-      return colField === 'Orc' || colField === 'ObservacionOrc';
-    }
-    // ESTUDIANTE Y SECRETARIOS solo consulta
-    if (this.userRoles.includes('SECRETARIA_ACADEMICA') || this.userRoles.includes('SECRETARIO_ACADEMICO')) {
-      // return colField === 'Academico' || colField === 'ObservacionCoordinacion';
-    }
-    return false;
-  }
-
-  // Métodos de carga de catálogos
   private async loadFacultades() {
     this.loadingFacultades = true;
-    try {
-      this.oikosService.getFacultades().subscribe({
-        next: (response: any) => {
-          const data = response.Data || response;
-          if (Array.isArray(data)) {
-            const facultadesData = data.map((item: any) => ({
+    this.oikosService.getFacultades().subscribe({
+      next: (response: any) => {
+        const data = response.Data || response;
+        if (Array.isArray(data)) {
+          const facultadesData = data
+            .map((item: any) => ({
               id: item.DependenciaId?.Id || item.Id,
               nombre: item.DependenciaId?.Nombre || item.Nombre
-            })).filter(f => f.id && f.nombre);
-            
-            this.facultades = [{id: null, nombre: 'Todas'}, ...facultadesData];
-          }
-          this.loadingFacultades = false;
-        },
-        error: (error: any) => {
-          this.loadingFacultades = false;
+            }))
+            .filter(f => f.id && f.nombre);
+          
+          this.facultades = [{id: null, nombre: 'Todas'}, ...facultadesData];
         }
-      });
-    } catch (error) {
-      this.loadingFacultades = false;
-    }
-  }
-
-  onFacultadChange(): void {
-    // Limpiar proyecto seleccionado
-    this.filters.idProyecto = null;
-    this.proyectos = [];
-    
-    // Cargar proyectos de la facultad seleccionada
-    if (this.filters.idFacultad) {
-      this.loadProyectosByFacultad(this.filters.idFacultad);
-    }
+        this.loadingFacultades = false;
+      },
+      error: () => { this.loadingFacultades = false; }
+    });
   }
 
   private loadProyectosByFacultad(idFacultad: number) {
     this.loadingProyectos = true;
-    try {
-      this.oikosService.getProyectosByFacultad(idFacultad).subscribe({
-        next: (response: any) => {
-          const data = response.Data || response;
-          if (Array.isArray(data)) {
-            const proyectosData = data.map((item: any) => ({
+    this.oikosService.getProyectosByFacultad(idFacultad).subscribe({
+      next: (response: any) => {
+        const data = response.Data || response;
+        if (Array.isArray(data)) {
+          const proyectosData = data
+            .map((item: any) => ({
               id: item.DependenciaId?.Id || item.Id,
               nombre: item.DependenciaId?.Nombre || item.Nombre
-            })).filter(p => p.id && p.nombre);
-            
-            this.proyectos = [{id: null, nombre: 'Todos'}, ...proyectosData];
-          }
-          this.loadingProyectos = false;
-        },
-        error: (error: any) => {
-          this.loadingProyectos = false;
+            }))
+            .filter(p => p.id && p.nombre);
+          
+          this.proyectos = [{id: null, nombre: 'Todos'}, ...proyectosData];
         }
-      });
-    } catch (error) {
-      this.loadingProyectos = false;
-    }
-  }
-
-  onFilterChange(): void {
-
-  }
-
-  private hasActiveFilters(): boolean {
-    return !!(
-      this.filters.codigoEstudiante ||
-      this.filters.idFacultad ||
-      this.filters.idProyecto ||
-      this.filters.anioInsGrado ||
-      this.filters.perInsGrado
-    );
-  }
-
-  applyFilters(): void {
-    this.currentPage = 0;
-    this.loadData();
-  }
-
-
-
-  clearFilters(): void {
-    this.filters = {
-      codigoEstudiante: '',
-      idFacultad: null,
-      idProyecto: null,
-      anioInsGrado: null,
-      perInsGrado: null
-    };
-    this.proyectos = [];
-    this.currentPage = 0;
-    this.loadData();
+        this.loadingProyectos = false;
+      },
+      error: () => { this.loadingProyectos = false; }
+    });
   }
 
   private loadProyectosFromFacultad(responseData: any) {
-    if (this.userRoles.includes('SECRETARIA_ACADEMICA') || 
-        this.userRoles.includes('SECRETARIO_ACADEMICO') ||
-        this.userRoles.includes('LABORATORIOS') || 
-        this.userRoles.includes('JEFE_LABORATORIO')) {
-      
-      // Intentar extraer el ID de facultad de diferentes campos posibles en la respuesta
-      const facultadId = responseData.IdFacultad || 
-                         responseData.FacultadId || 
-                         responseData.IdFacultadOikos ||
-                         (this.rowData.length > 0 ? this.rowData[0].IdFacultadOikos : null);
-      
-      if (facultadId) {
-        this.loadProyectosByFacultad(facultadId);
-      } else {
-        // Fallback: extraer proyectos únicos de los datos
-        this.loadProyectosFromData();
-      }
+    const facultadId = responseData.IdFacultad || 
+                       responseData.FacultadId || 
+                       responseData.IdFacultadOikos ||
+                       (this.rowData.length > 0 ? this.rowData[0].IdFacultadOikos : null);
+    
+    if (facultadId) {
+      this.loadProyectosByFacultad(facultadId);
+    } else {
+      this.proyectos = this.dataMapperService.extractProyectosFromData(this.rowData);
     }
-  }
-
-  private loadProyectosFromData() {
-    // Fallback: Extraer proyectos únicos de los datos cargados
-    const proyectosUnicos = new Map<number, string>();
-    this.rowData.forEach(row => {
-      if (row.IdProyectoOikos && row.NombreProyecto) {
-        proyectosUnicos.set(row.IdProyectoOikos, row.NombreProyecto);
-      }
-    });
-    
-    // Convertir a array de objetos para el dropdown
-    const proyectosData = Array.from(proyectosUnicos.entries()).map(([id, nombre]) => ({
-      id,
-      nombre
-    })).sort((a, b) => a.nombre.localeCompare(b.nombre));
-    
-    // Agregar opción "Todos" al inicio
-    this.proyectos = [{id: null, nombre: 'Todos'}, ...proyectosData];
   }
 }

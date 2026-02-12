@@ -1,4 +1,5 @@
 <div class="semaforo-container">
+  <!-- Header -->
   <div class="semaforo-header">
     <h2>{{ 'SEMAFORO.titulo' | translate }}</h2>
     <button mat-raised-button color="primary" (click)="onRefreshClick()" class="refresh-btn">
@@ -7,145 +8,41 @@
     </button>
   </div>
 
-  <!-- Filtros superiores -->
-  <div class="filters-section" *ngIf="!userRoles.includes('ESTUDIANTE')">
-    <mat-expansion-panel [expanded]="filtersExpanded" class="filters-panel">
-      <mat-expansion-panel-header>
-        <mat-panel-title>
-          <mat-icon>filter_list</mat-icon>
-          {{ 'SEMAFORO.filtros_busqueda' | translate }}
-        </mat-panel-title>
-      </mat-expansion-panel-header>
-      
-      <div class="filters-container">
-        <div *ngIf="canUseCodigoFilter()" class="filter-field input-wrapper">
-          <label class="input-label">{{ 'SEMAFORO.codigo_estudiante' | translate }}</label>
-          <input 
-            type="text" 
-            class="filter-input"
-            [(ngModel)]="filters.codigoEstudiante" 
-            (ngModelChange)="onFilterChange()" 
-            [placeholder]="'SEMAFORO.codigo_estudiante_placeholder' | translate">
-        </div>
+  <!-- Componente de Filtros -->
+  <app-semaforo-filters
+    *ngIf="!userRoles.includes('ESTUDIANTE')"
+    [userRoles]="userRoles"
+    [filters]="filters"
+    [facultades]="facultades"
+    [proyectos]="proyectos"
+    [loadingFacultades]="loadingFacultades"
+    [loadingProyectos]="loadingProyectos"
+    [expanded]="filtersExpanded"
+    (filtersChange)="onFiltersChange($event)"
+    (facultadChange)="onFacultadChange($event)"
+    (search)="onSearchFilters()"
+    (clear)="onClearFilters()">
+  </app-semaforo-filters>
 
-        <div *ngIf="canUseFacultadFilter()" class="filter-field ng-select-wrapper">
-          <label class="ng-select-label">{{ 'SEMAFORO.facultad' | translate }}</label>
-          <ng-select
-            [(ngModel)]="filters.idFacultad"
-            (change)="onFacultadChange()"
-            [items]="facultades"
-            bindLabel="nombre"
-            bindValue="id"
-            [disabled]="loadingFacultades"
-            [loading]="loadingFacultades"
-            [searchable]="true"
-            [clearable]="true"
-            appendTo="body"
-            [placeholder]="'SEMAFORO.seleccione_facultad' | translate"
-            [notFoundText]="'SEMAFORO.no_facultades' | translate">
-            <ng-template ng-option-tmp let-item="item">
-              {{ item.nombre }}
-            </ng-template>
-          </ng-select>
-        </div>
-
-        <div *ngIf="canUseProyectoFilter()" class="filter-field ng-select-wrapper">
-          <label class="ng-select-label">{{ 'SEMAFORO.proyecto_curricular' | translate }}</label>
-          <ng-select
-            [(ngModel)]="filters.idProyecto"
-            (change)="onFilterChange()"
-            [items]="proyectos"
-            bindLabel="nombre"
-            bindValue="id"
-            [disabled]="(!filters.idFacultad && canUseFacultadFilter()) || loadingProyectos"
-            [loading]="loadingProyectos"
-            [searchable]="true"
-            [clearable]="true"
-            appendTo="body"
-            [placeholder]="'SEMAFORO.seleccione_proyecto' | translate"
-            [notFoundText]="'SEMAFORO.no_proyectos' | translate">
-            <ng-template ng-option-tmp let-item="item">
-              {{ item.nombre }}
-            </ng-template>
-          </ng-select>
-          <small class="ng-select-hint" *ngIf="!filters.idFacultad && !loadingProyectos && canUseFacultadFilter()">
-            {{ 'SEMAFORO.seleccione_facultad_primero' | translate }}
-          </small>
-        </div>
-
-        <div *ngIf="canUseAnioFilter()" class="filter-field input-wrapper">
-          <label class="input-label">{{ 'SEMAFORO.anio_inscripcion' | translate }}</label>
-          <input 
-            type="number" 
-            class="filter-input"
-            [(ngModel)]="filters.anioInsGrado" 
-            (ngModelChange)="onFilterChange()" 
-            [placeholder]="'SEMAFORO.anio_inscripcion_placeholder' | translate">
-        </div>
-
-        <div *ngIf="canUsePeriodoFilter()" class="filter-field input-wrapper">
-          <label class="input-label">{{ 'SEMAFORO.periodo_inscripcion' | translate }}</label>
-          <input 
-            type="number" 
-            class="filter-input"
-            [(ngModel)]="filters.perInsGrado" 
-            (ngModelChange)="onFilterChange()" 
-            [placeholder]="'SEMAFORO.periodo_inscripcion_placeholder' | translate">
-        </div>
-
-        <div class="filter-actions">
-          <button mat-raised-button color="accent" (click)="applyFilters()" class="apply-filters-btn">
-            <mat-icon>search</mat-icon>
-            {{ 'GLOBAL.buscar' | translate }}
-          </button>
-          <button mat-stroked-button (click)="clearFilters()" class="clear-filters-btn">
-            <mat-icon>clear</mat-icon>
-            {{ 'GLOBAL.limpiar' | translate }}
-          </button>
-        </div>
-      </div>
-    </mat-expansion-panel>
-  </div>
-
-  <ag-grid-angular
-    class="ag-theme-alpine semaforo-grid"
-    [theme]="'legacy'"
+  <!-- Componente de Grid -->
+  <app-semaforo-grid
     [rowData]="filteredRowData"
-    [columnDefs]="columnDefs"
-    [defaultColDef]="{ resizable: true }"
-    [suppressPaginationPanel]="true"
-    [stopEditingWhenCellsLoseFocus]="true"
-    (cellValueChanged)="updateRow($event)"
+    [userRoles]="userRoles"
+    (cellValueChanged)="onCellValueChanged($event)"
+    (cellClicked)="onCellClicked($event)"
     (gridReady)="onGridReady($event)">
-  </ag-grid-angular>
+  </app-semaforo-grid>
 
-  <div class="pagination-controls">
-    <div class="pagination-info">
-      {{ 'SEMAFORO.mostrando_registros' | translate: {start: (currentPage * pageSize) + 1, end: Math.min((currentPage + 1) * pageSize, totalRecords), total: totalRecords} }}
-    </div>
-    <div class="pagination-buttons">
-      <button mat-icon-button [disabled]="currentPage === 0" (click)="goToFirstPage()" [matTooltip]="'SEMAFORO.primera_pagina' | translate">
-        <mat-icon>first_page</mat-icon>
-      </button>
-      <button mat-icon-button [disabled]="currentPage === 0" (click)="previousPage()" [matTooltip]="'SEMAFORO.pagina_anterior' | translate">
-        <mat-icon>chevron_left</mat-icon>
-      </button>
-      <span class="page-number">{{ 'SEMAFORO.pagina' | translate }} {{ currentPage + 1 }} {{ 'SEMAFORO.de' | translate }} {{ totalPages }}</span>
-      <button mat-icon-button [disabled]="currentPage >= totalPages - 1" (click)="nextPage()" [matTooltip]="'SEMAFORO.pagina_siguiente' | translate">
-        <mat-icon>chevron_right</mat-icon>
-      </button>
-      <button mat-icon-button [disabled]="currentPage >= totalPages - 1" (click)="goToLastPage()" [matTooltip]="'SEMAFORO.ultima_pagina' | translate">
-        <mat-icon>last_page</mat-icon>
-      </button>
-    </div>
-    <div class="page-size-selector">
-      <label>{{ 'SEMAFORO.registros_por_pagina' | translate }}</label>
-      <select [(ngModel)]="pageSize" (change)="onPageSizeChange()">
-        <option [value]="10">10</option>
-        <option [value]="20">20</option>
-        <option [value]="50">50</option>
-        <option [value]="100">100</option>
-      </select>
-    </div>
-  </div>
+  <!-- Componente de Paginación -->
+  <app-semaforo-pagination
+    [currentPage]="currentPage"
+    [pageSize]="pageSize"
+    [totalRecords]="totalRecords"
+    [loading]="loading"
+    (pageSizeChange)="onPageSizeChange($event)"
+    (firstPage)="onFirstPage()"
+    (previousPage)="onPreviousPage()"
+    (nextPage)="onNextPage()"
+    (lastPage)="onLastPage()">
+  </app-semaforo-pagination>
 </div>

@@ -1,5 +1,6 @@
 import { ColDef, ICellRendererParams } from 'ag-grid-community';
 
+// Renderer para iconos de semáforo
 const semaforoCellRenderer = (params: ICellRendererParams) => {
   if (params.value === null || params.value === undefined) {
     return `<span class="semaforo-icon neutral">
@@ -13,165 +14,74 @@ const semaforoCellRenderer = (params: ICellRendererParams) => {
   </span>`;
 };
 
+// Configuraciones reutilizables
+const TEXT_EDITOR_CONFIG = {
+  cellEditor: 'agTextCellEditor',
+  cellEditorParams: { maxLength: 100 }
+};
 
+const LARGE_TEXT_EDITOR_CONFIG = {
+  cellEditor: 'agLargeTextCellEditor',
+  cellEditorParams: {
+    maxLength: 250,
+    rows: 3,
+    cols: 40,
+  },
+  width: 220
+};
+
+const SEMAFORO_COLUMN_CONFIG = {
+  cellRenderer: semaforoCellRenderer,
+  editable: false
+};
+
+// Funciones helper para crear columnas
+const createBasicColumn = (headerName: string, field: string, width?: number): ColDef => ({
+  headerName,
+  field,
+  editable: false,
+  ...(width && { width })
+});
+
+const createEditableTextColumn = (headerName: string, field: string): ColDef => ({
+  headerName,
+  field,
+  editable: false,
+  ...TEXT_EDITOR_CONFIG
+});
+
+const createSemaforoColumn = (headerName: string, field: string): ColDef => ({
+  headerName,
+  field,
+  ...SEMAFORO_COLUMN_CONFIG
+});
+
+const createObservationColumn = (headerName: string, field: string): ColDef => ({
+  headerName,
+  field,
+  editable: false,
+  ...LARGE_TEXT_EDITOR_CONFIG
+});
+
+// Definición de columnas usando las funciones helper
 export const SEMAFORO_ROW: ColDef[] = [
-  {
-    headerName: 'CÓDIGO',
-    field: 'CodigoEstudiante',
-    editable: false,
-    width: 140
-  },
-  {
-    headerName: 'NOMBRE',
-    field: 'NombreEstudiante',
-    editable: false,
-    cellEditor: 'agTextCellEditor',
-    cellEditorParams: {
-      maxLength: 100
-    },
-  },
-  {
-    headerName: 'FACULTAD',
-    field: 'NombreFacultad',
-    editable: false,
-    cellEditor: 'agTextCellEditor',
-    cellEditorParams: {
-      maxLength: 100
-    },
-  },
-  {
-    headerName: 'PROYECTO CURRICULAR',
-    field: 'NombreProyecto',
-    editable: false,
-    cellEditor: 'agTextCellEditor',
-    cellEditorParams: {
-      maxLength: 100
-    },
-  },
-  {
-    headerName: 'AÑO INSCRIPCIÓN',
-    field: 'AnioInsGrado',
-    editable: false,
-    width: 180,
-  },
-  {
-    headerName: 'PERIODO INSCRIPCIÓN',
-    field: 'PerInsGrado',
-    editable: false,
-    width: 180,
-  },
-  {
-    headerName: 'ACADÉMICO',
-    field: 'Academico',
-    cellRenderer: semaforoCellRenderer,
-    editable: false,
-  },
-  {
-    headerName: 'FINANCIERO',
-    field: 'Financiero',
-    cellRenderer: semaforoCellRenderer,
-    editable: false,
-  },
-  {
-    headerName: 'BIBLIOTECA',
-    field: 'Biblioteca',
-    cellRenderer: semaforoCellRenderer,
-    editable: false,
-  },
-  {
-    headerName: 'LABORATORIOS',
-    field: 'Laboratorios',
-    cellRenderer: semaforoCellRenderer,
-    editable: false,
-  },
-  {
-    headerName: 'BIENESTAR',
-    field: 'Bienestar',
-    cellRenderer: semaforoCellRenderer,
-    editable: false,
-  },
-  {
-    headerName: 'URELINTER',
-    field: 'Urelinter',
-    cellRenderer: semaforoCellRenderer,
-    editable: false,
-  },
-  {
-    headerName: 'REGISTRO Y CONTROL',
-    field: 'Orc',
-    cellRenderer: semaforoCellRenderer,
-    editable: false,
-  },
-  {
-    headerName: 'OBSERVACIÓN COORDINACIÓN',
-    field: 'ObservacionCoordinacion',
-    editable: false,
-    cellEditor: 'agLargeTextCellEditor',
-    cellEditorParams: {
-      maxLength: 250,
-      rows: 3,
-      cols: 40,
-    },
-    width: 220
-  },
-  {
-    headerName: 'OBSERVACIÓN BIBLIOTECA',
-    field: 'ObservacionBiblioteca',
-    editable: false,
-    cellEditor: 'agLargeTextCellEditor',
-    cellEditorParams: {
-      maxLength: 250,
-      rows: 3,
-      cols: 40,
-    },
-    width: 220
-  },
-  {
-    headerName: 'OBSERVACIÓN LABORATORIOS',
-    field: 'ObservacionLaboratorios',
-    editable: false,
-    cellEditor: 'agLargeTextCellEditor',
-    cellEditorParams: {
-      maxLength: 250,
-      rows: 3,
-      cols: 40,
-    },
-    width: 220
-  },
-  {
-    headerName: 'OBSERVACIÓN BIENESTAR',
-    field: 'ObservacionBienestar',
-    editable: false,
-    cellEditor: 'agLargeTextCellEditor',
-    cellEditorParams: {
-      maxLength: 250,
-      rows: 3,
-      cols: 40,
-    },
-    width: 220
-  },
-  {
-    headerName: 'OBSERVACIÓN URELINTER',
-    field: 'ObservacionUrelinter',
-    editable: false,
-    cellEditor: 'agLargeTextCellEditor',
-    cellEditorParams: {
-      maxLength: 250,
-      rows: 3,
-      cols: 40,
-    },
-    width: 220
-  },
-  {
-    headerName: 'OBSERVACIÓN REGISTRO Y CONTROL',
-    field: 'ObservacionOrc',
-    editable: false,
-    cellEditor: 'agLargeTextCellEditor',
-    cellEditorParams: {
-      maxLength: 250,
-      rows: 3,
-      cols: 40,
-    },
-    width: 220
-  }
+  createBasicColumn('CÓDIGO', 'CodigoEstudiante', 140),
+  createEditableTextColumn('NOMBRE', 'NombreEstudiante'),
+  createEditableTextColumn('FACULTAD', 'NombreFacultad'),
+  createEditableTextColumn('PROYECTO CURRICULAR', 'NombreProyecto'),
+  createBasicColumn('AÑO INSCRIPCIÓN', 'AnioInsGrado', 180),
+  createBasicColumn('PERIODO INSCRIPCIÓN', 'PerInsGrado', 180),
+  createSemaforoColumn('ACADÉMICO', 'Academico'),
+  createSemaforoColumn('FINANCIERO', 'Financiero'),
+  createSemaforoColumn('BIBLIOTECA', 'Biblioteca'),
+  createSemaforoColumn('LABORATORIOS', 'Laboratorios'),
+  createSemaforoColumn('BIENESTAR', 'Bienestar'),
+  createSemaforoColumn('URELINTER', 'Urelinter'),
+  createSemaforoColumn('REGISTRO Y CONTROL', 'Orc'),
+  createObservationColumn('OBSERVACIÓN COORDINACIÓN', 'ObservacionCoordinacion'),
+  createObservationColumn('OBSERVACIÓN BIBLIOTECA', 'ObservacionBiblioteca'),
+  createObservationColumn('OBSERVACIÓN LABORATORIOS', 'ObservacionLaboratorios'),
+  createObservationColumn('OBSERVACIÓN BIENESTAR', 'ObservacionBienestar'),
+  createObservationColumn('OBSERVACIÓN URELINTER', 'ObservacionUrelinter'),
+  createObservationColumn('OBSERVACIÓN REGISTRO Y CONTROL', 'ObservacionOrc')
 ];
