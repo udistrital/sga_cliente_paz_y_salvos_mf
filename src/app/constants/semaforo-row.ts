@@ -79,6 +79,7 @@ export const SEMAFORO_ROW: ColDef[] = [
   createSemaforoColumn('URELINTER', 'Urelinter'),
   createSemaforoColumn('REGISTRO Y CONTROL', 'Orc'),
   createObservationColumn('OBSERVACIÓN COORDINACIÓN', 'ObservacionCoordinacion'),
+  createObservationColumn('OBSERVACIÓN FINANCIERA', 'ObservacionFinanciera'),
   createObservationColumn('OBSERVACIÓN BIBLIOTECA', 'ObservacionBiblioteca'),
   createObservationColumn('OBSERVACIÓN LABORATORIOS', 'ObservacionLaboratorios'),
   createObservationColumn('OBSERVACIÓN BIENESTAR', 'ObservacionBienestar'),

@@ -22,13 +22,14 @@ export class SemaforoPermissionsService {
 
   /**
    * Verifica si el usuario puede usar el filtro de facultad
-   * Solo roles globales: BIBLIOTECA, ADMIN_BIENESTAR, URELINTER, ADMISIONES_REG
+   * Solo roles globales: BIBLIOTECA, ADMIN_BIENESTAR, URELINTER, ADMISIONES_REG, ASIS_FINANCIERA
    */
   canUseFacultadFilter(userRoles: string[]): boolean {
     return userRoles.includes('BIBLIOTECA') ||
            userRoles.includes('ADMIN_BIENESTAR') ||
            userRoles.includes('URELINTER') ||
-           userRoles.includes('ADMISIONES_REG');
+           userRoles.includes('ADMISIONES_REG') ||
+           userRoles.includes('ASIS_FINANCIERA');
   }
 
   /**
@@ -77,10 +78,13 @@ export class SemaforoPermissionsService {
 
     // Permisos por rol
     if (userRoles.includes('CONTRATISTA')) {
-      return colField === 'Academico' || colField === 'Financiero' || colField === 'ObservacionCoordinacion';
+      return colField === 'Academico' || colField === 'ObservacionCoordinacion';
     }
     if (userRoles.includes('COORDINADOR')) {
-      return colField === 'Academico' || colField === 'Financiero' || colField === 'ObservacionCoordinacion';
+      return colField === 'Academico' || colField === 'ObservacionCoordinacion';
+    }
+    if (userRoles.includes('ASIS_FINANCIERA')) {
+      return colField === 'Financiero' || colField === 'ObservacionFinanciera';
     }
     if (userRoles.includes('BIBLIOTECA')) {
       return colField === 'Biblioteca' || colField === 'ObservacionBiblioteca';

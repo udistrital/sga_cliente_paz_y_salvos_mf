@@ -71,6 +71,7 @@ export class SemaforoGridComponent implements OnInit, OnDestroy {
       'SEMAFORO.col_urelinter',
       'SEMAFORO.col_orc',
       'SEMAFORO.col_obs_coordinacion',
+      'SEMAFORO.col_obs_financiera',
       'SEMAFORO.col_obs_biblioteca',
       'SEMAFORO.col_obs_laboratorios',
       'SEMAFORO.col_obs_bienestar',
@@ -93,11 +94,12 @@ export class SemaforoGridComponent implements OnInit, OnDestroy {
       this.columnDefs[11].headerName = translations['SEMAFORO.col_urelinter'];
       this.columnDefs[12].headerName = translations['SEMAFORO.col_orc'];
       this.columnDefs[13].headerName = translations['SEMAFORO.col_obs_coordinacion'];
-      this.columnDefs[14].headerName = translations['SEMAFORO.col_obs_biblioteca'];
-      this.columnDefs[15].headerName = translations['SEMAFORO.col_obs_laboratorios'];
-      this.columnDefs[16].headerName = translations['SEMAFORO.col_obs_bienestar'];
-      this.columnDefs[17].headerName = translations['SEMAFORO.col_obs_urelinter'];
-      this.columnDefs[18].headerName = translations['SEMAFORO.col_obs_orc'];
+      this.columnDefs[14].headerName = translations['SEMAFORO.col_obs_financiera'];
+      this.columnDefs[15].headerName = translations['SEMAFORO.col_obs_biblioteca'];
+      this.columnDefs[16].headerName = translations['SEMAFORO.col_obs_laboratorios'];
+      this.columnDefs[17].headerName = translations['SEMAFORO.col_obs_bienestar'];
+      this.columnDefs[18].headerName = translations['SEMAFORO.col_obs_urelinter'];
+      this.columnDefs[19].headerName = translations['SEMAFORO.col_obs_orc'];
       
       if (this.gridApi) {
         this.gridApi.refreshHeader();
@@ -120,6 +122,9 @@ export class SemaforoGridComponent implements OnInit, OnDestroy {
       }
       if (col.field === 'ObservacionCoordinacion') {
         col.editable = (params: any) => this.canEditColumn('ObservacionCoordinacion', params.data);
+      }
+      if (col.field === 'ObservacionFinanciera') {
+        col.editable = (params: any) => this.canEditColumn('ObservacionFinanciera', params.data);
       }
       if (col.field === 'ObservacionBiblioteca') {
         col.editable = (params: any) => this.canEditColumn('ObservacionBiblioteca', params.data);

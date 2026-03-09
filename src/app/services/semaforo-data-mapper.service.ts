@@ -66,6 +66,7 @@ export class SemaforoDataMapperService {
       Urelinter: !!item.Urelinter,
       Orc: item.Orc === null ? null : !!item.Orc,
       ObservacionCoordinacion: item.ObservacionCoordinacion || '',
+      ObservacionFinanciera: item.ObservacionFinanciera || '',
       ObservacionBiblioteca: item.ObservacionBiblioteca || '',
       ObservacionLaboratorios: item.ObservacionLaboratorios || '',
       ObservacionBienestar: item.ObservacionBienestar || '',
@@ -97,6 +98,7 @@ export class SemaforoDataMapperService {
       putStruct.Urelinter = row.Urelinter;
       putStruct.Orc = row.Orc;
       putStruct.ObservacionCoordinacion = row.ObservacionCoordinacion;
+      putStruct.ObservacionFinanciera = row.ObservacionFinanciera;
       putStruct.ObservacionBiblioteca = row.ObservacionBiblioteca;
       putStruct.ObservacionLaboratorios = row.ObservacionLaboratorios;
       putStruct.ObservacionBienestar = row.ObservacionBienestar;

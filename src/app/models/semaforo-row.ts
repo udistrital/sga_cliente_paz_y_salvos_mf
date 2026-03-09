@@ -25,6 +25,7 @@ export interface Semaforo {
   ObservacionBienestar: string;
   ObservacionUrelinter: string;
   ObservacionOrc: string;
+  ObservacionFinanciera: string;
   FechaCreacion: string; // datetime
   FechaModificacion: string; // datetime
 }
