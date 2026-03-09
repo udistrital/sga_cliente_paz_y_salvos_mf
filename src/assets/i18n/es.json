@@ -50,6 +50,7 @@
     "col_urelinter": "URELINTER",
     "col_orc": "REGISTRO Y CONTROL",
     "col_obs_coordinacion": "OBSERVACIÓN COORDINACIÓN",
+    "col_obs_financiera": "OBSERVACIÓN FINANCIERA",
     "col_obs_biblioteca": "OBSERVACIÓN BIBLIOTECA",
     "col_obs_laboratorios": "OBSERVACIÓN LABORATORIOS",
     "col_obs_bienestar": "OBSERVACIÓN BIENESTAR",
