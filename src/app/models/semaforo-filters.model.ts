@@ -18,7 +18,7 @@ export interface CatalogoOption {
 }
 
 /**
- * Proyecto asignado a un contratista/asistente
+ * Proyecto asignado a un coordinador, contratista o asistente de proyecto
  */
 export interface ProyectoAsignado {
   idOikos: number;
