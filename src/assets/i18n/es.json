@@ -78,6 +78,7 @@
     "error_id_jefe": "No se pudo obtener el ID del jefe de laboratorios",
     "sin_acceso": "Sin acceso",
     "sin_acceso_texto": "No puede editar este campo",
+    "sin_acceso_modulo" : "No tiene permisos para acceder a este módulo",
     "orc_visto_bueno": "No puede editar este campo, ORC ya ha dado su visto bueno.",
     "orc_bloqueado": "No es posible modificar este campo, ya que ORC ya ha emitido su concepto correspondiente.",
     "orc_no_puede_true": "No puede aprobar. Una o más dependencias están pendientes o rechazadas.",
@@ -94,12 +95,19 @@
   "ROLES": {
     "estudiante": "Estudiante",
     "coordinador": "Coordinador",
-    "secretario": "Secretario de Facultad",
-    "jefe_laboratorios": "Jefe de Laboratorios",
+    "secretario": "Secretario Academico",
+    "jefe_laboratorios": "Laboratorios",
     "biblioteca": "Biblioteca",
     "bienestar": "Bienestar",
     "urelinter": "URELINTER",
-    "admisiones": "Admisiones y Registro",
-    "contratista": "Contratista"
+    "admisiones": "Admisiones, Registro y Control",
+    "contratista": "Asistente de Proyecto",
+    "asis_proyecto": "Asistente de Proyecto",
+    "asis_financiera": "Asistente Financiera"
+  },
+  "ROLE_SELECTOR": {
+    "titulo": "Seleccione su Rol",
+    "subtitulo": "Tiene varios roles asignados. Por favor seleccione el rol con el que desea acceder al módulo.",
+    "continuar": "Continuar"
   }
 }

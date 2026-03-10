@@ -110,7 +110,7 @@ export class SemaforoDataMapperService {
   }
 
   /**
-   * Procesa la respuesta de proyectos asignados para un contratista
+   * Procesa la respuesta de proyectos asignados para un contratista o asistente de proyecto
    */
   procesarProyectosAsignados(responseData: any): {
     esAsistente: boolean;
