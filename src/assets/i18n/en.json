@@ -78,6 +78,7 @@
     "error_id_jefe": "Could not obtain laboratory manager ID",
     "sin_acceso": "No access",
     "sin_acceso_texto": "You do not have permissions to edit this field",
+    "sin_acceso_modulo" : "You do not have permissions to access this module",
     "orc_visto_bueno": "You cannot edit this field, ORC has already approved.",
     "orc_bloqueado": "This field cannot be edited because ORC has already issued its clearance decision.",
     "orc_no_puede_true": "Cannot approve. One or more departments are pending or rejected.",
