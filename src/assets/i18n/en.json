@@ -95,11 +95,18 @@
     "estudiante": "Student",
     "coordinador": "Coordinator",
     "secretario": "Faculty Secretary",
-    "jefe_laboratorios": "Laboratory Manager",
+    "jefe_laboratorios": "Laboratory",
     "biblioteca": "Library",
     "bienestar": "Welfare",
     "urelinter": "URELINTER",
     "admisiones": "Admissions and Registration",
-    "contratista": "Contractor"
+    "contratista": "Project Assistant",
+    "asis_proyecto": "Project Assistant",
+    "asis_financiera": "Financial Assistant"
+  },
+  "ROLE_SELECTOR": {
+    "titulo": "Select Your Role",
+    "subtitulo": "You have multiple assigned roles. Please select the role you want to use to access this module.",
+    "continuar": "Continue"
   }
 }

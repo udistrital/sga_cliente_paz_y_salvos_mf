@@ -11,10 +11,14 @@ import { AlertService } from '../../services/alert.service';
 import { SemaforoPermissionsService } from '../../services/semaforo-permissions.service';
 import { SemaforoDataMapperService } from '../../services/semaforo-data-mapper.service';
 import { SemaforoGridComponent } from './components/semaforo-grid/semaforo-grid.component';
+import { getRoleInfo } from '../../constants/roles.constants';
 
 /**
  * Componente principal del Semáforo de Paz y Salvos
  * Orquesta los sub-componentes y gestiona el flujo de datos
+ * 
+ * Si el usuario tiene múltiples roles válidos para el módulo, 
+ * primero se muestra un selector de roles antes de cargar el contenido
  */
 @Component({
   selector: 'app-semaforo',
@@ -28,10 +32,18 @@ export class SemaforoComponent implements OnInit, OnDestroy {
   loading = false;
   userRoles: string[] = [];
 
+  // Selector de roles
+  showRoleSelector = false;
+  availableRoles: string[] = [];
+
+  // Información del usuario
+  userName: string = '';
+  activeRoleDisplay: string = '';
+
   // Datos de la tabla
   rowData: SemaforoRow[] = [];
   filteredRowData: SemaforoRow[] = [];
-  
+
   // Paginación
   currentPage = 0;
   pageSize = 20;
@@ -40,14 +52,13 @@ export class SemaforoComponent implements OnInit, OnDestroy {
   // Filtros
   filtersExpanded = false;
   filters: SemaforoFilters;
-  
+
   // Catálogos
   facultades: CatalogoOption[] = [];
   proyectos: CatalogoOption[] = [];
   loadingFacultades = false;
   loadingProyectos = false;
 
-  // Datos específicos de contratista
   esAsistente = false;
   proyectosAsignados: ProyectoAsignado[] = [];
 
@@ -67,9 +78,108 @@ export class SemaforoComponent implements OnInit, OnDestroy {
   }
 
   async ngOnInit() {
+    this.addBeforeUnloadListener();
+    await this.checkAndInitializeRoles();
+  }
+
+  ngOnDestroy() {
+    this.userService.clearSelectedRole();
+    this.removeBeforeUnloadListener();
+  }
+
+  private beforeUnloadHandler = (): void => {
+    this.userService.clearSelectedRole();
+  };
+
+  private addBeforeUnloadListener(): void {
+    window.addEventListener('beforeunload', this.beforeUnloadHandler);
+  }
+
+  private removeBeforeUnloadListener(): void {
+    window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+  }
+
+  // ============ GESTIÓN DE ROLES ============
+
+  private normalizeRolesForDisplay(roles: string[]): string[] {
+    const hasContratista = roles.includes('CONTRATISTA');
+    const hasAsisProyecto = roles.includes('ASIS_PROYECTO');
+
+    // Si tiene ambos o solo CONTRATISTA, reemplazar por ASIS_PROYECTO
+    if (hasContratista || hasAsisProyecto) {
+      const normalizedRoles = roles.filter(r => r !== 'CONTRATISTA' && r !== 'ASIS_PROYECTO');
+      normalizedRoles.push('ASIS_PROYECTO');
+      return normalizedRoles;
+    }
+
+    return roles;
+  }
+
+  /**
+   * Verifica si el usuario tiene múltiples roles y muestra el selector si es necesario
+   */
+  private async checkAndInitializeRoles() {
+    try {
+      // Obtener roles válidos para el módulo
+      const userRoles = await this.userService.getUserModuleRoles();
+
+      // Si no hay roles válidos, mostrar error
+      if (userRoles.length === 0) {
+        this.translate.get(['GLOBAL.error', 'SEMAFORO.sin_acceso_modulo']).subscribe(translations => {
+          this.alertService.showAlert(translations['GLOBAL.error'], translations['SEMAFORO.sin_acceso_modulo']);
+        });
+        return;
+      }
+
+      this.availableRoles = this.normalizeRolesForDisplay(userRoles);
+
+      const selectedRole = this.userService.getSelectedRole();
+      if (selectedRole) {
+        const normalizedSelected = selectedRole === 'CONTRATISTA' ? 'ASIS_PROYECTO' : selectedRole;
+
+        if (!this.availableRoles.includes(normalizedSelected)) {
+          this.userService.clearSelectedRole();
+        } else {
+          this.userRoles = [normalizedSelected];
+          await this.initializeModule();
+          return;
+        }
+      }
+
+      if (this.availableRoles.length === 1) {
+        this.userRoles = this.availableRoles;
+        await this.initializeModule();
+        return;
+      }
+
+      // Si hay múltiples roles, mostrar selector
+      this.showRoleSelector = true;
+    } catch (error) {
+      console.error('Error checking roles:', error);
+      this.translate.get(['GLOBAL.error', 'SEMAFORO.error_cargar_datos']).subscribe(translations => {
+        this.alertService.showAlert(translations['GLOBAL.error'], translations['SEMAFORO.error_cargar_datos']);
+      });
+    }
+  }
+
+  /**
+   * Maneja la selección de rol del usuario
+   */
+  onRoleSelected(role: string): void {
+    this.userService.setSelectedRole(role);
+    this.userRoles = [role];
+    this.showRoleSelector = false;
+    this.updateActiveRoleDisplay();
+    this.initializeModule();
+  }
+
+  /**
+   * Inicializa el módulo después de determinar el rol
+   */
+  private async initializeModule() {
     await this.loadUserInfo();
-    
-    if (this.userRoles.includes('CONTRATISTA')) {
+
+    if (this.userRoles.includes('CONTRATISTA') || this.userRoles.includes('ASIS_PROYECTO')) {
       this.loadData();
     } else {
       await this.loadFacultades();
@@ -77,18 +187,33 @@ export class SemaforoComponent implements OnInit, OnDestroy {
     }
   }
 
-  ngOnDestroy() {
-    // Limpieza automática por sub-componentes
-  }
-
   // ============ GESTIÓN DE DATOS ============
 
   private async loadUserInfo() {
     try {
-      this.userRoles = await this.userService.getUserRoles();
       await this.userService.getPersonaId();
+
+
+      this.updateActiveRoleDisplay();
     } catch (error) {
       console.error('Error loading user info:', error);
+    }
+  }
+
+  /**
+   * Actualiza el nombre del rol activo traducido
+   */
+  private updateActiveRoleDisplay() {
+    if (this.userRoles.length > 0) {
+      const roleCode = this.userRoles[0];
+      const roleInfo = getRoleInfo(roleCode);
+      if (roleInfo) {
+        this.translate.get(roleInfo.translationKey).subscribe(translation => {
+          this.activeRoleDisplay = translation;
+        });
+      } else {
+        this.activeRoleDisplay = roleCode;
+      }
     }
   }
 
@@ -111,29 +236,29 @@ export class SemaforoComponent implements OnInit, OnDestroy {
 
   private async buildEndpoint(): Promise<string | null> {
     const roleType = this.permissionsService.getEndpointForRole(this.userRoles);
-    
+
     try {
       switch (roleType) {
         case 'estudiante':
           const codigo = await this.userService.getCodigoEstudiante();
           return `semaforo/estudiante/${codigo}`;
-        
-        case 'contratista':
-          const cedulaContratista = await this.userService.getUserDocument();
-          return `semaforo/asistente_proyecto/${cedulaContratista}`;
-        
+
+        case 'asis_proyecto':
+          const cedulaAsisProyecto = await this.userService.getUserDocument();
+          return `semaforo/asistente_proyecto/${cedulaAsisProyecto}`;
+
         case 'coordinador':
           const idCoordinador = await this.userService.getUserDocument();
           return `semaforo/proyecto/${idCoordinador}`;
-        
+
         case 'secretario':
           const idSecretario = await this.userService.getUserDocument();
           return `semaforo/facultad/${idSecretario}`;
-        
+
         case 'laboratorios':
           const idJefe = await this.userService.getUserDocument();
           return `semaforo/laboratorios/${idJefe}`;
-        
+
         default:
           return 'semaforo';
       }
@@ -144,14 +269,15 @@ export class SemaforoComponent implements OnInit, OnDestroy {
   }
 
   private showEndpointError(roleType: string) {
-    const errorKeyMap: {[key: string]: string} = {
+    const errorKeyMap: { [key: string]: string } = {
       'estudiante': 'SEMAFORO.error_codigo',
       'contratista': 'SEMAFORO.error_cedula',
+      'asis_proyecto': 'SEMAFORO.error_cedula',
       'coordinador': 'SEMAFORO.error_id_coordinador',
       'secretario': 'SEMAFORO.error_id_secretario',
       'laboratorios': 'SEMAFORO.error_id_jefe'
     };
-    
+
     const errorKey = errorKeyMap[roleType] || 'SEMAFORO.error_cargar_datos';
     this.translate.get(['GLOBAL.error', errorKey]).subscribe(translations => {
       this.alertService.showAlert(translations['GLOBAL.error'], translations[errorKey]);
@@ -160,9 +286,9 @@ export class SemaforoComponent implements OnInit, OnDestroy {
 
   private handleLoadDataSuccess(response: any) {
     const responseData = response.Data || response;
-    
-    // Procesar proyectos asignados para contratistas
-    if (this.userRoles.includes('CONTRATISTA')) {
+
+    // Procesar proyectos asignados para contratistas y asistentes de proyecto
+    if (this.userRoles.includes('CONTRATISTA') || this.userRoles.includes('ASIS_PROYECTO')) {
       const proyectosData = this.dataMapperService.procesarProyectosAsignados(responseData);
       this.esAsistente = proyectosData.esAsistente;
       this.proyectosAsignados = proyectosData.proyectosAsignados;
@@ -180,7 +306,7 @@ export class SemaforoComponent implements OnInit, OnDestroy {
 
     this.rowData = this.dataMapperService.mapResponseToRowData(data);
     this.filteredRowData = this.rowData;
-    
+
     // Cargar proyectos si es necesario
     if (this.permissionsService.shouldLoadProyectosFromFacultad(this.userRoles)) {
       this.loadProyectosFromFacultad(responseData);
@@ -192,8 +318,8 @@ export class SemaforoComponent implements OnInit, OnDestroy {
 
   private handleLoadDataError(error: any) {
     if (error.Status === 404) {
-      // Para contratistas, procesar proyectos incluso en 404
-      if (error?.Data && this.userRoles.includes('CONTRATISTA')) {
+      // Para contratistas y asistentes de proyecto, procesar proyectos incluso en 404
+      if (error?.Data && (this.userRoles.includes('CONTRATISTA') || this.userRoles.includes('ASIS_PROYECTO'))) {
         const proyectosData = this.dataMapperService.procesarProyectosAsignados(error.Data);
         this.esAsistente = proyectosData.esAsistente;
         this.proyectosAsignados = proyectosData.proyectosAsignados;
@@ -218,7 +344,7 @@ export class SemaforoComponent implements OnInit, OnDestroy {
     this.totalRecords = 0;
     this.loading = false;
     this.alertService.closeLoading();
-    
+
     if (this.dataMapperService.hasActiveFilters(this.filters)) {
       this.translate.get(['SEMAFORO.sin_resultados', 'SEMAFORO.sin_resultados_filtros']).subscribe(translations => {
         this.alertService.showAlert(
@@ -227,10 +353,10 @@ export class SemaforoComponent implements OnInit, OnDestroy {
         );
       });
     } else {
-      const textKey = this.userRoles.includes('CONTRATISTA') 
+      const textKey = (this.userRoles.includes('CONTRATISTA') || this.userRoles.includes('ASIS_PROYECTO'))
         ? 'SEMAFORO.sin_estudiantes_proyectos'
         : 'SEMAFORO.sin_estudiantes_activos';
-      
+
       this.translate.get(['SEMAFORO.sin_estudiantes', textKey]).subscribe(translations => {
         this.alertService.showAlert(
           translations['SEMAFORO.sin_estudiantes'],
@@ -274,7 +400,7 @@ export class SemaforoComponent implements OnInit, OnDestroy {
     this.saveRow(event.data, event.colDef?.field);
   }
 
-  onCellClicked(event: {data: SemaforoRow, field: string}): void {
+  onCellClicked(event: { data: SemaforoRow, field: string }): void {
     this.saveRow(event.data, event.field);
   }
 
@@ -314,12 +440,12 @@ export class SemaforoComponent implements OnInit, OnDestroy {
 
   private saveRow(row: SemaforoRow, changedField?: string) {
     if (this.loading) return;
-    
+
     this.loading = true;
     this.translate.get('SEMAFORO.guardando_cambios').subscribe(translation => {
       this.alertService.showLoading(translation);
     });
-    
+
     const payload = this.dataMapperService.createPatchPayload(row, changedField);
 
     this.semaforoService.patch('semaforo', row.Id, payload).subscribe({
@@ -344,7 +470,7 @@ export class SemaforoComponent implements OnInit, OnDestroy {
   private handleSaveError(error: any, rowId: number) {
     this.alertService.closeLoading();
     this.loading = false;
-    
+
     if (error.status === 409 || error.Status === '409') {
       const errorMessage = error.error?.Message || error.Message || 'Conflicto de estado detectado';
       this.translate.get(['SEMAFORO.conflicto_estado', 'SEMAFORO.refrescando_datos']).subscribe(translations => {
@@ -388,8 +514,8 @@ export class SemaforoComponent implements OnInit, OnDestroy {
               nombre: item.DependenciaId?.Nombre || item.Nombre
             }))
             .filter(f => f.id && f.nombre);
-          
-          this.facultades = [{id: null, nombre: 'Todas'}, ...facultadesData];
+
+          this.facultades = [{ id: null, nombre: 'Todas' }, ...facultadesData];
         }
         this.loadingFacultades = false;
       },
@@ -409,8 +535,8 @@ export class SemaforoComponent implements OnInit, OnDestroy {
               nombre: item.DependenciaId?.Nombre || item.Nombre
             }))
             .filter(p => p.id && p.nombre);
-          
-          this.proyectos = [{id: null, nombre: 'Todos'}, ...proyectosData];
+
+          this.proyectos = [{ id: null, nombre: 'Todos' }, ...proyectosData];
         }
         this.loadingProyectos = false;
       },
@@ -419,11 +545,11 @@ export class SemaforoComponent implements OnInit, OnDestroy {
   }
 
   private loadProyectosFromFacultad(responseData: any) {
-    const facultadId = responseData.IdFacultad || 
-                       responseData.FacultadId || 
-                       responseData.IdFacultadOikos ||
-                       (this.rowData.length > 0 ? this.rowData[0].IdFacultadOikos : null);
-    
+    const facultadId = responseData.IdFacultad ||
+      responseData.FacultadId ||
+      responseData.IdFacultadOikos ||
+      (this.rowData.length > 0 ? this.rowData[0].IdFacultadOikos : null);
+
     if (facultadId) {
       this.loadProyectosByFacultad(facultadId);
     } else {

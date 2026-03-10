@@ -10,6 +10,11 @@ $text-medium: #495057;
 $border-color: #dfe6e9;
 $bg-light: #f8f9fa;
 
+.semaforo-wrapper {
+  width: 100%;
+  min-height: 400px;
+}
+
 .semaforo-container {
   padding: 1.5rem;
   background-color: #fff;
@@ -27,6 +32,14 @@ $bg-light: #f8f9fa;
   flex-wrap: wrap;
   padding-bottom: 0.75rem;
   border-bottom: 2px solid $border-color;
+  gap: 1rem;
+
+  .header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+  }
 
   h2 {
     font-size: 1.75rem;
@@ -38,10 +51,75 @@ $bg-light: #f8f9fa;
     gap: 0.5rem;
   }
 
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: $bg-light;
+    border-radius: 6px;
+    border-left: 3px solid $primary-color;
+
+    .user-icon {
+      color: $primary-color;
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
+    }
+
+    .user-details {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+
+    .user-name {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: $text-dark;
+      line-height: 1.2;
+    }
+
+    .user-role {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 0.8rem;
+      color: $text-medium;
+      line-height: 1.2;
+
+      .role-icon {
+        font-size: 14px;
+        width: 14px;
+        height: 14px;
+        color: $primary-light;
+      }
+    }
+  }
+
   .refresh-btn {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+
+    .header-left {
+      width: 100%;
+    }
+
+    .refresh-btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .user-info {
+      width: 100%;
+    }
   }
 }
 

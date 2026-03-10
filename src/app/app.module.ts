@@ -20,6 +20,7 @@ import { SemaforoComponent } from './components/semaforo/semaforo.component';
 import { SemaforoFiltersComponent } from './components/semaforo/components/semaforo-filters/semaforo-filters.component';
 import { SemaforoGridComponent } from './components/semaforo/components/semaforo-grid/semaforo-grid.component';
 import { SemaforoPaginationComponent } from './components/semaforo/components/semaforo-pagination/semaforo-pagination.component';
+import { RoleSelectorComponent } from './components/semaforo/components/role-selector/role-selector.component';
 import { AgGridModule } from "ag-grid-angular";
 import { ModuleRegistry, AllCommunityModule } from "ag-grid-community";
 import { UserService } from './services/user.service';
@@ -40,7 +41,8 @@ ModuleRegistry.registerModules([AllCommunityModule]);
     SemaforoComponent,
     SemaforoFiltersComponent,
     SemaforoGridComponent,
-    SemaforoPaginationComponent
+    SemaforoPaginationComponent,
+    RoleSelectorComponent
   ],
   imports: [
     BrowserModule,

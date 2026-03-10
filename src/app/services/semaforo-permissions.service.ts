@@ -37,7 +37,7 @@ export class SemaforoPermissionsService {
    * Todos excepto ESTUDIANTE y COORDINADOR
    */
   canUseProyectoFilter(userRoles: string[]): boolean {
-    if (userRoles.includes('CONTRATISTA')) return true;
+    if (userRoles.includes('CONTRATISTA') || userRoles.includes('ASIS_PROYECTO')) return true;
     return !userRoles.includes('ESTUDIANTE') && 
            !userRoles.includes('COORDINADOR');
   }
@@ -77,7 +77,7 @@ export class SemaforoPermissionsService {
     }
 
     // Permisos por rol
-    if (userRoles.includes('CONTRATISTA')) {
+    if (userRoles.includes('CONTRATISTA') || userRoles.includes('ASIS_PROYECTO')) {
       return colField === 'Academico' || colField === 'ObservacionCoordinacion';
     }
     if (userRoles.includes('COORDINADOR')) {
@@ -89,7 +89,7 @@ export class SemaforoPermissionsService {
     if (userRoles.includes('BIBLIOTECA')) {
       return colField === 'Biblioteca' || colField === 'ObservacionBiblioteca';
     }
-    if (userRoles.includes('LABORATORIOS') || userRoles.includes('JEFE_LABORATORIO')) {
+    if (userRoles.includes('LABORATORIOS')) {
       return colField === 'Laboratorios' || colField === 'ObservacionLaboratorios';
     }
     if (userRoles.includes('ADMIN_BIENESTAR')) {
@@ -125,12 +125,13 @@ export class SemaforoPermissionsService {
   /**
    * Determina el endpoint a usar según el rol del usuario
    */
-  getEndpointForRole(userRoles: string[]): 'estudiante' | 'coordinador' | 'secretario' | 'laboratorios' | 'contratista' | 'global' {
+  getEndpointForRole(userRoles: string[]): 'estudiante' | 'coordinador' | 'secretario' | 'laboratorios' |  'asis_proyecto' | 'global' {
     if (userRoles.includes('ESTUDIANTE')) return 'estudiante';
-    if (userRoles.includes('CONTRATISTA')) return 'contratista';
+    if (userRoles.includes('CONTRATISTA')) return 'asis_proyecto';
+    if (userRoles.includes('ASIS_PROYECTO')) return 'asis_proyecto';
     if (userRoles.includes('COORDINADOR')) return 'coordinador';
-    if (userRoles.includes('SECRETARIA_ACADEMICA') || userRoles.includes('SECRETARIO_ACADEMICO')) return 'secretario';
-    if (userRoles.includes('LABORATORIOS') || userRoles.includes('JEFE_LABORATORIO')) return 'laboratorios';
+    if (userRoles.includes('SECRETARIA_ACADEMICA')) return 'secretario';
+    if (userRoles.includes('LABORATORIOS')) return 'laboratorios';
     return 'global';
   }
 
@@ -138,9 +139,7 @@ export class SemaforoPermissionsService {
    * Verifica si el rol necesita cargar proyectos desde la facultad
    */
   shouldLoadProyectosFromFacultad(userRoles: string[]): boolean {
-    return userRoles.includes('SECRETARIA_ACADEMICA') || 
-           userRoles.includes('SECRETARIO_ACADEMICO') ||
-           userRoles.includes('LABORATORIOS') || 
-           userRoles.includes('JEFE_LABORATORIO');
+    return userRoles.includes('SECRETARIA_ACADEMICA') ||
+           userRoles.includes('LABORATORIOS');
   }
 }

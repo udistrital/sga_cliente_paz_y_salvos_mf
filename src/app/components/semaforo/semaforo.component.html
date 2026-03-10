@@ -1,48 +1,69 @@
-<div class="semaforo-container">
-  <!-- Header -->
-  <div class="semaforo-header">
-    <h2>{{ 'SEMAFORO.titulo' | translate }}</h2>
-    <button mat-raised-button color="primary" (click)="onRefreshClick()" class="refresh-btn">
-      <mat-icon>refresh</mat-icon>
-      {{ 'SEMAFORO.recargar_datos' | translate }}
-    </button>
+<div class="semaforo-wrapper">
+  <!-- Selector de Rol (mostrar solo si hay múltiples roles) -->
+  <app-role-selector
+    *ngIf="showRoleSelector"
+    [availableRoles]="availableRoles"
+    (roleSelected)="onRoleSelected($event)">
+  </app-role-selector>
+
+  <!-- Contenido principal del semáforo -->
+  <div class="semaforo-container" *ngIf="!showRoleSelector">
+    <!-- Header -->
+    <div class="semaforo-header">
+      <div class="header-left">
+        <h2>{{ 'SEMAFORO.titulo' | translate }}</h2>
+        <div class="user-info" *ngIf="userName || activeRoleDisplay">
+          <mat-icon class="user-icon">account_circle</mat-icon>
+          <div class="user-details">
+            <span class="user-role" *ngIf="activeRoleDisplay">
+              <mat-icon class="role-icon">verified_user</mat-icon>
+              {{ activeRoleDisplay }}
+            </span>
+          </div>
+        </div>
+      </div>
+      <button mat-raised-button color="primary" (click)="onRefreshClick()" class="refresh-btn">
+        <mat-icon>refresh</mat-icon>
+        {{ 'SEMAFORO.recargar_datos' | translate }}
+      </button>
+    </div>
+
+    <!-- Componente de Filtros -->
+    <app-semaforo-filters
+      *ngIf="!userRoles.includes('ESTUDIANTE')"
+      [userRoles]="userRoles"
+      [filters]="filters"
+      [facultades]="facultades"
+      [proyectos]="proyectos"
+      [loadingFacultades]="loadingFacultades"
+      [loadingProyectos]="loadingProyectos"
+      [expanded]="filtersExpanded"
+      (filtersChange)="onFiltersChange($event)"
+      (facultadChange)="onFacultadChange($event)"
+      (search)="onSearchFilters()"
+      (clear)="onClearFilters()">
+    </app-semaforo-filters>
+
+    <!-- Componente de Grid -->
+    <app-semaforo-grid
+      [rowData]="filteredRowData"
+      [userRoles]="userRoles"
+      (cellValueChanged)="onCellValueChanged($event)"
+      (cellClicked)="onCellClicked($event)"
+      (gridReady)="onGridReady($event)">
+    </app-semaforo-grid>
+
+    <!-- Componente de Paginación -->
+    <app-semaforo-pagination
+      [currentPage]="currentPage"
+      [pageSize]="pageSize"
+      [totalRecords]="totalRecords"
+      [loading]="loading"
+      (pageSizeChange)="onPageSizeChange($event)"
+      (firstPage)="onFirstPage()"
+      (previousPage)="onPreviousPage()"
+      (nextPage)="onNextPage()"
+      (lastPage)="onLastPage()">
+    </app-semaforo-pagination>
   </div>
-
-  <!-- Componente de Filtros -->
-  <app-semaforo-filters
-    *ngIf="!userRoles.includes('ESTUDIANTE')"
-    [userRoles]="userRoles"
-    [filters]="filters"
-    [facultades]="facultades"
-    [proyectos]="proyectos"
-    [loadingFacultades]="loadingFacultades"
-    [loadingProyectos]="loadingProyectos"
-    [expanded]="filtersExpanded"
-    (filtersChange)="onFiltersChange($event)"
-    (facultadChange)="onFacultadChange($event)"
-    (search)="onSearchFilters()"
-    (clear)="onClearFilters()">
-  </app-semaforo-filters>
-
-  <!-- Componente de Grid -->
-  <app-semaforo-grid
-    [rowData]="filteredRowData"
-    [userRoles]="userRoles"
-    (cellValueChanged)="onCellValueChanged($event)"
-    (cellClicked)="onCellClicked($event)"
-    (gridReady)="onGridReady($event)">
-  </app-semaforo-grid>
-
-  <!-- Componente de Paginación -->
-  <app-semaforo-pagination
-    [currentPage]="currentPage"
-    [pageSize]="pageSize"
-    [totalRecords]="totalRecords"
-    [loading]="loading"
-    (pageSizeChange)="onPageSizeChange($event)"
-    (firstPage)="onFirstPage()"
-    (previousPage)="onPreviousPage()"
-    (nextPage)="onNextPage()"
-    (lastPage)="onLastPage()">
-  </app-semaforo-pagination>
 </div>
