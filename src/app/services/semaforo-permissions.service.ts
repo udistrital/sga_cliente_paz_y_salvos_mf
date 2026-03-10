@@ -34,12 +34,12 @@ export class SemaforoPermissionsService {
 
   /**
    * Verifica si el usuario puede usar el filtro de proyecto
-   * Todos excepto ESTUDIANTE y COORDINADOR
+   * CONTRATISTA, ASIS_PROYECTO y COORDINADOR pueden filtrar por proyecto
+   * Otros roles excepto ESTUDIANTE también pueden
    */
   canUseProyectoFilter(userRoles: string[]): boolean {
-    if (userRoles.includes('CONTRATISTA') || userRoles.includes('ASIS_PROYECTO')) return true;
-    return !userRoles.includes('ESTUDIANTE') && 
-           !userRoles.includes('COORDINADOR');
+    if (userRoles.includes('CONTRATISTA') || userRoles.includes('ASIS_PROYECTO') || userRoles.includes('COORDINADOR')) return true;
+    return !userRoles.includes('ESTUDIANTE');
   }
 
   /**

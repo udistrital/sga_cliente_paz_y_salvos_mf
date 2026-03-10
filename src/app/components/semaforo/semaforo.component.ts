@@ -59,6 +59,7 @@ export class SemaforoComponent implements OnInit, OnDestroy {
   loadingFacultades = false;
   loadingProyectos = false;
 
+  // Datos de proyectos asignados (usado por COORDINADOR, CONTRATISTA y ASIS_PROYECTO)
   esAsistente = false;
   proyectosAsignados: ProyectoAsignado[] = [];
 
@@ -179,7 +180,9 @@ export class SemaforoComponent implements OnInit, OnDestroy {
   private async initializeModule() {
     await this.loadUserInfo();
 
-    if (this.userRoles.includes('CONTRATISTA') || this.userRoles.includes('ASIS_PROYECTO')) {
+    if (this.userRoles.includes('CONTRATISTA') || 
+        this.userRoles.includes('ASIS_PROYECTO') || 
+        this.userRoles.includes('COORDINADOR')) {
       this.loadData();
     } else {
       await this.loadFacultades();
@@ -287,8 +290,9 @@ export class SemaforoComponent implements OnInit, OnDestroy {
   private handleLoadDataSuccess(response: any) {
     const responseData = response.Data || response;
 
-    // Procesar proyectos asignados para contratistas y asistentes de proyecto
-    if (this.userRoles.includes('CONTRATISTA') || this.userRoles.includes('ASIS_PROYECTO')) {
+    if (this.userRoles.includes('CONTRATISTA') || 
+        this.userRoles.includes('ASIS_PROYECTO') || 
+        this.userRoles.includes('COORDINADOR')) {
       const proyectosData = this.dataMapperService.procesarProyectosAsignados(responseData);
       this.esAsistente = proyectosData.esAsistente;
       this.proyectosAsignados = proyectosData.proyectosAsignados;
@@ -318,8 +322,10 @@ export class SemaforoComponent implements OnInit, OnDestroy {
 
   private handleLoadDataError(error: any) {
     if (error.Status === 404) {
-      // Para contratistas y asistentes de proyecto, procesar proyectos incluso en 404
-      if (error?.Data && (this.userRoles.includes('CONTRATISTA') || this.userRoles.includes('ASIS_PROYECTO'))) {
+      // Para contratistas, asistentes de proyecto y coordinadores
+      if (error?.Data && (this.userRoles.includes('CONTRATISTA') || 
+                          this.userRoles.includes('ASIS_PROYECTO') || 
+                          this.userRoles.includes('COORDINADOR'))) {
         const proyectosData = this.dataMapperService.procesarProyectosAsignados(error.Data);
         this.esAsistente = proyectosData.esAsistente;
         this.proyectosAsignados = proyectosData.proyectosAsignados;
@@ -353,7 +359,9 @@ export class SemaforoComponent implements OnInit, OnDestroy {
         );
       });
     } else {
-      const textKey = (this.userRoles.includes('CONTRATISTA') || this.userRoles.includes('ASIS_PROYECTO'))
+      const textKey = (this.userRoles.includes('CONTRATISTA') || 
+                       this.userRoles.includes('ASIS_PROYECTO') || 
+                       this.userRoles.includes('COORDINADOR'))
         ? 'SEMAFORO.sin_estudiantes_proyectos'
         : 'SEMAFORO.sin_estudiantes_activos';
 

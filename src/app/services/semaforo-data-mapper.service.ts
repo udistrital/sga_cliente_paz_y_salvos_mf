@@ -110,13 +110,16 @@ export class SemaforoDataMapperService {
   }
 
   /**
-   * Procesa la respuesta de proyectos asignados para un contratista o asistente de proyecto
+   * Procesa la respuesta de proyectos asignados para roles con proyectos específicos
+   * Usado por: CONTRATISTA, ASIS_PROYECTO y COORDINADOR
+   * Nota: EsAsistente solo viene en la respuesta de CONTRATISTA/ASIS_PROYECTO
    */
   procesarProyectosAsignados(responseData: any): {
     esAsistente: boolean;
     proyectosAsignados: ProyectoAsignado[];
     proyectos: CatalogoOption[];
   } {
+    // EsAsistente solo existe en respuesta de asistentes, para coordinador será undefined -> false
     const esAsistente = !!responseData.EsAsistente;
     const proyectosAsignados = Array.isArray(responseData.ProyectosAsignados)
       ? responseData.ProyectosAsignados.map((p: any) => ({
