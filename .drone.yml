@@ -2,28 +2,16 @@ kind: pipeline
 name: oas_cliente_ci
 
 steps:
-  - name: check_readme
-    image: jjvargass/qa_develoment:latest
+  - name: nodejs_develop
+    image: node:lts-bullseye
     commands:
-      - python /app/check_readme.py
+      - node --version
+      - npm i
+      - npm run build
     when:
       branch:
-        - develop
         - feature/*
-        - release/*
-      event:
-        - push
-
-  - name: check_commits
-    image: jjvargass/qa_develoment:latest
-    failure: ignore
-    commands:
-      - python /app/check_commits.py
-    when:
-      branch:
         - develop
-          - feature/*
-          - release/*
       event:
         - push
 
@@ -63,23 +51,26 @@ steps:
       - sonar-scanner
     when:
       branch:
-        - develop
         - feature/*
+        - develop
         - release/*
+        - hotfix/*
+        - master
       event:
         - push
 
   - name: publish_s3_release
     image: plugins/s3
     settings:
-      bucket: cliente-pruebas
+      bucket:
+        from_secret: BUCKET_CLIENTES_TEST
       access_key:
         from_secret: aws_access_key_id
       secret_key:
         from_secret: aws_secret_access_key
       region: us-east-1
       source: dist/**/*
-      target: /${DRONE_REPO_NAME}
+      target: /sga/${DRONE_REPO_NAME}
       strip_prefix: dist/
     when:
       branch:
@@ -90,14 +81,15 @@ steps:
   - name: publish_s3_master
     image: plugins/s3
     settings:
-      bucket: cliente-core-prod
+      bucket:
+        from_secret: BUCKET_CLIENTES_PROD
       access_key:
         from_secret: aws_access_key_id
       secret_key:
         from_secret: aws_secret_access_key
       region: us-east-1
       source: dist/**/*
-      target: /${DRONE_REPO_NAME}
+      target: /sga/${DRONE_REPO_NAME}
       strip_prefix: dist/
     when:
       branch:
