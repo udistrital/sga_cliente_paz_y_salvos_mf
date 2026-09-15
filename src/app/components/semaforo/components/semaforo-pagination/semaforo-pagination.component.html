@@ -1,0 +1,53 @@
+<div class="pagination-controls">
+  <div class="pagination-info">
+    {{ 'SEMAFORO.mostrando_registros' | translate: {start: startRecord, end: endRecord, total: totalRecords} }}
+  </div>
+  
+  <div class="pagination-buttons">
+    <button 
+      mat-icon-button 
+      [disabled]="!canGoPrevious" 
+      (click)="onFirstPage()" 
+      [matTooltip]="'SEMAFORO.primera_pagina' | translate">
+      <mat-icon>first_page</mat-icon>
+    </button>
+    
+    <button 
+      mat-icon-button 
+      [disabled]="!canGoPrevious" 
+      (click)="onPreviousPage()" 
+      [matTooltip]="'SEMAFORO.pagina_anterior' | translate">
+      <mat-icon>chevron_left</mat-icon>
+    </button>
+    
+    <span class="page-number">
+      {{ 'SEMAFORO.pagina' | translate }} {{ currentPage + 1 }} {{ 'SEMAFORO.de' | translate }} {{ totalPages }}
+    </span>
+    
+    <button 
+      mat-icon-button 
+      [disabled]="!canGoNext" 
+      (click)="onNextPage()" 
+      [matTooltip]="'SEMAFORO.pagina_siguiente' | translate">
+      <mat-icon>chevron_right</mat-icon>
+    </button>
+    
+    <button 
+      mat-icon-button 
+      [disabled]="!canGoNext" 
+      (click)="onLastPage()" 
+      [matTooltip]="'SEMAFORO.ultima_pagina' | translate">
+      <mat-icon>last_page</mat-icon>
+    </button>
+  </div>
+  
+  <div class="page-size-selector">
+    <label>{{ 'SEMAFORO.registros_por_pagina' | translate }}</label>
+    <select [ngModel]="pageSize" (ngModelChange)="onPageSizeChange($event)">
+      <option [value]="10">10</option>
+      <option [value]="20">20</option>
+      <option [value]="50">50</option>
+      <option [value]="100">100</option>
+    </select>
+  </div>
+</div>

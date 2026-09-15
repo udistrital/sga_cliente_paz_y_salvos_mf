@@ -1,0 +1,45 @@
+<div class="role-selector-container">
+  <div class="role-selector-card">
+    <div class="role-selector-header">
+      <mat-icon class="header-icon">account_circle</mat-icon>
+      <h2>{{ 'ROLE_SELECTOR.titulo' | translate }}</h2>
+      <p class="subtitle">{{ 'ROLE_SELECTOR.subtitulo' | translate }}</p>
+    </div>
+
+    <div class="role-selector-content">
+      <div class="roles-list">
+        <button 
+          *ngFor="let role of availableRoles" 
+          type="button"
+          class="role-card"
+          [class.selected]="selectedRole === role"
+          (click)="onRoleSelect(role)"
+          [attr.aria-label]="'Seleccionar rol ' + getRoleDisplayName(role)">
+          <div class="role-card-content">
+            <div class="role-icon">
+              <mat-icon>verified_user</mat-icon>
+            </div>
+            <div class="role-info">
+              <div class="role-name">{{ getRoleDisplayName(role) }}</div>
+              <div class="role-description">{{ getRoleDescription(role) }}</div>
+            </div>
+            <div class="role-check" *ngIf="selectedRole === role">
+              <mat-icon>check_circle</mat-icon>
+            </div>
+          </div>
+        </button>
+      </div>
+
+      <div class="role-selector-actions">
+        <button 
+          mat-raised-button 
+          color="primary" 
+          [disabled]="!canConfirm()"
+          (click)="onConfirmRole()">
+          <mat-icon>arrow_forward</mat-icon>
+          {{ 'ROLE_SELECTOR.continuar' | translate }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

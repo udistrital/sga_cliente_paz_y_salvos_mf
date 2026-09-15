@@ -1,0 +1,11 @@
+<ag-grid-angular
+  class="ag-theme-alpine semaforo-grid"
+  [theme]="'legacy'"
+  [rowData]="rowData"
+  [columnDefs]="columnDefs"
+  [defaultColDef]="{ resizable: true }"
+  [suppressPaginationPanel]="true"
+  [stopEditingWhenCellsLoseFocus]="true"
+  (cellValueChanged)="onCellValueChanged($event)"
+  (gridReady)="onGridReady($event)">
+</ag-grid-angular>

@@ -1,0 +1,250 @@
+$primary-color: #03678f;
+$primary-light: #4f95b1;
+$accent-color: #145a95;
+$text-medium: #495057;
+$text-dark: #2c3e50;
+$border-color: #dfe6e9;
+$danger-color: #e74c3c;
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.filters-section {
+  margin: 0.5rem 0;
+
+  .filters-panel {
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+    ::ng-deep .mat-expansion-panel-header {
+      padding: 0 1rem;
+      height: 56px;
+      background-color: #f5f5f5;
+
+      &:hover {
+        background-color: #eeeeee !important;
+      }
+    }
+
+    ::ng-deep .mat-expansion-panel-header-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: $primary-color;
+      font-weight: 500;
+
+      mat-icon {
+        color: $primary-color;
+      }
+    }
+  }
+
+  .filters-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    padding: 1.5rem;
+    background-color: #fafafa;
+
+    .filter-field {
+      width: 100%;
+    }
+
+    .filter-actions {
+      grid-column: 1 / -1;
+      display: flex;
+      gap: 1rem;
+      justify-content: flex-end;
+      margin-top: 0.5rem;
+
+      button {
+        min-width: 120px;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        justify-content: center;
+      }
+
+      .apply-filters-btn {
+        background-color: $accent-color;
+        color: white;
+
+        &:hover {
+          background-color: darken($accent-color, 10%);
+        }
+      }
+
+      .clear-filters-btn {
+        border-color: $text-medium;
+        color: $text-medium;
+
+        &:hover {
+          background-color: rgba(0, 0, 0, 0.04);
+        }
+      }
+    }
+  }
+}
+
+.ng-select-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  .ng-select-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: $text-medium;
+    margin-bottom: 0.25rem;
+  }
+
+  ::ng-deep .ng-select {
+    .ng-select-container {
+      min-height: 40px;
+      border-radius: 4px;
+      border: 1px solid $border-color;
+      background-color: white;
+
+      &:hover {
+        border-color: $primary-light;
+      }
+    }
+
+    &.ng-select-focused {
+      .ng-select-container {
+        border-color: $primary-color;
+        box-shadow: 0 0 0 2px rgba(3, 103, 143, 0.1);
+      }
+    }
+
+    &.ng-select-disabled {
+      .ng-select-container {
+        background-color: #f5f5f5;
+        cursor: not-allowed;
+      }
+    }
+
+    .ng-value-container {
+      padding: 0 12px;
+
+      .ng-placeholder {
+        color: #999;
+      }
+
+      .ng-input {
+        padding: 0;
+        
+        input {
+          padding: 0;
+        }
+      }
+    }
+
+    .ng-clear-wrapper {
+      color: $text-medium;
+      
+      &:hover {
+        color: $danger-color;
+      }
+    }
+
+    .ng-arrow-wrapper {
+      padding-right: 8px;
+
+      .ng-arrow {
+        border-color: $text-medium transparent transparent;
+      }
+    }
+
+    &.ng-select-opened {
+      .ng-arrow {
+        border-color: transparent transparent $text-medium;
+      }
+    }
+  }
+
+  ::ng-deep .ng-dropdown-panel {
+    border: 1px solid $border-color;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    margin-top: 4px;
+
+    .ng-dropdown-panel-items {
+      .ng-option {
+        padding: 10px 12px;
+        color: $text-dark;
+        transition: background-color 0.2s;
+
+        &:hover {
+          background-color: rgba(3, 103, 143, 0.08);
+        }
+
+        &.ng-option-selected {
+          background-color: rgba(3, 103, 143, 0.12);
+          color: $primary-color;
+          font-weight: 500;
+        }
+
+        &.ng-option-marked {
+          background-color: rgba(3, 103, 143, 0.06);
+        }
+      }
+    }
+
+    .ng-option-disabled {
+      color: #ccc;
+      cursor: not-allowed;
+    }
+  }
+
+  .ng-select-hint {
+    font-size: 0.75rem;
+    color: $text-medium;
+    margin-top: 0.25rem;
+  }
+}
+
+.input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  .input-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: $text-medium;
+    margin-bottom: 0.25rem;
+  }
+
+  .filter-input {
+    min-height: 40px;
+    padding: 0 12px;
+    border-radius: 4px;
+    border: 1px solid $border-color;
+    background-color: white;
+    font-size: 0.875rem;
+    color: $text-dark;
+    transition: all 0.2s;
+
+    &::placeholder {
+      color: #999;
+    }
+
+    &:hover {
+      border-color: $primary-light;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: $primary-color;
+      box-shadow: 0 0 0 2px rgba(3, 103, 143, 0.1);
+    }
+
+    &:disabled {
+      background-color: #f5f5f5;
+      cursor: not-allowed;
+    }
+  }
+}
