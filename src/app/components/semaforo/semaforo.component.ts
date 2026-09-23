@@ -1,6 +1,8 @@
 import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { SemaforoRow } from '../../models/semaforo-row';
 import { SemaforoFilters, CatalogoOption, ProyectoAsignado } from '../../models/semaforo-filters.model';
+import { ApiResponse } from '../../models/api-response';
+import { SemaforoPatchField, SemaforoRecord, SemaforosData } from '../../models/semaforo-api';
 import { TranslateService } from '@ngx-translate/core';
 import { GridApi } from 'ag-grid-community';
 
@@ -231,7 +233,7 @@ export class SemaforoComponent implements OnInit, OnDestroy {
 
     const params = this.dataMapperService.buildQueryParams(this.filters, this.currentPage, this.pageSize);
 
-    this.semaforoService.get(endpoint, params).subscribe({
+    this.semaforoService.get<SemaforosData>(endpoint, params).subscribe({
       next: response => this.handleLoadDataSuccess(response),
       error: error => this.handleLoadDataError(error)
     });
@@ -287,8 +289,8 @@ export class SemaforoComponent implements OnInit, OnDestroy {
     });
   }
 
-  private handleLoadDataSuccess(response: any) {
-    const responseData = response.Data || response;
+  private handleLoadDataSuccess(response: ApiResponse<SemaforosData>) {
+    const responseData = response.Data;
 
     if (this.userRoles.includes('CONTRATISTA') || 
         this.userRoles.includes('ASIS_PROYECTO') || 
@@ -300,8 +302,8 @@ export class SemaforoComponent implements OnInit, OnDestroy {
     }
 
     // Extraer datos
-    const data = responseData.Semaforos || responseData.Data || responseData;
-    this.totalRecords = responseData.TotalCount || 0;
+    const data = responseData.Semaforos;
+    this.totalRecords = responseData.TotalCount;
 
     if (!Array.isArray(data) || data.length === 0) {
       this.handleEmptyResponse();
@@ -320,10 +322,10 @@ export class SemaforoComponent implements OnInit, OnDestroy {
     this.alertService.closeLoading();
   }
 
-  private handleLoadDataError(error: any) {
+  private handleLoadDataError(error: ApiResponse<SemaforosData | null>) {
     if (error.Status === 404) {
       // Para contratistas, asistentes de proyecto y coordinadores
-      if (error?.Data && (this.userRoles.includes('CONTRATISTA') || 
+      if (error.Data && (this.userRoles.includes('CONTRATISTA') ||
                           this.userRoles.includes('ASIS_PROYECTO') || 
                           this.userRoles.includes('COORDINADOR'))) {
         const proyectosData = this.dataMapperService.procesarProyectosAsignados(error.Data);
@@ -462,10 +464,11 @@ export class SemaforoComponent implements OnInit, OnDestroy {
     });
   }
 
-  private handleSaveSuccess(response: any, rowId: number, changedField?: string) {
+  private handleSaveSuccess(response: ApiResponse<SemaforoRecord>, rowId: number, changedField?: string) {
     if (response?.Data && this.gridComponent) {
       if (changedField) {
-        this.gridComponent.updateCellValue(rowId, changedField, response.Data[changedField]);
+        const field = changedField as SemaforoPatchField;
+        this.gridComponent.updateCellValue(rowId, changedField, response.Data[field]);
       } else {
         const updatedRow = this.dataMapperService.mapResponseToRowData([response.Data])[0];
         this.gridComponent.updateRowData(rowId, updatedRow);
@@ -475,12 +478,12 @@ export class SemaforoComponent implements OnInit, OnDestroy {
     this.alertService.closeLoading();
   }
 
-  private handleSaveError(error: any, rowId: number) {
+  private handleSaveError(error: ApiResponse<unknown>, rowId: number) {
     this.alertService.closeLoading();
     this.loading = false;
 
-    if (error.status === 409 || error.Status === '409') {
-      const errorMessage = error.error?.Message || error.Message || 'Conflicto de estado detectado';
+    if (error.Status === 409) {
+      const errorMessage = error.Message || 'Conflicto de estado detectado';
       this.translate.get(['SEMAFORO.conflicto_estado', 'SEMAFORO.refrescando_datos']).subscribe(translations => {
         this.alertService.showAlert(
           translations['SEMAFORO.conflicto_estado'],
@@ -497,7 +500,7 @@ export class SemaforoComponent implements OnInit, OnDestroy {
   }
 
   private refreshRow(rowId: number): void {
-    this.semaforoService.get(`semaforo/${rowId}`).subscribe({
+    this.semaforoService.get<SemaforoRecord>(`semaforo/${rowId}`).subscribe({
       next: response => {
         if (response?.Data && this.gridComponent) {
           const updatedRow = this.dataMapperService.mapResponseToRowData([response.Data])[0];
