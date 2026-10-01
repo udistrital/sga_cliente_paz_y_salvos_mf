@@ -1,6 +1,5 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
-import { TranslateService } from '@ngx-translate/core';
-import { RoleInfo, getRoleInfo } from '../../../../constants/roles.constants';
+import { PermisosService } from '../../../../services/permisos.service';
 
 /**
  * Componente de selección de rol
@@ -17,31 +16,31 @@ export class RoleSelectorComponent {
 
   selectedRole: string = '';
 
-  constructor(private translate: TranslateService) {}
+  constructor(public permisos: PermisosService) {}
 
   /**
    * Obtiene la información de un rol para mostrar su traducción
    */
   getRoleDisplayName(roleCode: string): string {
-    const roleInfo = getRoleInfo(roleCode);
-    if (roleInfo) {
-      return this.translate.instant(roleInfo.translationKey);
-    }
-    return roleCode;
+    return roleCode.replace(/_/g, ' ');
   }
 
   /**
    * Obtiene la descripción de un rol
    */
   getRoleDescription(roleCode: string): string {
-    const roleInfo = getRoleInfo(roleCode);
-    return roleInfo?.description || '';
+    return this.permisos.permite('semaforo_paz_salvos', 'Menú', roleCode) ? 'Perfil autorizado en Configuración' : '';
+  }
+
+  puedeSeleccionar(role: string): boolean {
+    return this.availableRoles.includes(role) && this.permisos.permite('paz_salvos_seleccionar_perfil', 'Botón', role);
   }
 
   /**
    * Maneja la selección de un rol
    */
   onRoleSelect(role: string): void {
+    if (!this.puedeSeleccionar(role)) return;
     this.selectedRole = role;
   }
 
@@ -49,7 +48,7 @@ export class RoleSelectorComponent {
    * Confirma y emite el rol seleccionado
    */
   onConfirmRole(): void {
-    if (this.selectedRole) {
+    if (this.canConfirm()) {
       this.roleSelected.emit(this.selectedRole);
     }
   }
@@ -58,6 +57,6 @@ export class RoleSelectorComponent {
    * Verifica si se puede confirmar (hay un rol seleccionado)
    */
   canConfirm(): boolean {
-    return !!this.selectedRole;
+    return this.puedeSeleccionar(this.selectedRole) && this.permisos.permite('paz_salvos_confirmar_perfil', 'Botón', this.selectedRole);
   }
 }

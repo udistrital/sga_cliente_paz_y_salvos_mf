@@ -5,6 +5,7 @@ import { ApiResponse } from '../../models/api-response';
 import { SemaforoPatchField, SemaforoRecord, SemaforosData } from '../../models/semaforo-api';
 import { TranslateService } from '@ngx-translate/core';
 import { GridApi } from 'ag-grid-community';
+import { Subscription } from 'rxjs';
 
 import { UserService } from '../../services/user.service';
 import { SemaforoService } from '../../services/semaforo.service';
@@ -13,7 +14,7 @@ import { AlertService } from '../../services/alert.service';
 import { SemaforoPermissionsService } from '../../services/semaforo-permissions.service';
 import { SemaforoDataMapperService } from '../../services/semaforo-data-mapper.service';
 import { SemaforoGridComponent } from './components/semaforo-grid/semaforo-grid.component';
-import { getRoleInfo } from '../../constants/roles.constants';
+import { PermisosService } from '../../services/permisos.service';
 
 /**
  * Componente principal del Semáforo de Paz y Salvos
@@ -33,6 +34,14 @@ export class SemaforoComponent implements OnInit, OnDestroy {
   // Estado de carga
   loading = false;
   userRoles: string[] = [];
+  errorAcceso = '';
+  private consultaDatos?: Subscription;
+  private actualizacion?: Subscription;
+  private cambioSesion?: Subscription;
+  private cambioPermisos?: Subscription;
+  private versionInicio = 0;
+  private versionConsulta = 0;
+  private destruido = false;
 
   // Selector de roles
   showRoleSelector = false;
@@ -75,17 +84,32 @@ export class SemaforoComponent implements OnInit, OnDestroy {
     private alertService: AlertService,
     private translate: TranslateService,
     private permissionsService: SemaforoPermissionsService,
-    private dataMapperService: SemaforoDataMapperService
+    private dataMapperService: SemaforoDataMapperService,
+    public permisos: PermisosService
   ) {
     this.filters = this.dataMapperService.createEmptyFilters();
   }
 
   async ngOnInit() {
     this.addBeforeUnloadListener();
+    this.cambioPermisos = this.permisos.cambios$.subscribe(() => {
+      if (this.permisos.estado === 'listo') void this.checkAndInitializeRoles();
+      else this.limpiarConsulta();
+    });
+    this.cambioSesion = this.permisos.sesionCambiada$.subscribe(() => {
+      this.limpiarConsulta();
+      this.userRoles = [];
+      this.availableRoles = [];
+      void this.checkAndInitializeRoles();
+    });
     await this.checkAndInitializeRoles();
   }
 
   ngOnDestroy() {
+    this.destruido = true;
+    this.cambioSesion?.unsubscribe();
+    this.cambioPermisos?.unsubscribe();
+    this.limpiarConsulta();
     this.userService.clearSelectedRole();
     this.removeBeforeUnloadListener();
   }
@@ -104,46 +128,61 @@ export class SemaforoComponent implements OnInit, OnDestroy {
 
   // ============ GESTIÓN DE ROLES ============
 
-  private normalizeRolesForDisplay(roles: string[]): string[] {
-    const hasContratista = roles.includes('CONTRATISTA');
-    const hasAsisProyecto = roles.includes('ASIS_PROYECTO');
-
-    // Si tiene ambos o solo CONTRATISTA, reemplazar por ASIS_PROYECTO
-    if (hasContratista || hasAsisProyecto) {
-      const normalizedRoles = roles.filter(r => r !== 'CONTRATISTA' && r !== 'ASIS_PROYECTO');
-      normalizedRoles.push('ASIS_PROYECTO');
-      return normalizedRoles;
-    }
-
-    return roles;
+  get perfilActual(): string { return this.userRoles.length === 1 ? this.userRoles[0] : ''; }
+  get puedeConsultar(): boolean { return this.permissionsService.contextoConsulta(this.perfilActual) !== null; }
+  get mostrarFiltros(): boolean {
+    return this.permissionsService.canUseCodigoFilter(this.userRoles) || this.permissionsService.canUseFacultadFilter(this.userRoles) ||
+      this.permissionsService.canUseProyectoFilter(this.userRoles) || this.permissionsService.canUseAnioFilter(this.userRoles) ||
+      this.permissionsService.canUsePeriodoFilter(this.userRoles);
   }
+
+  private limpiarConsulta(): void {
+    this.versionConsulta++;
+    this.consultaDatos?.unsubscribe();
+    this.actualizacion?.unsubscribe();
+    this.rowData = this.filteredRowData = [];
+    this.totalRecords = 0;
+    this.loading = false;
+    this.loadingFacultades = this.loadingProyectos = false;
+    this.facultades = this.proyectos = [];
+    this.proyectosAsignados = [];
+    this.filters = this.dataMapperService.createEmptyFilters();
+    this.currentPage = 0;
+    this.alertService.closeLoading();
+  }
+
+  revisarPerfiles(): void { void this.checkAndInitializeRoles(); }
 
   /**
    * Verifica si el usuario tiene múltiples roles y muestra el selector si es necesario
    */
   private async checkAndInitializeRoles() {
+    const version = ++this.versionInicio;
+    this.limpiarConsulta();
+    this.errorAcceso = '';
     try {
-      // Obtener roles válidos para el módulo
-      const userRoles = await this.userService.getUserModuleRoles();
+      await this.permisos.cargar();
+      if (this.destruido || version !== this.versionInicio) return;
+      const userRoles = this.permisos.perfilesPara('semaforo_paz_salvos')
+        .map(p => p.nombre).filter(p => this.permisos.permite('paz_salvos_consultar_semaforo', 'Botón', p));
 
       // Si no hay roles válidos, mostrar error
       if (userRoles.length === 0) {
-        this.translate.get(['GLOBAL.error', 'SEMAFORO.sin_acceso_modulo']).subscribe(translations => {
-          this.alertService.showAlert(translations['GLOBAL.error'], translations['SEMAFORO.sin_acceso_modulo']);
-        });
+        this.availableRoles = this.userRoles = [];
+        this.showRoleSelector = false;
+        this.errorAcceso = 'No tienes perfiles con acceso a esta consulta en Configuración.';
         return;
       }
 
-      this.availableRoles = this.normalizeRolesForDisplay(userRoles);
+      this.availableRoles = userRoles;
 
       const selectedRole = this.userService.getSelectedRole();
       if (selectedRole) {
-        const normalizedSelected = selectedRole === 'CONTRATISTA' ? 'ASIS_PROYECTO' : selectedRole;
-
-        if (!this.availableRoles.includes(normalizedSelected)) {
+        if (!this.availableRoles.includes(selectedRole)) {
           this.userService.clearSelectedRole();
         } else {
-          this.userRoles = [normalizedSelected];
+          this.userRoles = [selectedRole];
+          this.showRoleSelector = false;
           await this.initializeModule();
           return;
         }
@@ -151,17 +190,19 @@ export class SemaforoComponent implements OnInit, OnDestroy {
 
       if (this.availableRoles.length === 1) {
         this.userRoles = this.availableRoles;
+        this.showRoleSelector = false;
         await this.initializeModule();
         return;
       }
 
       // Si hay múltiples roles, mostrar selector
+      this.userRoles = [];
       this.showRoleSelector = true;
     } catch (error) {
-      console.error('Error checking roles:', error);
-      this.translate.get(['GLOBAL.error', 'SEMAFORO.error_cargar_datos']).subscribe(translations => {
-        this.alertService.showAlert(translations['GLOBAL.error'], translations['SEMAFORO.error_cargar_datos']);
-      });
+      if (this.destruido || version !== this.versionInicio) return;
+      this.availableRoles = this.userRoles = [];
+      this.showRoleSelector = false;
+      this.errorAcceso = 'No fue posible verificar los perfiles autorizados. Reintenta los permisos.';
     }
   }
 
@@ -169,6 +210,9 @@ export class SemaforoComponent implements OnInit, OnDestroy {
    * Maneja la selección de rol del usuario
    */
   onRoleSelected(role: string): void {
+    if (!this.availableRoles.includes(role) || !this.permisos.permite('paz_salvos_seleccionar_perfil', 'Botón', role) ||
+      !this.permisos.permite('paz_salvos_confirmar_perfil', 'Botón', role)) return;
+    this.limpiarConsulta();
     this.userService.setSelectedRole(role);
     this.userRoles = [role];
     this.showRoleSelector = false;
@@ -180,16 +224,17 @@ export class SemaforoComponent implements OnInit, OnDestroy {
    * Inicializa el módulo después de determinar el rol
    */
   private async initializeModule() {
-    await this.loadUserInfo();
-
-    if (this.userRoles.includes('CONTRATISTA') || 
-        this.userRoles.includes('ASIS_PROYECTO') || 
-        this.userRoles.includes('COORDINADOR')) {
-      this.loadData();
-    } else {
-      await this.loadFacultades();
-      this.loadData();
+    if (!this.puedeConsultar) {
+      this.errorAcceso = 'El perfil no tiene un contexto de consulta único en Configuración.';
+      return;
     }
+    this.errorAcceso = '';
+    await this.loadUserInfo();
+    if (this.destruido || !this.puedeConsultar) return;
+    if (this.permissionsService.canUseFacultadFilter(this.userRoles)) {
+      await this.loadFacultades();
+    }
+    this.loadData();
   }
 
   // ============ GESTIÓN DE DATOS ============
@@ -209,62 +254,57 @@ export class SemaforoComponent implements OnInit, OnDestroy {
    * Actualiza el nombre del rol activo traducido
    */
   private updateActiveRoleDisplay() {
-    if (this.userRoles.length > 0) {
-      const roleCode = this.userRoles[0];
-      const roleInfo = getRoleInfo(roleCode);
-      if (roleInfo) {
-        this.translate.get(roleInfo.translationKey).subscribe(translation => {
-          this.activeRoleDisplay = translation;
-        });
-      } else {
-        this.activeRoleDisplay = roleCode;
-      }
-    }
+    this.activeRoleDisplay = this.perfilActual.replace(/_/g, ' ');
   }
 
   private async loadData() {
+    if (!this.puedeConsultar || this.destruido) return;
+    const version = ++this.versionConsulta;
+    this.consultaDatos?.unsubscribe();
     const endpoint = await this.buildEndpoint();
-    if (!endpoint) return;
+    if (!endpoint || version !== this.versionConsulta || !this.puedeConsultar || this.destruido) return;
 
     this.loading = true;
     this.translate.get('SEMAFORO.cargando_estudiantes').subscribe(translation => {
       this.alertService.showLoading(translation);
     });
 
+    this.filters = this.filtrosPermitidos(this.filters);
     const params = this.dataMapperService.buildQueryParams(this.filters, this.currentPage, this.pageSize);
 
-    this.semaforoService.get<SemaforosData>(endpoint, params).subscribe({
-      next: response => this.handleLoadDataSuccess(response),
-      error: error => this.handleLoadDataError(error)
+    this.consultaDatos = this.semaforoService.get<SemaforosData>(endpoint, params).subscribe({
+      next: response => { if (version === this.versionConsulta && this.puedeConsultar) this.handleLoadDataSuccess(response); },
+      error: error => { if (version === this.versionConsulta && this.puedeConsultar) this.handleLoadDataError(error); }
     });
   }
 
   private async buildEndpoint(): Promise<string | null> {
-    const roleType = this.permissionsService.getEndpointForRole(this.userRoles);
+    const roleType = this.permissionsService.contextoConsulta(this.perfilActual);
+    if (!roleType) return null;
 
     try {
       switch (roleType) {
-        case 'estudiante':
+        case 'propio':
           const codigo = await this.userService.getCodigoEstudiante();
-          return `semaforo/estudiante/${codigo}`;
+          return `semaforo/estudiante/${encodeURIComponent(codigo)}`;
 
-        case 'asis_proyecto':
+        case 'programas-asignados':
           const cedulaAsisProyecto = await this.userService.getUserDocument();
-          return `semaforo/asistente_proyecto/${cedulaAsisProyecto}`;
+          return `semaforo/asistente_proyecto/${encodeURIComponent(cedulaAsisProyecto)}`;
 
-        case 'coordinador':
+        case 'programa-coordinado':
           const idCoordinador = await this.userService.getUserDocument();
-          return `semaforo/proyecto/${idCoordinador}`;
+          return `semaforo/proyecto/${encodeURIComponent(idCoordinador)}`;
 
-        case 'secretario':
+        case 'facultad':
           const idSecretario = await this.userService.getUserDocument();
-          return `semaforo/facultad/${idSecretario}`;
+          return `semaforo/facultad/${encodeURIComponent(idSecretario)}`;
 
         case 'laboratorios':
           const idJefe = await this.userService.getUserDocument();
-          return `semaforo/laboratorios/${idJefe}`;
+          return `semaforo/laboratorios/${encodeURIComponent(idJefe)}`;
 
-        default:
+        case 'global':
           return 'semaforo';
       }
     } catch (error) {
@@ -292,9 +332,7 @@ export class SemaforoComponent implements OnInit, OnDestroy {
   private handleLoadDataSuccess(response: ApiResponse<SemaforosData>) {
     const responseData = response.Data;
 
-    if (this.userRoles.includes('CONTRATISTA') || 
-        this.userRoles.includes('ASIS_PROYECTO') || 
-        this.userRoles.includes('COORDINADOR')) {
+    if (this.permissionsService.consultaPorProyectos(this.userRoles)) {
       const proyectosData = this.dataMapperService.procesarProyectosAsignados(responseData);
       this.esAsistente = proyectosData.esAsistente;
       this.proyectosAsignados = proyectosData.proyectosAsignados;
@@ -325,9 +363,7 @@ export class SemaforoComponent implements OnInit, OnDestroy {
   private handleLoadDataError(error: ApiResponse<SemaforosData | null>) {
     if (error.Status === 404) {
       // Para contratistas, asistentes de proyecto y coordinadores
-      if (error.Data && (this.userRoles.includes('CONTRATISTA') ||
-                          this.userRoles.includes('ASIS_PROYECTO') || 
-                          this.userRoles.includes('COORDINADOR'))) {
+      if (error.Data && this.permissionsService.consultaPorProyectos(this.userRoles)) {
         const proyectosData = this.dataMapperService.procesarProyectosAsignados(error.Data);
         this.esAsistente = proyectosData.esAsistente;
         this.proyectosAsignados = proyectosData.proyectosAsignados;
@@ -361,9 +397,7 @@ export class SemaforoComponent implements OnInit, OnDestroy {
         );
       });
     } else {
-      const textKey = (this.userRoles.includes('CONTRATISTA') || 
-                       this.userRoles.includes('ASIS_PROYECTO') || 
-                       this.userRoles.includes('COORDINADOR'))
+      const textKey = this.permissionsService.consultaPorProyectos(this.userRoles)
         ? 'SEMAFORO.sin_estudiantes_proyectos'
         : 'SEMAFORO.sin_estudiantes_activos';
 
@@ -379,15 +413,27 @@ export class SemaforoComponent implements OnInit, OnDestroy {
   // ============ EVENTOS DE SUB-COMPONENTES ============
 
   onRefreshClick(): void {
+    if (!this.permisos.permite('paz_salvos_recargar', 'Botón', this.perfilActual)) return;
     this.currentPage = 0;
     this.loadData();
   }
 
   onFiltersChange(newFilters: SemaforoFilters): void {
-    this.filters = newFilters;
+    this.filters = this.filtrosPermitidos(newFilters);
+  }
+
+  private filtrosPermitidos(filtros: SemaforoFilters): SemaforoFilters {
+    return {
+      codigoEstudiante: this.permissionsService.canUseCodigoFilter(this.userRoles) ? filtros.codigoEstudiante : '',
+      idFacultad: this.permissionsService.canUseFacultadFilter(this.userRoles) ? filtros.idFacultad : null,
+      idProyecto: this.permissionsService.canUseProyectoFilter(this.userRoles) ? filtros.idProyecto : null,
+      anioInsGrado: this.permissionsService.canUseAnioFilter(this.userRoles) ? filtros.anioInsGrado : null,
+      perInsGrado: this.permissionsService.canUsePeriodoFilter(this.userRoles) ? filtros.perInsGrado : null
+    };
   }
 
   onFacultadChange(facultadId: number | null): void {
+    if (!this.permissionsService.canUseFacultadFilter(this.userRoles)) return;
     this.proyectos = [];
     if (facultadId) {
       this.loadProyectosByFacultad(facultadId);
@@ -395,11 +441,13 @@ export class SemaforoComponent implements OnInit, OnDestroy {
   }
 
   onSearchFilters(): void {
+    if (!this.permisos.permite('paz_salvos_buscar', 'Botón', this.perfilActual)) return;
     this.currentPage = 0;
     this.loadData();
   }
 
   onClearFilters(): void {
+    if (!this.permisos.permite('paz_salvos_limpiar_filtros', 'Botón', this.perfilActual)) return;
     this.filters = this.dataMapperService.createEmptyFilters();
     this.proyectos = [];
     this.currentPage = 0;
@@ -421,27 +469,32 @@ export class SemaforoComponent implements OnInit, OnDestroy {
   // ============ PAGINACIÓN ============
 
   onPageSizeChange(newSize: number): void {
-    this.pageSize = newSize;
+    if (!this.permisos.permite('paz_salvos_paginar', 'Botón', this.perfilActual) || ![10, 20, 50, 100].includes(Number(newSize))) return;
+    this.pageSize = Number(newSize);
     this.currentPage = 0;
     this.loadData();
   }
 
   onFirstPage(): void {
+    if (!this.permisos.permite('paz_salvos_paginar', 'Botón', this.perfilActual)) return;
     this.currentPage = 0;
     this.loadData();
   }
 
   onPreviousPage(): void {
+    if (!this.permisos.permite('paz_salvos_paginar', 'Botón', this.perfilActual) || this.currentPage <= 0) return;
     this.currentPage--;
     this.loadData();
   }
 
   onNextPage(): void {
+    if (!this.permisos.permite('paz_salvos_paginar', 'Botón', this.perfilActual) || this.currentPage >= Math.ceil(this.totalRecords / this.pageSize) - 1) return;
     this.currentPage++;
     this.loadData();
   }
 
   onLastPage(): void {
+    if (!this.permisos.permite('paz_salvos_paginar', 'Botón', this.perfilActual) || !this.totalRecords) return;
     this.currentPage = Math.ceil(this.totalRecords / this.pageSize) - 1;
     this.loadData();
   }
@@ -449,7 +502,7 @@ export class SemaforoComponent implements OnInit, OnDestroy {
   // ============ GUARDADO DE CAMBIOS ============
 
   private saveRow(row: SemaforoRow, changedField?: string) {
-    if (this.loading) return;
+    if (this.loading || !this.puedeConsultar || !changedField || !this.permissionsService.canEditColumn(changedField, row, this.userRoles)) return;
 
     this.loading = true;
     this.translate.get('SEMAFORO.guardando_cambios').subscribe(translation => {
@@ -457,10 +510,10 @@ export class SemaforoComponent implements OnInit, OnDestroy {
     });
 
     const payload = this.dataMapperService.createPatchPayload(row, changedField);
-
-    this.semaforoService.patch('semaforo', row.Id, payload).subscribe({
-      next: response => this.handleSaveSuccess(response, row.Id, changedField),
-      error: error => this.handleSaveError(error, row.Id)
+    const version = this.versionConsulta;
+    this.actualizacion = this.semaforoService.patch('semaforo', row.Id, payload).subscribe({
+      next: response => { if (version === this.versionConsulta && this.puedeConsultar) this.handleSaveSuccess(response, row.Id, changedField); },
+      error: error => { if (version === this.versionConsulta && this.puedeConsultar) this.handleSaveError(error, row.Id); }
     });
   }
 
@@ -479,6 +532,7 @@ export class SemaforoComponent implements OnInit, OnDestroy {
   }
 
   private handleSaveError(error: ApiResponse<unknown>, rowId: number) {
+    const version = this.versionConsulta;
     this.alertService.closeLoading();
     this.loading = false;
 
@@ -488,20 +542,23 @@ export class SemaforoComponent implements OnInit, OnDestroy {
         this.alertService.showAlert(
           translations['SEMAFORO.conflicto_estado'],
           errorMessage + '. ' + translations['SEMAFORO.refrescando_datos']
-        ).then(() => this.loadData());
+        ).then(() => { if (version === this.versionConsulta) this.loadData(); });
       });
     } else {
       this.translate.get(['GLOBAL.error', 'SEMAFORO.error_guardar']).subscribe(translations => {
         this.alertService.showAlert(translations['GLOBAL.error'], translations['SEMAFORO.error_guardar']).then(() => {
-          this.refreshRow(rowId);
+          if (version === this.versionConsulta) this.refreshRow(rowId);
         });
       });
     }
   }
 
   private refreshRow(rowId: number): void {
+    if (!this.puedeConsultar) return;
+    const version = this.versionConsulta;
     this.semaforoService.get<SemaforoRecord>(`semaforo/${rowId}`).subscribe({
       next: response => {
+        if (version !== this.versionConsulta || !this.puedeConsultar) return;
         if (response?.Data && this.gridComponent) {
           const updatedRow = this.dataMapperService.mapResponseToRowData([response.Data])[0];
           this.gridComponent.updateRowData(rowId, updatedRow);
@@ -514,9 +571,11 @@ export class SemaforoComponent implements OnInit, OnDestroy {
   // ============ CATÁLOGOS ============
 
   private async loadFacultades() {
+    const version = this.versionInicio;
     this.loadingFacultades = true;
     this.oikosService.getFacultades().subscribe({
       next: (response: any) => {
+        if (this.destruido || version !== this.versionInicio) return;
         const data = response.Data || response;
         if (Array.isArray(data)) {
           const facultadesData = data
@@ -535,9 +594,11 @@ export class SemaforoComponent implements OnInit, OnDestroy {
   }
 
   private loadProyectosByFacultad(idFacultad: number) {
+    const version = this.versionInicio;
     this.loadingProyectos = true;
     this.oikosService.getProyectosByFacultad(idFacultad).subscribe({
       next: (response: any) => {
+        if (this.destruido || version !== this.versionInicio) return;
         const data = response.Data || response;
         if (Array.isArray(data)) {
           const proyectosData = data

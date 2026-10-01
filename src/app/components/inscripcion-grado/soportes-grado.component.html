@@ -1,0 +1,41 @@
+<section aria-labelledby="titulo-soportes" [attr.aria-busy]="cargando || !!subiendo">
+  <h3 id="titulo-soportes">{{ 'INSCRIPCION_GRADO.soportes.titulo' | translate }}</h3>
+  <p *ngIf="!borrador?.Formulario?.FechaRadicacion">{{ 'INSCRIPCION_GRADO.soportes.descripcion' | translate }}</p>
+  <p *ngIf="!borrador" role="status">{{ 'INSCRIPCION_GRADO.soportes.guardar_primero' | translate }}</p>
+  <p *ngIf="borrador && !habilitado && !subiendo" role="status">{{ 'INSCRIPCION_GRADO.soportes.solo_consulta' | translate }}</p>
+  <mat-progress-bar *ngIf="cargando || subiendo" mode="indeterminate" [attr.aria-label]="'INSCRIPCION_GRADO.soportes.procesando' | translate"></mat-progress-bar>
+  <div *ngIf="errorConsulta" role="alert"><p>{{ errorConsulta }}</p></div>
+  <div class="soportes" *appOpcion="'grado_consultar_soportes'">
+    <mat-card *ngFor="let doc of documentos">
+      <mat-card-header><mat-card-title>{{ doc.tituloKey | translate }}</mat-card-title></mat-card-header>
+      <mat-card-content>
+        <p>{{ doc.descripcionKey | translate }}</p>
+        <p *ngIf="doc.soporte" class="archivo">{{ doc.soporte.Nombre }} <span>· {{ (borrador?.Formulario?.FechaRadicacion ? 'INSCRIPCION_GRADO.soportes.radicado' : 'INSCRIPCION_GRADO.soportes.provisional') | translate }}</span></p>
+        <p *ngIf="!doc.soporte && consultaCorrecta">{{ 'INSCRIPCION_GRADO.soportes.pendiente' | translate }}</p>
+        <p *ngIf="subiendo === doc.codigo" role="status">{{ 'INSCRIPCION_GRADO.soportes.cargando' | translate }}</p>
+        <p *ngIf="descargando === doc.codigo" role="status">{{ 'INSCRIPCION_GRADO.soportes.recuperando' | translate }}</p>
+        <p *ngIf="doc.error" role="alert">{{ doc.error }}</p>
+        <p *ngIf="doc.mensaje" role="status">{{ doc.mensaje }}</p>
+      </mat-card-content>
+      <mat-card-actions>
+        <ng-container *ngIf="!borrador?.Formulario?.FechaRadicacion">
+          <input #archivo type="file" accept="application/pdf,.pdf" hidden [disabled]="!puedeCargarDocumento(doc)" (change)="subir(doc, archivo)">
+          <button *appOpcion="opcionCarga(doc)" mat-stroked-button type="button" (click)="archivo.click()" [disabled]="!puedeCargarDocumento(doc)"
+            [attr.aria-label]="(doc.soporte ? 'INSCRIPCION_GRADO.soportes.aria_reemplazar' : 'INSCRIPCION_GRADO.soportes.aria_cargar') | translate:{ soporte: (doc.tituloKey | translate) }">
+            {{ (doc.soporte ? 'INSCRIPCION_GRADO.soportes.reemplazar_pdf' : 'INSCRIPCION_GRADO.soportes.cargar_pdf') | translate }}
+          </button>
+        </ng-container>
+        <ng-container *ngIf="doc.soporte"><button *appOpcion="'grado_ver_soporte'" mat-button type="button" (click)="ver(doc)" [disabled]="!!descargando || !!subiendo"
+          [attr.aria-label]="'INSCRIPCION_GRADO.soportes.aria_ver' | translate:{ soporte: (doc.tituloKey | translate) }">{{ 'INSCRIPCION_GRADO.soportes.ver_pdf' | translate }}</button></ng-container>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+</section>
+<ng-template #visorPDF let-data>
+  <h2 mat-dialog-title>{{ data.nombre }}</h2>
+  <mat-dialog-content><iframe [src]="data.url" [title]="'INSCRIPCION_GRADO.soportes.vista_previa' | translate"></iframe></mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <a *appOpcion="'grado_descargar_soporte'" mat-button [href]="data.enlace" [download]="data.nombre" (click)="descargar($event)">{{ 'INSCRIPCION_GRADO.soportes.descargar_pdf' | translate }}</a>
+    <button mat-button mat-dialog-close type="button">{{ 'GLOBAL.cerrar' | translate }}</button>
+  </mat-dialog-actions>
+</ng-template>

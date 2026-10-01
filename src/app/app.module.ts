@@ -28,10 +28,14 @@ import { HttpClientModule, HttpClient } from '@angular/common/http';
 import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
 import { TranslateHttpLoader } from '@ngx-translate/http-loader';
 import { environment } from '../environments/environment';
+import { OpcionDirective } from './directives/opcion.directive';
+import { EstadoPermisosComponent } from './components/permisos/estado-permisos.component';
 
 // Función para crear el loader de traducciones
 export function createTranslateLoader(http: HttpClient) {
-  return new TranslateHttpLoader(http, environment.apiUrl + 'assets/i18n/', '.json');
+  const local = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+  const baseUrl = local ? `${window.location.origin}/` : environment.apiUrl;
+  return new TranslateHttpLoader(http, baseUrl + 'assets/i18n/', `.json?v=${Date.now()}`);
 }
 
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -47,6 +51,8 @@ ModuleRegistry.registerModules([AllCommunityModule]);
   imports: [
     BrowserModule,
     CommonModule,
+    OpcionDirective,
+    EstadoPermisosComponent,
     BrowserAnimationsModule,
     AppRoutingModule,
     AgGridModule,

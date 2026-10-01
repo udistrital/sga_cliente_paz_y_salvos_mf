@@ -13,6 +13,7 @@
           type="button"
           class="role-card"
           [class.selected]="selectedRole === role"
+          [disabled]="!puedeSeleccionar(role)"
           (click)="onRoleSelect(role)"
           [attr.aria-label]="'Seleccionar rol ' + getRoleDisplayName(role)">
           <div class="role-card-content">

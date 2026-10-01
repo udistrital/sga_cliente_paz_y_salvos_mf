@@ -1,6 +1,7 @@
 import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
 import { SemaforoFilters, CatalogoOption } from '../../../../models/semaforo-filters.model';
 import { SemaforoPermissionsService } from '../../../../services/semaforo-permissions.service';
+import { PermisosService } from '../../../../services/permisos.service';
 
 /**
  * Componente de filtros para la tabla del semáforo
@@ -25,7 +26,8 @@ export class SemaforoFiltersComponent implements OnInit {
   @Output() search = new EventEmitter<void>();
   @Output() clear = new EventEmitter<void>();
 
-  constructor(private permissionsService: SemaforoPermissionsService) {}
+  constructor(private permissionsService: SemaforoPermissionsService, public permisos: PermisosService) {}
+  get perfil(): string { return this.userRoles.length === 1 ? this.userRoles[0] : ''; }
 
   ngOnInit(): void {
     if (!this.filters) {
@@ -60,6 +62,7 @@ export class SemaforoFiltersComponent implements OnInit {
   }
 
   onFacultadChange(facultadId: number | null): void {
+    if (!this.canUseFacultadFilter) return;
     this.filters.idFacultad = facultadId;
     this.filters.idProyecto = null; // Limpiar proyecto al cambiar facultad
     this.facultadChange.emit(facultadId);
@@ -70,10 +73,12 @@ export class SemaforoFiltersComponent implements OnInit {
   }
 
   onSearch(): void {
+    if (!this.permisos.permite('paz_salvos_buscar', 'Botón', this.perfil)) return;
     this.search.emit();
   }
 
   onClear(): void {
+    if (!this.permisos.permite('paz_salvos_limpiar_filtros', 'Botón', this.perfil)) return;
     this.clear.emit();
   }
 }

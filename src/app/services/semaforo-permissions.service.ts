@@ -1,145 +1,78 @@
 import { Injectable } from '@angular/core';
 import { SemaforoRow } from '../models/semaforo-row';
+import { PermisosService } from './permisos.service';
 
-/**
- * Servicio centralizado para la gestión de permisos del semáforo
- * Maneja todas las validaciones de roles y restricciones de edición
- */
-@Injectable({
-  providedIn: 'root'
-})
+export type ContextoSemaforo = 'propio' | 'programas-asignados' | 'programa-coordinado' | 'facultad' | 'laboratorios' | 'global';
+
+const CONTEXTOS: Record<ContextoSemaforo, string> = {
+  propio: 'paz_salvos_consultar_propios',
+  'programas-asignados': 'paz_salvos_consultar_programas_asignados',
+  'programa-coordinado': 'paz_salvos_consultar_programa_coordinado',
+  facultad: 'paz_salvos_consultar_facultad_asignada',
+  laboratorios: 'paz_salvos_consultar_laboratorios',
+  global: 'paz_salvos_consultar_global'
+};
+
+const CAMPOS: Record<string, string> = {
+  Academico: 'paz_salvos_legacy_cambiar_academico',
+  ObservacionCoordinacion: 'paz_salvos_legacy_observar_coordinacion',
+  Financiero: 'paz_salvos_legacy_cambiar_financiero',
+  ObservacionFinanciera: 'paz_salvos_legacy_observar_financiero',
+  Biblioteca: 'paz_salvos_legacy_cambiar_biblioteca',
+  ObservacionBiblioteca: 'paz_salvos_legacy_observar_biblioteca',
+  Laboratorios: 'paz_salvos_legacy_cambiar_laboratorios',
+  ObservacionLaboratorios: 'paz_salvos_legacy_observar_laboratorios',
+  Bienestar: 'paz_salvos_legacy_cambiar_bienestar',
+  ObservacionBienestar: 'paz_salvos_legacy_observar_bienestar',
+  Urelinter: 'paz_salvos_legacy_cambiar_urelinter',
+  ObservacionUrelinter: 'paz_salvos_legacy_observar_urelinter',
+  Orc: 'paz_salvos_legacy_cambiar_orc',
+  ObservacionOrc: 'paz_salvos_legacy_observar_orc'
+};
+
+@Injectable({ providedIn: 'root' })
 export class SemaforoPermissionsService {
-  
-  constructor() {}
+  constructor(private permisos: PermisosService) {}
 
-  /**
-   * Verifica si el usuario puede usar el filtro de código de estudiante
-   * Todos excepto ESTUDIANTE
-   */
-  canUseCodigoFilter(userRoles: string[]): boolean {
-    return !userRoles.includes('ESTUDIANTE');
+  private perfil(roles: string[]): string { return roles.length === 1 ? roles[0] : ''; }
+  private filtro(nombre: string, roles: string[]): boolean {
+    return this.permisos.permite(`paz_salvos_filtrar_${nombre}`, 'Acción', this.perfil(roles));
+  }
+  canUseCodigoFilter(roles: string[]): boolean { return this.filtro('codigo', roles); }
+  canUseFacultadFilter(roles: string[]): boolean { return this.filtro('facultad', roles); }
+  canUseProyectoFilter(roles: string[]): boolean { return this.filtro('proyecto', roles); }
+  canUseAnioFilter(roles: string[]): boolean { return this.filtro('anio', roles); }
+  canUsePeriodoFilter(roles: string[]): boolean { return this.filtro('periodo', roles); }
+
+  canEditColumn(field: string, row: SemaforoRow, roles: string[]): boolean {
+    const opcion = CAMPOS[field];
+    if (!opcion || !this.permisos.permite(opcion, 'Acción', this.perfil(roles))) return false;
+    return row.Orc === null || field === 'Orc' || field === 'ObservacionOrc';
   }
 
-  /**
-   * Verifica si el usuario puede usar el filtro de facultad
-   * Solo roles globales: BIBLIOTECA, ADMIN_BIENESTAR, URELINTER, ADMISIONES_REG, ASIS_FINANCIERA
-   */
-  canUseFacultadFilter(userRoles: string[]): boolean {
-    return userRoles.includes('BIBLIOTECA') ||
-           userRoles.includes('ADMIN_BIENESTAR') ||
-           userRoles.includes('URELINTER') ||
-           userRoles.includes('ADMISIONES_REG') ||
-           userRoles.includes('ASIS_FINANCIERA');
+  canEditColumnIfOrcNull(field: string, row: SemaforoRow, roles: string[]): boolean {
+    return this.canEditColumn(field, { ...row, Orc: null }, roles);
   }
 
-  /**
-   * Verifica si el usuario puede usar el filtro de proyecto
-   * CONTRATISTA, ASIS_PROYECTO y COORDINADOR pueden filtrar por proyecto
-   * Otros roles excepto ESTUDIANTE también pueden
-   */
-  canUseProyectoFilter(userRoles: string[]): boolean {
-    if (userRoles.includes('CONTRATISTA') || userRoles.includes('ASIS_PROYECTO') || userRoles.includes('COORDINADOR')) return true;
-    return !userRoles.includes('ESTUDIANTE');
-  }
-
-  /**
-   * Verifica si el usuario puede usar el filtro de año
-   * Todos excepto ESTUDIANTE
-   */
-  canUseAnioFilter(userRoles: string[]): boolean {
-    return !userRoles.includes('ESTUDIANTE');
-  }
-
-  /**
-   * Verifica si el usuario puede usar el filtro de periodo
-   * Todos excepto ESTUDIANTE
-   */
-  canUsePeriodoFilter(userRoles: string[]): boolean {
-    return !userRoles.includes('ESTUDIANTE');
-  }
-
-  /**
-   * Verifica si el usuario puede editar una columna específica
-   * Considera el estado de ORC y los roles del usuario
-   */
-  canEditColumn(colField: string, rowData: SemaforoRow, userRoles: string[]): boolean {
-    // ADMISIONES_REG siempre puede editar ObservacionOrc
-    if (userRoles.includes('ADMISIONES_REG') && colField === 'ObservacionOrc') {
-      return true;
-    }
-
-    // Si Orc NO es null (es true o false), solo ADMISIONES_REG puede editar Orc y ObservacionOrc
-    if (rowData.Orc !== null) {
-      return (
-        userRoles.includes('ADMISIONES_REG') &&
-        (colField === 'Orc' || colField === 'ObservacionOrc')
-      );
-    }
-
-    // Permisos por rol
-    if (userRoles.includes('CONTRATISTA') || userRoles.includes('ASIS_PROYECTO')) {
-      return colField === 'Academico' || colField === 'ObservacionCoordinacion';
-    }
-    if (userRoles.includes('COORDINADOR')) {
-      return colField === 'Academico' || colField === 'ObservacionCoordinacion';
-    }
-    if (userRoles.includes('ASIS_FINANCIERA')) {
-      return colField === 'Financiero' || colField === 'ObservacionFinanciera';
-    }
-    if (userRoles.includes('BIBLIOTECA')) {
-      return colField === 'Biblioteca' || colField === 'ObservacionBiblioteca';
-    }
-    if (userRoles.includes('LABORATORIOS')) {
-      return colField === 'Laboratorios' || colField === 'ObservacionLaboratorios';
-    }
-    if (userRoles.includes('ADMIN_BIENESTAR')) {
-      return colField === 'Bienestar' || colField === 'ObservacionBienestar';
-    }
-    if (userRoles.includes('URELINTER')) {
-      return colField === 'Urelinter' || colField === 'ObservacionUrelinter';
-    }
-    
-    // ESTUDIANTE Y SECRETARIOS solo consulta
-    return false;
-  }
-
-  /**
-   * Verifica si el campo pertenece al usuario ignorando el estado de ORC
-   * Útil para determinar si el usuario tiene permiso sobre el campo en general
-   */
-  canEditColumnIfOrcNull(colField: string, rowData: SemaforoRow, userRoles: string[]): boolean {
-    const tempRow = { ...rowData, Orc: null };
-    return this.canEditColumn(colField, tempRow, userRoles);
-  }
-
-  /**
-   * Verifica si todas las dependencias están en estado aprobado (true)
-   * Necesario para validar si ORC puede aprobar
-   */
   allDependenciesCleared(row: SemaforoRow, booleanFields: string[]): boolean {
-    return booleanFields
-      .filter(f => f !== 'Orc')
-      .every(f => !!(row as any)[f]);
+    return booleanFields.filter(f => f !== 'Orc').every(f => !!row[f as keyof SemaforoRow]);
   }
 
-  /**
-   * Determina el endpoint a usar según el rol del usuario
-   */
-  getEndpointForRole(userRoles: string[]): 'estudiante' | 'coordinador' | 'secretario' | 'laboratorios' |  'asis_proyecto' | 'global' {
-    if (userRoles.includes('ESTUDIANTE')) return 'estudiante';
-    if (userRoles.includes('CONTRATISTA')) return 'asis_proyecto';
-    if (userRoles.includes('ASIS_PROYECTO')) return 'asis_proyecto';
-    if (userRoles.includes('COORDINADOR')) return 'coordinador';
-    if (userRoles.includes('SECRETARIA_ACADEMICA')) return 'secretario';
-    if (userRoles.includes('LABORATORIOS')) return 'laboratorios';
-    return 'global';
+  contextoConsulta(perfil: string): ContextoSemaforo | null {
+    if (!this.permisos.permite('semaforo_paz_salvos', 'Menú', perfil) ||
+      !this.permisos.permite('paz_salvos_consultar_semaforo', 'Botón', perfil)) return null;
+    const encontrados = (Object.keys(CONTEXTOS) as ContextoSemaforo[])
+      .filter(c => this.permisos.permite(CONTEXTOS[c], 'Acción', perfil));
+    return encontrados.length === 1 ? encontrados[0] : null;
   }
 
-  /**
-   * Verifica si el rol necesita cargar proyectos desde la facultad
-   */
-  shouldLoadProyectosFromFacultad(userRoles: string[]): boolean {
-    return userRoles.includes('SECRETARIA_ACADEMICA') ||
-           userRoles.includes('LABORATORIOS');
+  consultaPorProyectos(roles: string[]): boolean {
+    const contexto = this.contextoConsulta(this.perfil(roles));
+    return contexto === 'programas-asignados' || contexto === 'programa-coordinado';
+  }
+
+  shouldLoadProyectosFromFacultad(roles: string[]): boolean {
+    const contexto = this.contextoConsulta(this.perfil(roles));
+    return contexto === 'facultad' || contexto === 'laboratorios';
   }
 }

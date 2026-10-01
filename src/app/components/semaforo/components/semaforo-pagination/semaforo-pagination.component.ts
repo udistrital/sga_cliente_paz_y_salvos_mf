@@ -1,4 +1,5 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { PermisosService } from '../../../../services/permisos.service';
 
 /**
  * Componente de paginación para la tabla del semáforo
@@ -10,6 +11,8 @@ import { Component, Input, Output, EventEmitter } from '@angular/core';
   styleUrls: ['./semaforo-pagination.component.scss']
 })
 export class SemaforoPaginationComponent {
+  @Input() perfil = '';
+  constructor(public permisos: PermisosService) {}
   @Input() currentPage: number = 0;
   @Input() pageSize: number = 20;
   @Input() totalRecords: number = 0;
@@ -36,14 +39,15 @@ export class SemaforoPaginationComponent {
   }
 
   get canGoPrevious(): boolean {
-    return this.currentPage > 0 && !this.loading;
+    return this.permisos.permite('paz_salvos_paginar', 'Botón', this.perfil) && this.currentPage > 0 && !this.loading;
   }
 
   get canGoNext(): boolean {
-    return this.currentPage < this.totalPages - 1 && !this.loading;
+    return this.permisos.permite('paz_salvos_paginar', 'Botón', this.perfil) && this.currentPage < this.totalPages - 1 && !this.loading;
   }
 
   onPageSizeChange(newSize: number): void {
+    if (!this.permisos.permite('paz_salvos_paginar', 'Botón', this.perfil) || this.loading) return;
     this.pageSizeChange.emit(newSize);
   }
 
