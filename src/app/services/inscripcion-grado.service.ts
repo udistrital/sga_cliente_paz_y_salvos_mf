@@ -189,8 +189,8 @@ export class InscripcionGradoService {
     }));
   }
 
-  directores(): Observable<DirectorGrado[]> {
-    return this.mid<DirectorGrado[]>('get', 'solicitud-grado/directores').pipe(map(datos => {
+  directores(terceroId: number): Observable<DirectorGrado[]> {
+    return this.mid<DirectorGrado[]>('get', `solicitud-grado/directores?tercero_id=${terceroId}`).pipe(map(datos => {
       if (!Array.isArray(datos) || datos.some(d => !d || !/^[1-9][0-9]{0,37}$/.test(d.DIR_NRO_IDEN) ||
         !d.DIR_NOMBRE?.trim() || !d.DIR_APELLIDO?.trim() || d.DIR_ESTADO !== 'A') ||
         new Set(datos.map(d => d.DIR_NRO_IDEN)).size !== datos.length) {
@@ -200,8 +200,8 @@ export class InscripcionGradoService {
     }));
   }
 
-  modalidades(): Observable<ModalidadGrado[]> {
-    return this.mid<ModalidadGrado[]>('get', 'solicitud-grado/modalidades').pipe(map(datos => {
+  modalidades(terceroId: number): Observable<ModalidadGrado[]> {
+    return this.mid<ModalidadGrado[]>('get', `solicitud-grado/modalidades?tercero_id=${terceroId}`).pipe(map(datos => {
       if (!Array.isArray(datos) || datos.some(m => !m || !Number.isSafeInteger(m.AMG_COD) || m.AMG_COD <= 0 ||
         !m.AMG_NOMBRE?.trim() || !m.AMG_ABREVIATURA?.trim() || m.AMG_ESTADO !== 'A') ||
         new Set(datos.map(m => m.AMG_COD)).size !== datos.length) {
@@ -254,30 +254,30 @@ export class InscripcionGradoService {
     }));
   }
 
-  consultarBorrador(periodoId: number, programaId: number): Observable<BorradorGrado | null> {
-    return this.mid<BorradorGrado>('get',
-      `solicitud-grado/borrador?periodo_id=${periodoId}&programa_id=${programaId}`).pipe(
+  consultarBorrador(terceroId: number, periodoId: number, programaId: number): Observable<BorradorGrado | null> {
+	return this.mid<BorradorGrado>('get',
+	  `solicitud-grado/borrador?tercero_id=${terceroId}&periodo_id=${periodoId}&programa_id=${programaId}`).pipe(
       reintentarLectura(),
       catchError(error => Number(error?.error?.Status ?? error?.Status ?? error?.status) === 404 ? of(null) : throwError(() => error))
     );
   }
 
-  crearBorrador(periodoId: number, programaId: number, contenido: object): Observable<BorradorGrado> {
-    return this.mid<BorradorGrado>('post', 'solicitud-grado/borrador', {
-      PeriodoId: periodoId, ProgramaAcademicoId: programaId, Contenido: contenido
-    });
+  crearBorrador(terceroId: number, periodoId: number, programaId: number, contenido: object): Observable<BorradorGrado> {
+	return this.mid<BorradorGrado>('post', 'solicitud-grado/borrador', {
+	  TerceroId: terceroId, PeriodoId: periodoId, ProgramaAcademicoId: programaId, Contenido: contenido
+	});
   }
 
-  guardarBorrador(id: number, contenido: object): Observable<BorradorGrado> {
-    return this.mid<BorradorGrado>('put', `solicitud-grado/borrador/${id}`, { Contenido: contenido });
+  guardarBorrador(id: number, terceroId: number, contenido: object): Observable<BorradorGrado> {
+	return this.mid<BorradorGrado>('put', `solicitud-grado/borrador/${id}`, { TerceroId: terceroId, Contenido: contenido });
   }
 
-  radicar(id: number, formularioId: number, contenido: object): Observable<BorradorGrado> {
-    return this.mid<BorradorGrado>('post', `solicitud-grado/borrador/${id}/radicar`, { FormularioId: formularioId, Contenido: contenido });
+  radicar(id: number, terceroId: number, formularioId: number, contenido: object): Observable<BorradorGrado> {
+	return this.mid<BorradorGrado>('post', `solicitud-grado/borrador/${id}/radicar`, { TerceroId: terceroId, FormularioId: formularioId, Contenido: contenido });
   }
 
-  soportes(id: number, formularioId: number): Observable<SoporteGrado[]> {
-    return this.mid<SoporteGrado[]>('get', `solicitud-grado/borrador/${id}/soportes`).pipe(map(datos => {
+  soportes(id: number, terceroId: number, formularioId: number): Observable<SoporteGrado[]> {
+	return this.mid<SoporteGrado[]>('get', `solicitud-grado/borrador/${id}/soportes?tercero_id=${terceroId}`).pipe(map(datos => {
       if (!Array.isArray(datos) || datos.length > 4 || new Set(datos.map(s => s?.TipoSoporte)).size !== datos.length ||
         datos.some(s => !s || s.FormularioId !== formularioId || !s.Nombre || !s.Id || !s.DocumentoId ||
           !['TSG_ACTA_SUST', 'TSG_RESULTADO_SABER', 'TSG_PAGO_DERECHOS', 'TSG_TITULO_PREVIO'].includes(s.TipoSoporte))) {
@@ -287,10 +287,10 @@ export class InscripcionGradoService {
     }), reintentarLectura());
   }
 
-  subirSoporte(id: number, formularioId: number, tipo: TipoSoporteGrado, actual: number, archivo: File): Observable<SoporteGrado> {
+  subirSoporte(id: number, terceroId: number, formularioId: number, tipo: TipoSoporteGrado, actual: number, archivo: File): Observable<SoporteGrado> {
     return defer(() => pdfGradoBase64(archivo)).pipe(switchMap(base64 =>
       this.mid<SoporteGrado>('put', `solicitud-grado/borrador/${id}/soportes/${tipo}`, {
-        FormularioId: formularioId, SoporteActualId: actual, Nombre: archivo.name, MimeType: 'application/pdf', Archivo: base64
+		TerceroId: terceroId, FormularioId: formularioId, SoporteActualId: actual, Nombre: archivo.name, MimeType: 'application/pdf', Archivo: base64
       })), map(soporte => {
       if (!soporte?.Id || !soporte.DocumentoId || soporte.FormularioId !== formularioId || soporte.TipoSoporte !== tipo) {
         throw new Error('No se pudo confirmar la asociación del PDF. Recarga los soportes.');
@@ -299,9 +299,9 @@ export class InscripcionGradoService {
     }));
   }
 
-  archivoSoporte(id: number, tipo: TipoSoporteGrado): Observable<{ nombre: string; blob: Blob }> {
-    return this.mid<{ Nombre: string; MimeType: string; Archivo: string }>('get',
-      `solicitud-grado/borrador/${id}/soportes/${tipo}`).pipe(map(datos => {
+  archivoSoporte(id: number, terceroId: number, tipo: TipoSoporteGrado): Observable<{ nombre: string; blob: Blob }> {
+	return this.mid<{ Nombre: string; MimeType: string; Archivo: string }>('get',
+	  `solicitud-grado/borrador/${id}/soportes/${tipo}?tercero_id=${terceroId}`).pipe(map(datos => {
       if (datos.MimeType !== 'application/pdf' || !datos.Nombre || typeof datos.Archivo !== 'string' || datos.Archivo.length > Math.ceil(MAX_PDF_GRADO / 3) * 4) {
         throw new Error('El archivo recuperado no es un PDF verificable.');
       }

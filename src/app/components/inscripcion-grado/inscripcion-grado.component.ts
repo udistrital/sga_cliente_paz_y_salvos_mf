@@ -196,7 +196,7 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
 
   cargarCatalogos(): void {
     this.consultaCatalogos?.unsubscribe();
-    if (!this.permisos.permite('grado_consultar_catalogos')) {
+	if (!this.terceroId || !this.permisos.permite('grado_consultar_catalogos')) {
       this.cargandoCatalogos = false;
       this.directores = [];
       this.modalidades = [];
@@ -205,7 +205,7 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
     }
     this.cargandoCatalogos = true;
     this.errorCatalogos = '';
-    this.consultaCatalogos = forkJoin({ directores: this.servicio.directores(), modalidades: this.servicio.modalidades() }).subscribe({
+	this.consultaCatalogos = forkJoin({ directores: this.servicio.directores(this.terceroId), modalidades: this.servicio.modalidades(this.terceroId) }).subscribe({
       next: datos => {
         this.directores = datos.directores;
         this.modalidades = datos.modalidades;
@@ -468,7 +468,8 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
         this.errorBorrador = this.tr('errores.programa_invalido');
         return;
       }
-      this.consultaBorrador = this.servicio.consultarBorrador(this.periodoId, this.programaId).subscribe({
+	  if (!this.terceroId) return;
+	  this.consultaBorrador = this.servicio.consultarBorrador(this.terceroId, this.periodoId, this.programaId).subscribe({
         next: borrador => {
           this.borrador = borrador;
           this.restaurarContenido(borrador?.Formulario?.Contenido || {});
@@ -495,7 +496,7 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   }
 
   async guardarBorrador(): Promise<void> {
-    if (!this.programaId || !this.periodoId || !this.puedeGuardarBorrador) return;
+    if (!this.terceroId || !this.programaId || !this.periodoId || !this.puedeGuardarBorrador) return;
     this.errorBorrador = this.mensajeBorrador = '';
     if (this.directoresRepetidos) {
       this.errorBorrador = this.tr('errores.directores_repetidos');
@@ -537,8 +538,8 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
     this.guardandoBorrador = true;
     this.alertas.showLoading(this.tr('progreso.guardando_borrador'));
     const operacion = this.borrador
-      ? this.servicio.guardarBorrador(this.borrador.Solicitud.Id, contenidoVigente)
-      : this.servicio.crearBorrador(this.periodoId, this.programaId, contenidoVigente);
+	  ? this.servicio.guardarBorrador(this.borrador.Solicitud.Id, this.terceroId, contenidoVigente)
+	  : this.servicio.crearBorrador(this.terceroId, this.periodoId, this.programaId, contenidoVigente);
     this.guardarActual = operacion.subscribe({
       next: borrador => {
         this.borrador = borrador;
@@ -567,7 +568,7 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   }
 
   async radicar(): Promise<void> {
-    if (!this.puedeRadicar || !this.borrador || !this.periodoId || !this.programaId) return;
+    if (!this.terceroId || !this.puedeRadicar || !this.borrador || !this.periodoId || !this.programaId) return;
     this.errorBorrador = this.mensajeBorrador = '';
     if (!this.camposRadicacionCompletos()) {
       this.errorBorrador = this.tr('errores.campos_radicacion');
@@ -581,7 +582,7 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
     this.radicando = true;
     let enviando = false;
     try {
-      const soportes = await firstValueFrom(this.servicio.soportes(contexto.solicitudId, contexto.formularioId));
+	  const soportes = await firstValueFrom(this.servicio.soportes(contexto.solicitudId, this.terceroId, contexto.formularioId));
       if (soportes.length !== 4 || new Set(soportes.map(s => s.TipoSoporte)).size !== 4) {
         this.errorBorrador = this.tr('errores.soportes_radicacion');
         return;
@@ -600,7 +601,7 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
       if (resultado.isConfirmed !== true || !vigente) return;
       this.alertas.showLoading(this.tr('progreso.radicando'));
       enviando = true;
-      const radicado = await firstValueFrom(this.servicio.radicar(contexto.solicitudId, contexto.formularioId, this.contenidoFormulario()));
+	  const radicado = await firstValueFrom(this.servicio.radicar(contexto.solicitudId, this.terceroId, contexto.formularioId, this.contenidoFormulario()));
       if (this.destruido || contexto.cargaVersion !== this.cargaVersion) return;
       this.borrador = radicado;
       this.restaurarContenido(radicado.Formulario.Contenido || {});

@@ -113,7 +113,7 @@ export class SoportesGradoComponent implements OnChanges, OnDestroy {
       return;
     }
     this.cargando = true;
-    this.consulta = this.servicio.soportes(this.borrador.Solicitud.Id, this.borrador.Formulario.Id).pipe(
+	this.consulta = this.servicio.soportes(this.borrador.Solicitud.Id, this.borrador.Solicitud.TerceroId, this.borrador.Formulario.Id).pipe(
       finalize(() => this.cargando = false)
     ).subscribe({
       next: soportes => {
@@ -186,7 +186,7 @@ export class SoportesGradoComponent implements OnChanges, OnDestroy {
     this.alertas.showLoading(this.translate.instant(documento.soporte
       ? 'INSCRIPCION_GRADO.progreso.reemplazando_soporte'
       : 'INSCRIPCION_GRADO.progreso.cargando_soporte'));
-    this.carga = this.servicio.subirSoporte(Solicitud.Id, Formulario.Id, documento.codigo, documento.soporte?.Id || 0, file).pipe(
+	this.carga = this.servicio.subirSoporte(Solicitud.Id, Solicitud.TerceroId, Formulario.Id, documento.codigo, documento.soporte?.Id || 0, file).pipe(
       finalize(() => { this.subiendo = null; this.ocupado.emit(false); })
     ).subscribe({
       next: soporte => {
@@ -210,7 +210,7 @@ export class SoportesGradoComponent implements OnChanges, OnDestroy {
       !this.borrador || !documento.soporte || this.descargando || this.subiendo) return;
     documento.error = '';
     this.descargando = documento.codigo;
-    this.descarga = this.servicio.archivoSoporte(this.borrador.Solicitud.Id, documento.codigo).pipe(
+	this.descarga = this.servicio.archivoSoporte(this.borrador.Solicitud.Id, this.borrador.Solicitud.TerceroId, documento.codigo).pipe(
       finalize(() => this.descargando = null)
     ).subscribe({
       next: archivo => {
