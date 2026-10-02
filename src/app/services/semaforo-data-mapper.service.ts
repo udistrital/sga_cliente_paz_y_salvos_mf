@@ -1,5 +1,12 @@
 import { Injectable } from '@angular/core';
-import { SemaforoRow, Semaforo } from '../models/semaforo-row';
+import { SemaforoRow } from '../models/semaforo-row';
+import {
+  SemaforoPatch,
+  SemaforoPatchField,
+  SemaforoRecord,
+  SemaforosData,
+  SemaforoTable
+} from '../models/semaforo-api';
 import { SemaforoFilters, SemaforoQueryParams, ProyectoAsignado, CatalogoOption } from '../models/semaforo-filters.model';
 
 /**
@@ -10,6 +17,23 @@ import { SemaforoFilters, SemaforoQueryParams, ProyectoAsignado, CatalogoOption 
   providedIn: 'root'
 })
 export class SemaforoDataMapperService {
+
+  private readonly patchFields: SemaforoPatchField[] = [
+    'Academico',
+    'Financiero',
+    'Biblioteca',
+    'Laboratorios',
+    'Bienestar',
+    'Urelinter',
+    'Orc',
+    'ObservacionCoordinacion',
+    'ObservacionBiblioteca',
+    'ObservacionLaboratorios',
+    'ObservacionBienestar',
+    'ObservacionUrelinter',
+    'ObservacionOrc',
+    'ObservacionFinanciera'
+  ];
 
   constructor() {}
 
@@ -44,20 +68,21 @@ export class SemaforoDataMapperService {
   /**
    * Mapea los datos de respuesta del backend al formato de la tabla
    */
-  mapResponseToRowData(data: any[]): SemaforoRow[] {
-    return data.map((item: any) => ({
+  mapResponseToRowData(data: Array<SemaforoTable | SemaforoRecord>): SemaforoRow[] {
+    return data.map(item => {
+      const source = item as Partial<SemaforoTable & SemaforoRecord>;
+      return {
       Id: item.Id,
       CodigoEstudiante: item.CodigoEstudiante,
-      NombreEstudiante: item.NombreEstudiante,
-      NombreFacultad: item.NombreFacultad,
-      NombreProyecto: item.NombreProyecto,
-      IdFacultadOikos: item.IdFacultadOikos || 0,
-      IdProyectoOikos: item.IdProyectoOikos || 0,
-      IdFacultadGedep: item.IdFacultadGedep || 0,
-      IdProyectoAccra: item.IdProyectoAccra || 0,
+      NombreEstudiante: source.NombreEstudiante || '',
+      NombreFacultad: source.NombreFacultad || '',
+      NombreProyecto: source.NombreProyecto || '',
+      IdFacultadOikos: source.IdFacultadOikos || 0,
+      IdProyectoOikos: source.IdProyectoOikos || 0,
+      IdFacultadGedep: source.IdFacultadGedep || 0,
+      IdProyectoAccra: source.IdProyectoAccra || 0,
       AnioInsGrado: item.AnioInsGrado,
       PerInsGrado: item.PerInsGrado,
-      Observacion: item.Observacion,
       Academico: !!item.Academico,
       Financiero: !!item.Financiero,
       Biblioteca: !!item.Biblioteca,
@@ -72,41 +97,42 @@ export class SemaforoDataMapperService {
       ObservacionBienestar: item.ObservacionBienestar || '',
       ObservacionUrelinter: item.ObservacionUrelinter || '',
       ObservacionOrc: item.ObservacionOrc || '',
-      Activo: item.Activo !== false,
-      FechaCreacion: item.FechaCreacion || '',
-      FechaModificacion: item.FechaModificacion || '',
-    }));
+      Activo: source.Activo !== false,
+      FechaCreacion: source.FechaCreacion || '',
+      FechaModificacion: source.FechaModificacion || '',
+      };
+    });
   }
 
   /**
    * Crea el objeto parcial para actualización (PATCH) de un registro
    * Solo incluye el campo que cambió para optimizar el request
    */
-  createPatchPayload(row: SemaforoRow, changedField?: string): Partial<Semaforo> {
-    const putStruct: Partial<Semaforo> = {};
-    
+  createPatchPayload(row: SemaforoRow, changedField?: string): SemaforoPatch {
     if (changedField) {
-      (putStruct as any)[changedField] = (row as any)[changedField];
-    } else {
-      // Fallback: si no se especifica el campo, enviar todos
-      putStruct.Observacion = row.Observacion;
-      putStruct.Academico = row.Academico;
-      putStruct.Financiero = row.Financiero;
-      putStruct.Biblioteca = row.Biblioteca;
-      putStruct.Laboratorios = row.Laboratorios;
-      putStruct.Bienestar = row.Bienestar;
-      putStruct.Urelinter = row.Urelinter;
-      putStruct.Orc = row.Orc;
-      putStruct.ObservacionCoordinacion = row.ObservacionCoordinacion;
-      putStruct.ObservacionFinanciera = row.ObservacionFinanciera;
-      putStruct.ObservacionBiblioteca = row.ObservacionBiblioteca;
-      putStruct.ObservacionLaboratorios = row.ObservacionLaboratorios;
-      putStruct.ObservacionBienestar = row.ObservacionBienestar;
-      putStruct.ObservacionUrelinter = row.ObservacionUrelinter;
-      putStruct.ObservacionOrc = row.ObservacionOrc;
+      if (!this.patchFields.includes(changedField as SemaforoPatchField)) {
+        throw new Error(`El campo ${changedField} no está permitido para actualización parcial`);
+      }
+      const field = changedField as SemaforoPatchField;
+      return { [field]: row[field] } as SemaforoPatch;
     }
 
-    return putStruct;
+    return {
+      Academico: row.Academico,
+      Financiero: row.Financiero,
+      Biblioteca: row.Biblioteca,
+      Laboratorios: row.Laboratorios,
+      Bienestar: row.Bienestar,
+      Urelinter: row.Urelinter,
+      Orc: row.Orc,
+      ObservacionCoordinacion: row.ObservacionCoordinacion,
+      ObservacionFinanciera: row.ObservacionFinanciera,
+      ObservacionBiblioteca: row.ObservacionBiblioteca,
+      ObservacionLaboratorios: row.ObservacionLaboratorios,
+      ObservacionBienestar: row.ObservacionBienestar,
+      ObservacionUrelinter: row.ObservacionUrelinter,
+      ObservacionOrc: row.ObservacionOrc
+    };
   }
 
   /**
@@ -114,7 +140,7 @@ export class SemaforoDataMapperService {
    * Usado por: CONTRATISTA, ASIS_PROYECTO y COORDINADOR
    * Nota: EsAsistente solo viene en la respuesta de CONTRATISTA/ASIS_PROYECTO
    */
-  procesarProyectosAsignados(responseData: any): {
+  procesarProyectosAsignados(responseData: SemaforosData): {
     esAsistente: boolean;
     proyectosAsignados: ProyectoAsignado[];
     proyectos: CatalogoOption[];
@@ -122,7 +148,7 @@ export class SemaforoDataMapperService {
     // EsAsistente solo existe en respuesta de asistentes, para coordinador será undefined -> false
     const esAsistente = !!responseData.EsAsistente;
     const proyectosAsignados = Array.isArray(responseData.ProyectosAsignados)
-      ? responseData.ProyectosAsignados.map((p: any) => ({
+      ? responseData.ProyectosAsignados.map(p => ({
           idOikos: p.IdOikos,
           codigo: p.Codigo,
           nombre: p.Nombre

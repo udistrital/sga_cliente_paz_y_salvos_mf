@@ -1,4 +1,6 @@
 <div class="semaforo-wrapper">
+  <app-estado-permisos></app-estado-permisos>
+  <p *ngIf="errorAcceso" role="alert">{{ errorAcceso }}</p>
   <!-- Selector de Rol (mostrar solo si hay múltiples roles) -->
   <app-role-selector
     *ngIf="showRoleSelector"
@@ -7,7 +9,7 @@
   </app-role-selector>
 
   <!-- Contenido principal del semáforo -->
-  <div class="semaforo-container" *ngIf="!showRoleSelector">
+  <div class="semaforo-container" *ngIf="!showRoleSelector && puedeConsultar">
     <!-- Header -->
     <div class="semaforo-header">
       <div class="header-left">
@@ -22,7 +24,7 @@
           </div>
         </div>
       </div>
-      <button mat-raised-button color="primary" (click)="onRefreshClick()" class="refresh-btn">
+      <button *appOpcion="'paz_salvos_recargar'; perfil: perfilActual" mat-raised-button color="primary" (click)="onRefreshClick()" class="refresh-btn" [disabled]="loading">
         <mat-icon>refresh</mat-icon>
         {{ 'SEMAFORO.recargar_datos' | translate }}
       </button>
@@ -30,7 +32,7 @@
 
     <!-- Componente de Filtros -->
     <app-semaforo-filters
-      *ngIf="!userRoles.includes('ESTUDIANTE')"
+      *ngIf="mostrarFiltros"
       [userRoles]="userRoles"
       [filters]="filters"
       [facultades]="facultades"
@@ -55,6 +57,7 @@
 
     <!-- Componente de Paginación -->
     <app-semaforo-pagination
+      [perfil]="perfilActual"
       [currentPage]="currentPage"
       [pageSize]="pageSize"
       [totalRecords]="totalRecords"

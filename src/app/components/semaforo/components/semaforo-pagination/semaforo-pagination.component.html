@@ -1,4 +1,4 @@
-<div class="pagination-controls">
+<div class="pagination-controls" *appOpcion="'paz_salvos_paginar'; perfil: perfil">
   <div class="pagination-info">
     {{ 'SEMAFORO.mostrando_registros' | translate: {start: startRecord, end: endRecord, total: totalRecords} }}
   </div>

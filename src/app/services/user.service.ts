@@ -1,7 +1,5 @@
 import { Injectable } from "@angular/core";
-import { uniq as _uniq } from "lodash";
 import { decrypt } from "../utils/util-encrypt";
-import { filtrarRolesDelModulo } from "../constants/roles.constants";
 
 @Injectable()
 export class UserService {
@@ -64,55 +62,13 @@ export class UserService {
         }
     }
 
-    public getUserRoles(): Promise<string[]> {
-        return new Promise((resolve, reject) => {
-            try {
-                const { user, userService } = this.decodeUser();
-                const roleUser = typeof user.role !== 'undefined' ? user.role as string[] : [];
-                const roleUserService = typeof userService.role !== 'undefined' ? userService.role as string[] : [];
-                const roles = _uniq(roleUser.concat(roleUserService)).filter((data: string) => !data.includes('/'));
-                resolve(roles);
-            } catch (error) {
-                reject(error);
-            }
-        });
-    }
-
-    /**
-     * Obtiene todos los roles del usuario filtrados para el módulo de Paz y Salvos
-     * Si no hay sesión válida, limpia el rol seleccionado
-     */
-    public getUserModuleRoles(): Promise<string[]> {
-        return new Promise((resolve, reject) => {
-            this.getUserRoles()
-                .then(roles => {
-                    const moduloRoles = filtrarRolesDelModulo(roles);
-                    resolve(moduloRoles);
-                })
-                .catch(error => {
-                    // Si hay error (ej: no hay sesión), limpiar el rol seleccionado
-                    this.clearSelectedRole();
-                    reject(error);
-                });
-        });
-    }
-
-    /**
-     * Obtiene el rol efectivo del usuario para el módulo
-     * Si hay un rol guardado en sesión, lo retorna
-     * Si no, retorna todos los roles del módulo
-     */
-    public getEffectiveRole(): Promise<string[]> {
-        return new Promise((resolve, reject) => {
-            const selectedRole = this.getSelectedRole();
-            if (selectedRole) {
-                resolve([selectedRole]);
-            } else {
-                this.getUserModuleRoles()
-                    .then(roles => resolve(roles))
-                    .catch(error => reject(error));
-            }
-        });
+    public async getUserRoles(): Promise<string[]> {
+        const { user, userService } = this.decodeUser();
+        const lista = (valor: unknown): string[] => {
+            const valores = Array.isArray(valor) ? valor : typeof valor === 'string' ? valor.split(',') : [];
+            return valores.filter((r): r is string => typeof r === 'string').map(r => r.trim()).filter(Boolean);
+        };
+        return [...new Set([...lista(user.role), ...lista(userService.role)])];
     }
 
     /**
@@ -134,17 +90,6 @@ export class UserService {
      */
     public clearSelectedRole(): void {
         sessionStorage.removeItem(this.SELECTED_ROLE_KEY);
-    }
-
-    /**
-     * Verifica si el usuario tiene múltiples roles válidos para el módulo
-     */
-    public hasMultipleModuleRoles(): Promise<boolean> {
-        return new Promise((resolve, reject) => {
-            this.getUserModuleRoles()
-                .then(roles => resolve(roles.length > 1))
-                .catch(error => reject(error));
-        });
     }
 
     public getUserEmail(): Promise<string> {

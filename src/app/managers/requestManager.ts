@@ -17,23 +17,16 @@ import { HttpErrorManager } from './errorManager';
 })
 export class RequestManager {
   private path!: any;
-  public httpOptions: any;
-  public httpOptionsOnlyAuth: any;
-  constructor(private http: HttpClient, private errManager: HttpErrorManager) {
-    const acces_token = window.localStorage.getItem('access_token');
-    if (acces_token !== null) {
-      this.httpOptions = {
-        headers: new HttpHeaders({
-          // 'Content-Type': 'application/json',
-          'Authorization': `Bearer ${acces_token}`,
-        }),
-      };
-      this.httpOptionsOnlyAuth = {
-        headers: new HttpHeaders({
-          'Authorization': `Bearer ${acces_token}`,
-        }),
-      };
-    }
+  constructor(private http: HttpClient, private errManager: HttpErrorManager) {}
+
+  // La sesión puede renovarse después de crear este servicio singleton.
+  public get httpOptions(): { headers: HttpHeaders } {
+    const token = window.localStorage.getItem('access_token');
+    return { headers: token ? new HttpHeaders({ Authorization: `Bearer ${token}` }) : new HttpHeaders() };
+  }
+
+  public get httpOptionsOnlyAuth(): { headers: HttpHeaders } {
+    return this.httpOptions;
   }
 
 

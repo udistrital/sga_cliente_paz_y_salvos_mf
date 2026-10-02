@@ -145,8 +145,8 @@ export class SemaforoGridComponent implements OnInit, OnDestroy {
   }
 
   private handleBooleanFieldClick(params: CellClickedEvent, field: string) {
-    // Caso especial: ADMISIONES_REG puede hacer clic en ORC para cambiar entre los 3 estados
-    if (field === 'Orc' && this.userRoles.includes('ADMISIONES_REG')) {
+    // El permiso de la celda ORC procede de Configuración; sus transiciones siguen siendo legacy.
+    if (field === 'Orc' && this.permissionsService.canEditColumnIfOrcNull(field, params.data, this.userRoles)) {
       const todasDependenciasTrue = this.permissionsService.allDependenciesCleared(params.data, this.booleanFields);
 
       if (params.data.Orc === null) {

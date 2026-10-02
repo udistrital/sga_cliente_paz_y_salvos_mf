@@ -90,11 +90,11 @@
 
       <!-- Botones de acción -->
       <div class="filter-actions">
-        <button mat-raised-button color="accent" (click)="onSearch()" class="apply-filters-btn">
+        <button *appOpcion="'paz_salvos_buscar'; perfil: perfil" mat-raised-button color="accent" (click)="onSearch()" class="apply-filters-btn">
           <mat-icon>search</mat-icon>
           {{ 'GLOBAL.buscar' | translate }}
         </button>
-        <button mat-stroked-button (click)="onClear()" class="clear-filters-btn">
+        <button *appOpcion="'paz_salvos_limpiar_filtros'; perfil: perfil" mat-stroked-button (click)="onClear()" class="clear-filters-btn">
           <mat-icon>clear</mat-icon>
           {{ 'GLOBAL.limpiar' | translate }}
         </button>

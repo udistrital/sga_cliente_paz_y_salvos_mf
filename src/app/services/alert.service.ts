@@ -1,8 +1,16 @@
 import { Injectable } from "@angular/core";
 // @ts-ignore
 import Swal from "sweetalert2/dist/sweetalert2";
+import type { SweetAlertResult } from 'sweetalert2';
 import { TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
+
+export interface ConfirmAlertOptions {
+  titleKey?: string;
+  textParams?: Record<string, string | number>;
+  confirmButtonKey?: string;
+  cancelButtonKey?: string;
+}
 
 @Injectable({
   providedIn: "root",
@@ -56,15 +64,21 @@ export class AlertService {
     });
   }
 
-  async showConfirmAlert(text: string, title?: string): Promise<any> {
-    const translations = await firstValueFrom(this.translate.get(['GLOBAL.atencion', 'GLOBAL.aceptar', 'GLOBAL.cancelar']));
+  async showConfirmAlert(textKey: string, options: ConfirmAlertOptions = {}): Promise<SweetAlertResult> {
+    const titleKey = options.titleKey || 'GLOBAL.atencion';
+    const confirmButtonKey = options.confirmButtonKey || 'GLOBAL.aceptar';
+    const cancelButtonKey = options.cancelButtonKey || 'GLOBAL.cancelar';
+    const translations = await firstValueFrom(this.translate.get(
+      [titleKey, textKey, confirmButtonKey, cancelButtonKey], options.textParams
+    ));
     return Swal.fire({
-      title: title || translations['GLOBAL.atencion'],
-      text: text,
+      title: translations[titleKey],
+      text: translations[textKey],
       icon: "warning",
       showCancelButton: true,
-      cancelButtonText: translations['GLOBAL.cancelar'],
-      confirmButtonText: translations['GLOBAL.aceptar'],
+      cancelButtonText: translations[cancelButtonKey],
+      confirmButtonText: translations[confirmButtonKey],
+      focusCancel: true,
       customClass: {
         confirmButton: "alertaConfirmarBoton",
         cancelButton: "alertaCancelarBoton",
@@ -79,8 +93,13 @@ export class AlertService {
         title: text || translation,
         allowOutsideClick: false,
         allowEscapeKey: false,
+        showConfirmButton: false,
         didOpen: () => {
           Swal.showLoading();
+        },
+        customClass: {
+          confirmButton: "alertaConfirmarBoton",
+          cancelButton: "alertaCancelarBoton",
         },
       });
     });
