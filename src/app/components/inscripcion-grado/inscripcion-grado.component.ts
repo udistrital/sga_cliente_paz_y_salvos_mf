@@ -16,7 +16,7 @@ import { SoportesGradoComponent } from './soportes-grado.component';
 import { PermisosService } from '../../services/permisos.service';
 import { OpcionDirective } from '../../directives/opcion.directive';
 import { AlertService } from '../../services/alert.service';
-import { BorradorGrado, DatosBasicosGrado, DirectorGrado, DisponibilidadGrado, EventoGrado, InscripcionGradoService, ModalidadGrado, PeriodoGrado, ProgramaGrado, fechaGrado, mensajeErrorBorrador } from '../../services/inscripcion-grado.service';
+import { BorradorGrado, DatosBasicosGrado, DepartamentoExpedicionGrado, DirectorGrado, DisponibilidadGrado, EventoGrado, InscripcionGradoService, LugarExpedicionGrado, ModalidadGrado, PaisExpedicionGrado, PeriodoGrado, ProgramaGrado, fechaGrado, mensajeErrorBorrador } from '../../services/inscripcion-grado.service';
 
 @Component({
   selector: 'app-inscripcion-grado',
@@ -39,7 +39,9 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   errorDatosBasicos = '';
   private terceroId: number | null = null;
   trabajoGrado = '';
-  lugarExpedicionDocumento = '';
+  paisExpedicionDocumentoId: number | null = null;
+  departamentoExpedicionDocumentoId: number | null = null;
+  lugarExpedicionDocumentoId: number | null = null;
   numeroActaSustentacion = '';
   numeroRegistroSnp = '';
   trabajaActualmente: boolean | null = null;
@@ -48,15 +50,26 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   telefonoEmpresa = '';
   directores: DirectorGrado[] = [];
   modalidades: ModalidadGrado[] = [];
+  paisesExpedicion: PaisExpedicionGrado[] = [];
+  departamentosExpedicion: DepartamentoExpedicionGrado[] = [];
+  lugaresExpedicion: LugarExpedicionGrado[] = [];
   director1: string | null = null;
   director2: string | null = null;
-  modalidad: number | null = null;
+  modalidad: string | null = null;
+  busquedaPais: PaisExpedicionGrado | string | null = null;
+  busquedaDepartamento: DepartamentoExpedicionGrado | string | null = null;
+  busquedaLugar: LugarExpedicionGrado | string | null = null;
+  opcionesPaises: PaisExpedicionGrado[] = [];
+  opcionesDepartamentos: DepartamentoExpedicionGrado[] = [];
+  opcionesLugares: LugarExpedicionGrado[] = [];
   busquedaDirector1: DirectorGrado | string | null = null;
   busquedaDirector2: DirectorGrado | string | null = null;
   opcionesDirector1: DirectorGrado[] = [];
   opcionesDirector2: DirectorGrado[] = [];
   cargandoCatalogos = false;
   errorCatalogos = '';
+  cargandoUbicaciones = false;
+  errorUbicaciones = '';
   cargandoBorrador = false;
   guardandoBorrador = false;
   guardandoSoporte = false;
@@ -77,6 +90,8 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   private guardarActual?: Subscription;
   private consultaDatosBasicos?: Subscription;
   private consultaCatalogos?: Subscription;
+  private consultaDepartamentos?: Subscription;
+  private consultaLugares?: Subscription;
 
   private cambioSesion?: Subscription;
   private cargaVersion = 0;
@@ -109,6 +124,8 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
     this.guardarActual?.unsubscribe();
     this.consultaDatosBasicos?.unsubscribe();
     this.consultaCatalogos?.unsubscribe();
+    this.consultaDepartamentos?.unsubscribe();
+    this.consultaLugares?.unsubscribe();
   }
 
   async cargar(): Promise<void> {
@@ -125,6 +142,9 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
     this.consultaCatalogos?.unsubscribe();
     this.directores = [];
     this.modalidades = [];
+    this.paisesExpedicion = [];
+    this.departamentosExpedicion = [];
+    this.lugaresExpedicion = [];
     this.cargandoCatalogos = false;
     this.errorCatalogos = '';
     this.programaId = this.periodoId = null;
@@ -200,21 +220,33 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
       this.cargandoCatalogos = false;
       this.directores = [];
       this.modalidades = [];
+      this.paisesExpedicion = [];
+      this.departamentosExpedicion = [];
+      this.lugaresExpedicion = [];
       this.errorCatalogos = this.tr('errores.sin_permiso_catalogos');
       return;
     }
     this.cargandoCatalogos = true;
     this.errorCatalogos = '';
-	this.consultaCatalogos = forkJoin({ directores: this.servicio.directores(this.terceroId), modalidades: this.servicio.modalidades(this.terceroId) }).subscribe({
+	this.consultaCatalogos = forkJoin({ directores: this.servicio.directores(this.terceroId), modalidades: this.servicio.modalidades(this.terceroId), paises: this.servicio.paisesExpedicion(this.terceroId) }).subscribe({
       next: datos => {
         this.directores = datos.directores;
         this.modalidades = datos.modalidades;
+        this.paisesExpedicion = datos.paises;
+        this.opcionesPaises = datos.paises.slice();
         this.cargandoCatalogos = false;
         this.restaurarDirectores();
+        this.restaurarLugarExpedicion();
       },
       error: error => {
         this.directores = [];
         this.modalidades = [];
+        this.paisesExpedicion = [];
+        this.departamentosExpedicion = [];
+        this.lugaresExpedicion = [];
+        this.opcionesPaises = [];
+        this.opcionesDepartamentos = [];
+        this.opcionesLugares = [];
         this.opcionesDirector1 = [];
         this.opcionesDirector2 = [];
         this.cargandoCatalogos = false;
@@ -230,6 +262,193 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
     if (typeof director === 'string') return director;
     return director ? `${director.DIR_NOMBRE} ${director.DIR_APELLIDO}` : '';
   };
+
+  mostrarLugar = (lugar: LugarExpedicionGrado | string | null): string => {
+    if (typeof lugar === 'string') return lugar;
+    return lugar ? lugar.Nombre : '';
+  };
+
+  mostrarPais = (pais: PaisExpedicionGrado | string | null): string => typeof pais === 'string' ? pais : pais?.Nombre || '';
+
+  mostrarDepartamento = (departamento: DepartamentoExpedicionGrado | string | null): string =>
+    typeof departamento === 'string' ? departamento : departamento?.Nombre || '';
+
+  private normalizarBusquedaUbicacion(valor: string): string {
+    return valor.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  }
+
+  buscarPais(valor: PaisExpedicionGrado | string | null): void {
+    if (typeof valor === 'string') {
+      this.consultaDepartamentos?.unsubscribe();
+      this.consultaLugares?.unsubscribe();
+      this.paisExpedicionDocumentoId = null;
+      this.departamentoExpedicionDocumentoId = null;
+      this.lugarExpedicionDocumentoId = null;
+      this.departamentosExpedicion = [];
+      this.lugaresExpedicion = [];
+      this.busquedaDepartamento = null;
+      this.busquedaLugar = null;
+      this.opcionesDepartamentos = [];
+      this.opcionesLugares = [];
+      this.cargandoUbicaciones = false;
+      this.errorUbicaciones = '';
+    }
+    const termino = this.normalizarBusquedaUbicacion(typeof valor === 'string' ? valor : '');
+    this.opcionesPaises = this.paisesExpedicion.filter(pais =>
+      !termino || this.normalizarBusquedaUbicacion(pais.Nombre).includes(termino));
+  }
+
+  buscarDepartamento(valor: DepartamentoExpedicionGrado | string | null): void {
+    if (typeof valor === 'string') {
+      this.consultaLugares?.unsubscribe();
+      this.departamentoExpedicionDocumentoId = null;
+      this.lugarExpedicionDocumentoId = null;
+      this.lugaresExpedicion = [];
+      this.busquedaLugar = null;
+      this.opcionesLugares = [];
+      this.cargandoUbicaciones = false;
+      this.errorUbicaciones = '';
+    }
+    const termino = this.normalizarBusquedaUbicacion(typeof valor === 'string' ? valor : '');
+    this.opcionesDepartamentos = this.departamentosExpedicion.filter(departamento =>
+      !termino || this.normalizarBusquedaUbicacion(departamento.Nombre).includes(termino));
+  }
+
+  seleccionarPais(pais: PaisExpedicionGrado): void {
+    this.busquedaPais = pais;
+    this.paisExpedicionDocumentoId = pais.Id;
+    this.departamentoExpedicionDocumentoId = null;
+    this.lugarExpedicionDocumentoId = null;
+    this.departamentosExpedicion = [];
+    this.lugaresExpedicion = [];
+    this.busquedaDepartamento = null;
+    this.busquedaLugar = null;
+    this.opcionesDepartamentos = [];
+    this.opcionesLugares = [];
+    this.cargarDepartamentos(false);
+  }
+
+  seleccionarDepartamento(departamento: DepartamentoExpedicionGrado): void {
+    this.busquedaDepartamento = departamento;
+    this.departamentoExpedicionDocumentoId = departamento.Id;
+    this.lugarExpedicionDocumentoId = null;
+    this.lugaresExpedicion = [];
+    this.busquedaLugar = null;
+    this.opcionesLugares = [];
+    this.cargarLugares(false);
+  }
+
+  private cargarDepartamentos(restaurar: boolean): void {
+    this.consultaDepartamentos?.unsubscribe();
+    this.consultaLugares?.unsubscribe();
+    this.errorUbicaciones = '';
+    if (!this.terceroId || !this.paisExpedicionDocumentoId) {
+      this.cargandoUbicaciones = false;
+      return;
+    }
+    this.cargandoUbicaciones = true;
+    this.consultaDepartamentos = this.servicio.departamentosExpedicion(this.terceroId, this.paisExpedicionDocumentoId).subscribe({
+      next: departamentos => {
+        this.departamentosExpedicion = departamentos;
+        this.opcionesDepartamentos = departamentos.slice();
+        if (restaurar && this.departamentoExpedicionDocumentoId && departamentos.some(d => d.Id === this.departamentoExpedicionDocumentoId)) {
+          this.busquedaDepartamento = departamentos.find(d => d.Id === this.departamentoExpedicionDocumentoId) || null;
+          this.cargarLugares(true);
+        } else {
+          this.departamentoExpedicionDocumentoId = null;
+          this.lugarExpedicionDocumentoId = null;
+          this.busquedaDepartamento = null;
+          this.cargandoUbicaciones = false;
+        }
+      },
+      error: () => {
+        this.departamentosExpedicion = [];
+        this.lugaresExpedicion = [];
+        this.opcionesDepartamentos = [];
+        this.cargandoUbicaciones = false;
+        this.errorUbicaciones = this.tr('errores.ubicaciones');
+      }
+    });
+  }
+
+  private cargarLugares(restaurar: boolean): void {
+    this.consultaLugares?.unsubscribe();
+    this.errorUbicaciones = '';
+    if (!this.terceroId || !this.paisExpedicionDocumentoId || !this.departamentoExpedicionDocumentoId) {
+      this.cargandoUbicaciones = false;
+      return;
+    }
+    this.cargandoUbicaciones = true;
+    this.consultaLugares = this.servicio.lugaresExpedicion(this.terceroId, this.paisExpedicionDocumentoId,
+      this.departamentoExpedicionDocumentoId).subscribe({
+      next: lugares => {
+        this.lugaresExpedicion = lugares;
+        this.cargandoUbicaciones = false;
+        if (!restaurar || !lugares.some(l => l.Id === this.lugarExpedicionDocumentoId)) this.lugarExpedicionDocumentoId = null;
+        this.restaurarLugarSeleccionado();
+      },
+      error: () => {
+        this.lugaresExpedicion = [];
+        this.opcionesLugares = [];
+        this.cargandoUbicaciones = false;
+        this.errorUbicaciones = this.tr('errores.ubicaciones');
+      }
+    });
+  }
+
+  buscarLugar(valor: LugarExpedicionGrado | string | null): void {
+    if (typeof valor === 'string') this.lugarExpedicionDocumentoId = null;
+    const texto = typeof valor === 'string' ? valor : '';
+    const termino = this.normalizarBusquedaUbicacion(texto);
+    this.opcionesLugares = this.lugaresExpedicion.filter(lugar =>
+      !termino || this.normalizarBusquedaUbicacion(lugar.Nombre).includes(termino));
+  }
+
+  seleccionarLugar(lugar: LugarExpedicionGrado): void {
+    this.lugarExpedicionDocumentoId = lugar.Id;
+    this.errorBorrador = '';
+  }
+
+  private restaurarLugarExpedicion(): void {
+    this.consultaDepartamentos?.unsubscribe();
+    this.consultaLugares?.unsubscribe();
+    this.paisExpedicionDocumentoId = null;
+    this.departamentoExpedicionDocumentoId = null;
+    this.departamentosExpedicion = [];
+    this.lugaresExpedicion = [];
+    this.busquedaPais = null;
+    this.busquedaDepartamento = null;
+    this.busquedaLugar = null;
+    this.opcionesLugares = [];
+    if (!this.lugarExpedicionDocumentoId || !this.terceroId || !this.paisesExpedicion.length) {
+      return;
+    }
+    this.cargandoUbicaciones = true;
+    this.consultaLugares = this.servicio.lugarExpedicion(this.terceroId, this.lugarExpedicionDocumentoId).subscribe({
+      next: lugar => {
+        if (!this.paisesExpedicion.some(p => p.Id === lugar.PaisId)) {
+          this.cargandoUbicaciones = false;
+          this.busquedaLugar = this.tr('vista.lugar_no_disponible');
+          return;
+        }
+        this.paisExpedicionDocumentoId = lugar.PaisId;
+        this.departamentoExpedicionDocumentoId = lugar.DepartamentoId;
+        this.busquedaPais = this.paisesExpedicion.find(p => p.Id === lugar.PaisId) || null;
+        this.cargarDepartamentos(true);
+      },
+      error: () => {
+        this.cargandoUbicaciones = false;
+        this.busquedaLugar = this.tr('vista.lugar_no_disponible');
+        this.errorUbicaciones = this.tr('errores.ubicaciones');
+      }
+    });
+  }
+
+  private restaurarLugarSeleccionado(): void {
+    const lugar = this.lugaresExpedicion.find(item => item.Id === this.lugarExpedicionDocumentoId);
+    this.busquedaLugar = lugar || (this.lugarExpedicionDocumentoId ? this.tr('vista.lugar_no_disponible') : null);
+    this.opcionesLugares = this.lugaresExpedicion.slice();
+  }
 
   private filtrarDirectores(valor: DirectorGrado | string | null, segundo: boolean): DirectorGrado[] {
     const texto = typeof valor === 'string' ? valor : '';
@@ -273,7 +492,8 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
 
   private restaurarContenido(contenido: { [campo: string]: unknown }): void {
     this.trabajoGrado = typeof contenido['trabajoGrado'] === 'string' ? contenido['trabajoGrado'] as string : '';
-    this.lugarExpedicionDocumento = typeof contenido['lugarExpedicionDocumento'] === 'string' ? contenido['lugarExpedicionDocumento'] as string : '';
+    this.lugarExpedicionDocumentoId = typeof contenido['lugarExpedicionDocumentoId'] === 'number' && Number.isSafeInteger(contenido['lugarExpedicionDocumentoId'])
+      ? contenido['lugarExpedicionDocumentoId'] as number : null;
     this.numeroActaSustentacion = typeof contenido['numeroActaSustentacion'] === 'string' ? contenido['numeroActaSustentacion'] as string : '';
     this.numeroRegistroSnp = typeof contenido['numeroRegistroSnp'] === 'string' ? contenido['numeroRegistroSnp'] as string : '';
     this.trabajaActualmente = typeof contenido['trabajaActualmente'] === 'boolean' ? contenido['trabajaActualmente'] as boolean : null;
@@ -282,9 +502,10 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
     this.telefonoEmpresa = this.trabajaActualmente && typeof contenido['telefonoEmpresa'] === 'string' ? contenido['telefonoEmpresa'] as string : '';
     this.director1 = typeof contenido['director1'] === 'string' ? contenido['director1'] as string : null;
     this.director2 = typeof contenido['director2'] === 'string' ? contenido['director2'] as string : null;
-    this.modalidad = typeof contenido['modalidad'] === 'number' && Number.isSafeInteger(contenido['modalidad'])
-      ? contenido['modalidad'] as number : null;
+    this.modalidad = typeof contenido['modalidad'] === 'string' && contenido['modalidad'].trim()
+      ? contenido['modalidad'].trim() : null;
     this.restaurarDirectores();
+    this.restaurarLugarExpedicion();
     this.contenidoPersistido = JSON.stringify(this.contenidoFormulario());
   }
 
@@ -294,7 +515,18 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
       const normalizado = (mayusculas ? valor.toUpperCase() : valor).trim();
       if (normalizado) contenido[campo] = normalizado; else delete contenido[campo];
     };
-    asignarTexto('lugarExpedicionDocumento', this.lugarExpedicionDocumento);
+    const lugar = this.lugaresExpedicion.find(item => item.Id === this.lugarExpedicionDocumentoId);
+    delete contenido['departamentoExpedicionDocumentoId'];
+    delete contenido['departamentoExpedicionDocumento'];
+    delete contenido['paisExpedicionDocumentoId'];
+    delete contenido['paisExpedicionDocumento'];
+    if (this.lugarExpedicionDocumentoId) {
+      contenido['lugarExpedicionDocumentoId'] = this.lugarExpedicionDocumentoId;
+      if (lugar) contenido['lugarExpedicionDocumento'] = lugar.Nombre;
+    } else {
+      delete contenido['lugarExpedicionDocumentoId'];
+      delete contenido['lugarExpedicionDocumento'];
+    }
     asignarTexto('numeroActaSustentacion', this.numeroActaSustentacion);
     asignarTexto('numeroRegistroSnp', this.numeroRegistroSnp, true);
     if (this.trabajaActualmente === null) delete contenido['trabajaActualmente'];
@@ -324,12 +556,16 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   }
 
   private limpiarContenidoFormulario(): void {
-    this.trabajoGrado = this.lugarExpedicionDocumento = this.numeroActaSustentacion = this.numeroRegistroSnp = '';
+    this.trabajoGrado = this.numeroActaSustentacion = this.numeroRegistroSnp = '';
+    this.paisExpedicionDocumentoId = null;
+    this.departamentoExpedicionDocumentoId = null;
+    this.lugarExpedicionDocumentoId = null;
     this.trabajaActualmente = null;
     this.empresa = this.direccionEmpresa = this.telefonoEmpresa = '';
     this.director1 = this.director2 = null;
     this.modalidad = null;
     this.restaurarDirectores();
+    this.restaurarLugarExpedicion();
   }
 
   get tieneCambiosSinGuardar(): boolean {
@@ -559,11 +795,12 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
 
   private camposRadicacionCompletos(): boolean {
     const texto = (valor: string) => !!valor.trim();
-    return texto(this.trabajoGrado) && texto(this.lugarExpedicionDocumento) && texto(this.numeroActaSustentacion) &&
+    return texto(this.trabajoGrado) && !!this.lugarExpedicionDocumentoId &&
+      this.lugaresExpedicion.some(l => l.Id === this.lugarExpedicionDocumentoId) && texto(this.numeroActaSustentacion) &&
       /^[A-Za-z0-9-]+$/.test(this.numeroRegistroSnp.trim()) && this.trabajaActualmente !== null &&
       !!this.director1 && this.directores.some(d => d.DIR_NRO_IDEN === this.director1) &&
       (!this.director2 || this.directores.some(d => d.DIR_NRO_IDEN === this.director2)) && !this.directoresRepetidos &&
-      !!this.modalidad && this.modalidades.some(m => m.AMG_COD === this.modalidad) &&
+      !!this.modalidad && this.modalidades.some(m => m.CodigoAbreviacion === this.modalidad) &&
       (!this.trabajaActualmente || (texto(this.empresa) && texto(this.direccionEmpresa) && texto(this.telefonoEmpresa)));
   }
 

@@ -70,10 +70,29 @@ export interface DirectorGrado {
   DIR_ESTADO: string;
 }
 export interface ModalidadGrado {
-  AMG_COD: number;
-  AMG_NOMBRE: string;
-  AMG_ABREVIATURA: string;
-  AMG_ESTADO: string;
+  Id: number;
+  Nombre: string;
+  CodigoAbreviacion: string;
+  Activo: boolean;
+  NumeroOrden: number;
+}
+export interface LugarExpedicionGrado {
+  Id: number;
+  Nombre: string;
+  DepartamentoId: number;
+  DepartamentoNombre: string;
+  PaisId: number;
+  PaisNombre: string;
+}
+export interface PaisExpedicionGrado {
+  Id: number;
+  Nombre: string;
+}
+export interface DepartamentoExpedicionGrado {
+  Id: number;
+  Nombre: string;
+  PaisId: number;
+  PaisNombre: string;
 }
 export type TipoSoporteGrado = 'TSG_ACTA_SUST' | 'TSG_RESULTADO_SABER' | 'TSG_PAGO_DERECHOS' | 'TSG_TITULO_PREVIO';
 export interface SoporteGrado {
@@ -202,12 +221,56 @@ export class InscripcionGradoService {
 
   modalidades(terceroId: number): Observable<ModalidadGrado[]> {
     return this.mid<ModalidadGrado[]>('get', `solicitud-grado/modalidades?tercero_id=${terceroId}`).pipe(map(datos => {
-      if (!Array.isArray(datos) || datos.some(m => !m || !Number.isSafeInteger(m.AMG_COD) || m.AMG_COD <= 0 ||
-        !m.AMG_NOMBRE?.trim() || !m.AMG_ABREVIATURA?.trim() || m.AMG_ESTADO !== 'A') ||
-        new Set(datos.map(m => m.AMG_COD)).size !== datos.length) {
+      if (!Array.isArray(datos) || !datos.length || datos.some(m => !m || !Number.isSafeInteger(m.Id) || m.Id <= 0 ||
+        !m.Nombre?.trim() || !m.CodigoAbreviacion?.trim() || m.Activo !== true) ||
+        new Set(datos.map(m => m.Id)).size !== datos.length || new Set(datos.map(m => m.CodigoAbreviacion)).size !== datos.length) {
         throw new Error('Catálogo de modalidades no verificable.');
       }
       return datos;
+    }));
+  }
+
+  paisesExpedicion(terceroId: number): Observable<PaisExpedicionGrado[]> {
+    return this.mid<PaisExpedicionGrado[]>('get', `solicitud-grado/paises-expedicion?tercero_id=${terceroId}`).pipe(map(datos => {
+      if (!Array.isArray(datos) || !datos.length || datos.some(p => !p || !Number.isSafeInteger(p.Id) || p.Id <= 0 || !p.Nombre?.trim()) ||
+        new Set(datos.map(p => p.Id)).size !== datos.length) {
+        throw new Error('Catálogo de países no verificable.');
+      }
+      return datos;
+    }));
+  }
+
+  departamentosExpedicion(terceroId: number, paisId: number): Observable<DepartamentoExpedicionGrado[]> {
+    return this.mid<DepartamentoExpedicionGrado[]>('get',
+      `solicitud-grado/departamentos-expedicion?tercero_id=${terceroId}&pais_id=${paisId}`).pipe(map(datos => {
+      if (!Array.isArray(datos) || datos.some(d => !d || !Number.isSafeInteger(d.Id) || d.Id <= 0 || d.PaisId !== paisId ||
+        !d.Nombre?.trim() || !d.PaisNombre?.trim()) || new Set(datos.map(d => d.Id)).size !== datos.length) {
+        throw new Error('Catálogo de departamentos no verificable.');
+      }
+      return datos;
+    }));
+  }
+
+  lugaresExpedicion(terceroId: number, paisId: number, departamentoId: number): Observable<LugarExpedicionGrado[]> {
+    return this.mid<LugarExpedicionGrado[]>('get',
+      `solicitud-grado/lugares-expedicion?tercero_id=${terceroId}&pais_id=${paisId}&departamento_id=${departamentoId}`).pipe(map(datos => {
+      if (!Array.isArray(datos) || datos.some(l => !l || !Number.isSafeInteger(l.Id) || l.Id <= 0 ||
+        l.PaisId !== paisId || l.DepartamentoId !== departamentoId || !l.Nombre?.trim() || !l.DepartamentoNombre?.trim() || !l.PaisNombre?.trim()) ||
+        new Set(datos.map(l => l.Id)).size !== datos.length) {
+        throw new Error('Catálogo de lugares de expedición no verificable.');
+      }
+      return datos;
+    }));
+  }
+
+  lugarExpedicion(terceroId: number, lugarId: number): Observable<LugarExpedicionGrado> {
+    return this.mid<LugarExpedicionGrado>('get', `solicitud-grado/lugares-expedicion/${lugarId}?tercero_id=${terceroId}`).pipe(map(lugar => {
+      if (!lugar || lugar.Id !== lugarId || !Number.isSafeInteger(lugar.PaisId) || lugar.PaisId <= 0 ||
+        !Number.isSafeInteger(lugar.DepartamentoId) || lugar.DepartamentoId <= 0 || !lugar.Nombre?.trim() ||
+        !lugar.DepartamentoNombre?.trim() || !lugar.PaisNombre?.trim()) {
+        throw new Error('Lugar de expedición no verificable.');
+      }
+      return lugar;
     }));
   }
 

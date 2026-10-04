@@ -5,9 +5,12 @@ import { PermisosService } from '../services/permisos.service';
 export const opcionGuard: CanActivateFn = async route => {
   const permisos = inject(PermisosService);
   const router = inject(Router);
-  try {
-    await permisos.cargar(true);
-    if (permisos.permite(route.data['opcion'], 'Menú')) return true;
-  } catch { /* La pantalla de acceso muestra el error de Configuración. */ }
+  for (let intento = 0; intento < 2; intento++) {
+    try {
+      await permisos.cargar(intento > 0);
+      if (permisos.permite(route.data['opcion'], 'Menú')) return true;
+      break;
+    } catch {}
+  }
   return router.createUrlTree(['/sin-acceso'], { queryParams: { destino: route.routeConfig?.path } });
 };

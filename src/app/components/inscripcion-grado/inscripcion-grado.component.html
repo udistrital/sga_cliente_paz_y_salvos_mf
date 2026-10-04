@@ -90,8 +90,34 @@
           </mat-form-field>
           <div class="campos">
             <mat-form-field appearance="outline" subscriptSizing="dynamic">
-              <mat-label>{{ 'INSCRIPCION_GRADO.vista.lugar_expedicion' | translate }}</mat-label>
-              <input matInput [(ngModel)]="lugarExpedicionDocumento" [disabled]="!puedeEditarFormulario" maxlength="120">
+              <mat-label>{{ 'INSCRIPCION_GRADO.vista.pais_expedicion' | translate }}</mat-label>
+              <input matInput [(ngModel)]="busquedaPais" (input)="buscarPais($any($event.target).value)" [matAutocomplete]="autoPais"
+                [disabled]="!puedeEditarFormulario || cargandoCatalogos || !!errorCatalogos">
+              <mat-autocomplete #autoPais="matAutocomplete" [displayWith]="mostrarPais" [requireSelection]="true" [autoActiveFirstOption]="true"
+                (optionSelected)="seleccionarPais($event.option.value)">
+                <mat-option *ngFor="let pais of opcionesPaises" [value]="pais">{{ pais.Nombre }}</mat-option>
+              </mat-autocomplete>
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>{{ 'INSCRIPCION_GRADO.vista.departamento_expedicion' | translate }}</mat-label>
+              <input matInput [(ngModel)]="busquedaDepartamento" (input)="buscarDepartamento($any($event.target).value)" [matAutocomplete]="autoDepartamento"
+                [disabled]="!puedeEditarFormulario || !paisExpedicionDocumentoId || cargandoUbicaciones || !!errorUbicaciones">
+              <mat-autocomplete #autoDepartamento="matAutocomplete" [displayWith]="mostrarDepartamento" [requireSelection]="true" [autoActiveFirstOption]="true"
+                (optionSelected)="seleccionarDepartamento($event.option.value)">
+                <mat-option *ngFor="let departamento of opcionesDepartamentos" [value]="departamento">{{ departamento.Nombre }}</mat-option>
+              </mat-autocomplete>
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>{{ 'INSCRIPCION_GRADO.vista.ciudad_expedicion' | translate }}</mat-label>
+              <input matInput [(ngModel)]="busquedaLugar" (input)="buscarLugar($any($event.target).value)" [matAutocomplete]="autoLugar"
+                [disabled]="!puedeEditarFormulario || !departamentoExpedicionDocumentoId || cargandoUbicaciones || !!errorUbicaciones">
+              <mat-autocomplete #autoLugar="matAutocomplete" [displayWith]="mostrarLugar" [requireSelection]="true" [autoActiveFirstOption]="true"
+                (optionSelected)="seleccionarLugar($event.option.value)">
+                <mat-option *ngFor="let lugar of opcionesLugares" [value]="lugar">
+                  {{ lugar.Nombre }}
+                </mat-option>
+              </mat-autocomplete>
+              <mat-hint>{{ 'INSCRIPCION_GRADO.vista.lugar_expedicion_hint' | translate }}</mat-hint>
             </mat-form-field>
             <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>{{ 'INSCRIPCION_GRADO.vista.numero_acta' | translate }}</mat-label>
@@ -124,6 +150,8 @@
               <input matInput [(ngModel)]="telefonoEmpresa" [disabled]="!puedeEditarFormulario" maxlength="60">
             </mat-form-field>
           </div>
+          <p *ngIf="cargandoUbicaciones" role="status">{{ 'INSCRIPCION_GRADO.vista.consultando_ubicaciones' | translate }}</p>
+          <p *ngIf="errorUbicaciones" role="alert">{{ errorUbicaciones }}</p>
           <p *ngIf="cargandoCatalogos" role="status">{{ 'INSCRIPCION_GRADO.vista.consultando_catalogos' | translate }}</p>
           <div *ngIf="errorCatalogos" role="alert">
             <p>{{ errorCatalogos }}</p>
@@ -159,8 +187,8 @@
           <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>{{ 'INSCRIPCION_GRADO.vista.modalidad' | translate }}</mat-label>
             <mat-select [(ngModel)]="modalidad" [disabled]="!puedeEditarFormulario || cargandoCatalogos || !!errorCatalogos">
-              <mat-option *ngFor="let opcion of modalidades" [value]="opcion.AMG_COD">
-                {{ opcion.AMG_NOMBRE }} · {{ opcion.AMG_ABREVIATURA }}
+              <mat-option *ngFor="let opcion of modalidades" [value]="opcion.CodigoAbreviacion">
+                {{ opcion.Nombre }}
               </mat-option>
             </mat-select>
           </mat-form-field>
