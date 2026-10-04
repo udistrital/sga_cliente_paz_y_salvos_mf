@@ -140,6 +140,14 @@ export function fechaGrado(valor?: string | null): number | null {
   return Number.isFinite(resultado) ? resultado : null;
 }
 
+// PostgreSQL entrega los timestamp without time zone con la hora de pared de Bogotá,
+// aunque algunos serializadores agreguen Z u otro offset al convertir time.Time a JSON.
+export function fechaGradoPersistida(valor?: string | null): number | null {
+  if (!valor) return null;
+  const horaBogota = valor.trim().replace(/(?:Z|[+-]\d{2}:?\d{2})$/i, '');
+  return fechaGrado(horaBogota);
+}
+
 export function vinculacionVigente(v: Vinculacion, ahora = Date.now()): boolean {
   if (!v.Activo) return false;
   const inicio = fechaGrado(v.FechaInicioVinculacion);
@@ -161,8 +169,8 @@ export function resolverEventos(datos: CalendarioPrograma[], programaId: number)
     const coincidencias = eventos.filter(e => e.CodigoAbreviacion === codigo);
     if (coincidencias.length !== 1) throw new Error(`Configuración incompleta o duplicada del evento ${codigo}.`);
     const evento = coincidencias[0];
-    const inicio = fechaGrado(evento.FechaInicioEvento);
-    const fin = fechaGrado(evento.FechaFinEvento);
+    const inicio = fechaGradoPersistida(evento.FechaInicioEvento);
+    const fin = fechaGradoPersistida(evento.FechaFinEvento);
     if (inicio === null || fin === null || fin < inicio) throw new Error(`Fechas inválidas en ${codigo}.`);
     return evento;
   };

@@ -31,6 +31,7 @@ export class SoportesGradoComponent implements OnChanges, OnDestroy {
   @Input() borrador: BorradorGrado | null = null;
   @Input() habilitado = false;
   @Output() ocupado = new EventEmitter<boolean>();
+  @Output() progreso = new EventEmitter<number>();
   @ViewChild('visorPDF', { static: true }) visorPDF!: TemplateRef<unknown>;
   documentos: DocumentoFormulario[] = [
     { codigo: 'TSG_ACTA_SUST', tituloKey: 'INSCRIPCION_GRADO.soportes.acta_titulo', descripcionKey: 'INSCRIPCION_GRADO.soportes.acta_descripcion', soporte: null, error: '', mensaje: '' },
@@ -72,6 +73,7 @@ export class SoportesGradoComponent implements OnChanges, OnDestroy {
     this.descarga?.unsubscribe();
     this.cerrarVisor();
     this.documentos.forEach(d => { d.soporte = null; d.error = d.mensaje = ''; });
+    this.emitirProgreso();
     this.recargar();
   }
 
@@ -119,6 +121,7 @@ export class SoportesGradoComponent implements OnChanges, OnDestroy {
       next: soportes => {
         this.documentos.forEach(d => d.soporte = soportes.find(s => s.TipoSoporte === d.codigo) || null);
         this.consultaCorrecta = true;
+        this.emitirProgreso();
       },
       error: e => this.errorConsulta = mensajeErrorBorrador(e, this.translate.instant('INSCRIPCION_GRADO.errores.consultar_soportes'))
     });
@@ -191,6 +194,7 @@ export class SoportesGradoComponent implements OnChanges, OnDestroy {
     ).subscribe({
       next: soporte => {
         documento.soporte = soporte;
+        this.emitirProgreso();
         documento.mensaje = this.translate.instant('INSCRIPCION_GRADO.mensajes.pdf_guardado');
         this.alertas.showSuccessAlert(documento.mensaje);
         this.cerrarVisor();
@@ -231,6 +235,10 @@ export class SoportesGradoComponent implements OnChanges, OnDestroy {
 
   descargar(event: Event): void {
     if (!this.permisos.permite('grado_descargar_soporte') || !this.permisos.permite('grado_ver_soporte')) event.preventDefault();
+  }
+
+  private emitirProgreso(): void {
+    this.progreso.emit(this.documentos.filter(documento => !!documento.soporte).length);
   }
 
   private cerrarVisor(): void {

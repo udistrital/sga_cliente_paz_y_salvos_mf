@@ -8,20 +8,23 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatInputModule } from '@angular/material/input';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatStepperModule } from '@angular/material/stepper';
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { StepperOrientation } from '@angular/cdk/stepper';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { Subscription, firstValueFrom, forkJoin, defer, of } from 'rxjs';
+import { Observable, Subscription, firstValueFrom, forkJoin, defer, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { UserService } from '../../services/user.service';
 import { SoportesGradoComponent } from './soportes-grado.component';
 import { PermisosService } from '../../services/permisos.service';
 import { OpcionDirective } from '../../directives/opcion.directive';
 import { AlertService } from '../../services/alert.service';
-import { BorradorGrado, DatosBasicosGrado, DepartamentoExpedicionGrado, DirectorGrado, DisponibilidadGrado, EventoGrado, InscripcionGradoService, LugarExpedicionGrado, ModalidadGrado, PaisExpedicionGrado, PeriodoGrado, ProgramaGrado, fechaGrado, mensajeErrorBorrador } from '../../services/inscripcion-grado.service';
+import { BorradorGrado, DatosBasicosGrado, DepartamentoExpedicionGrado, DirectorGrado, DisponibilidadGrado, EventoGrado, InscripcionGradoService, LugarExpedicionGrado, ModalidadGrado, PaisExpedicionGrado, PeriodoGrado, ProgramaGrado, fechaGradoPersistida, mensajeErrorBorrador } from '../../services/inscripcion-grado.service';
 
 @Component({
   selector: 'app-inscripcion-grado',
   standalone: true,
-  imports: [CommonModule, FormsModule, TranslateModule, MatButtonModule, MatCardModule, MatFormFieldModule, MatSelectModule, MatProgressBarModule, MatInputModule, MatAutocompleteModule, SoportesGradoComponent, OpcionDirective],
+  imports: [CommonModule, FormsModule, TranslateModule, MatButtonModule, MatCardModule, MatFormFieldModule, MatSelectModule, MatProgressBarModule, MatInputModule, MatAutocompleteModule, MatStepperModule, SoportesGradoComponent, OpcionDirective],
   templateUrl: './inscripcion-grado.component.html',
   styleUrls: ['./inscripcion-grado.component.scss']
 })
@@ -77,6 +80,10 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   borradorConsultado = false;
   errorBorrador = '';
   mensajeBorrador = '';
+  pasoActivo = 0;
+  soportesCargados = 0;
+  readonly totalPasos = 5;
+  readonly orientacionStepper: Observable<StepperOrientation>;
   cargando = false;
   consultando = false;
   consultado = false;
@@ -99,7 +106,11 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   confirmandoDescarte = false;
   private contenidoPersistido = '';
   constructor(private servicio: InscripcionGradoService, private usuario: UserService, public permisos: PermisosService,
-    private alertas: AlertService, private translate: TranslateService) {}
+    private alertas: AlertService, private translate: TranslateService, breakpointObserver?: BreakpointObserver) {
+    this.orientacionStepper = breakpointObserver
+      ? breakpointObserver.observe('(max-width: 700px)').pipe(map(resultado => resultado.matches ? 'vertical' : 'horizontal'))
+      : of('horizontal');
+  }
 
   private tr(key: string, params?: Record<string, string | number>): string {
     return this.translate.instant(`INSCRIPCION_GRADO.${key}`, params);
@@ -212,6 +223,10 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
 
   get programaSeleccionadoNombre(): string {
     return this.programas.find(p => p.Id === this.programaId)?.Nombre || this.tr('vista.programa_no_disponible');
+  }
+
+  get periodoSeleccionadoNombre(): string {
+    return this.periodos.find(periodo => periodo.Id === this.periodoId)?.Nombre || this.tr('vista.no_registrado');
   }
 
   cargarCatalogos(): void {
@@ -470,9 +485,9 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
     }
   }
 
-  seleccionarDirector(segundo: boolean, director: DirectorGrado): void {
-    if (segundo) this.director2 = director.DIR_NRO_IDEN;
-    else this.director1 = director.DIR_NRO_IDEN;
+  seleccionarDirector(segundo: boolean, director: DirectorGrado | null): void {
+    if (segundo) this.director2 = director?.DIR_NRO_IDEN || null;
+    else this.director1 = director?.DIR_NRO_IDEN || null;
     this.errorBorrador = '';
     this.opcionesDirector2 = this.filtrarDirectores(this.busquedaDirector2, true);
   }
@@ -564,6 +579,7 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
     this.empresa = this.direccionEmpresa = this.telefonoEmpresa = '';
     this.director1 = this.director2 = null;
     this.modalidad = null;
+    this.soportesCargados = 0;
     this.restaurarDirectores();
     this.restaurarLugarExpedicion();
   }
@@ -629,6 +645,7 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
     this.consultaFechasBorrador?.unsubscribe();
     this.guardarActual?.unsubscribe();
     this.borrador = null;
+    this.pasoActivo = 0;
     this.limpiarContenidoFormulario();
     this.errorBorrador = this.mensajeBorrador = '';
     this.cargandoBorrador = this.guardandoBorrador = false;
@@ -687,6 +704,7 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
     this.consultaFechasBorrador?.unsubscribe();
     this.guardarActual?.unsubscribe();
     this.borrador = null;
+    this.pasoActivo = 0;
     this.limpiarContenidoFormulario();
     this.errorBorrador = this.mensajeBorrador = '';
     this.borradorConsultado = false;
@@ -793,15 +811,43 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
     });
   }
 
-  private camposRadicacionCompletos(): boolean {
+  get pasoConvocatoriaCompleto(): boolean {
+    return !!this.periodoId && !!this.programaId && this.borradorConsultado && !this.cargandoBorrador;
+  }
+
+  get pasoDatosCompleto(): boolean {
     const texto = (valor: string) => !!valor.trim();
-    return texto(this.trabajoGrado) && !!this.lugarExpedicionDocumentoId &&
-      this.lugaresExpedicion.some(l => l.Id === this.lugarExpedicionDocumentoId) && texto(this.numeroActaSustentacion) &&
+    return !!this.lugarExpedicionDocumentoId && this.lugaresExpedicion.some(l => l.Id === this.lugarExpedicionDocumentoId) &&
+      texto(this.numeroActaSustentacion) &&
       /^[A-Za-z0-9-]+$/.test(this.numeroRegistroSnp.trim()) && this.trabajaActualmente !== null &&
-      !!this.director1 && this.directores.some(d => d.DIR_NRO_IDEN === this.director1) &&
-      (!this.director2 || this.directores.some(d => d.DIR_NRO_IDEN === this.director2)) && !this.directoresRepetidos &&
-      !!this.modalidad && this.modalidades.some(m => m.CodigoAbreviacion === this.modalidad) &&
       (!this.trabajaActualmente || (texto(this.empresa) && texto(this.direccionEmpresa) && texto(this.telefonoEmpresa)));
+  }
+
+  get pasoTrabajoCompleto(): boolean {
+    return !!this.trabajoGrado.trim() && !!this.director1 && this.directores.some(d => d.DIR_NRO_IDEN === this.director1) &&
+      (!this.director2 || this.directores.some(d => d.DIR_NRO_IDEN === this.director2)) && !this.directoresRepetidos &&
+      !!this.modalidad && this.modalidades.some(m => m.CodigoAbreviacion === this.modalidad);
+  }
+
+  get pasoSoportesCompleto(): boolean {
+    return this.esRadicada || this.soportesCargados === 4;
+  }
+
+  get pasosCompletos(): number {
+    return [this.pasoConvocatoriaCompleto, this.pasoDatosCompleto, this.pasoTrabajoCompleto,
+      this.pasoSoportesCompleto, this.esRadicada].filter(Boolean).length;
+  }
+
+  get progresoFormulario(): number {
+    return this.pasosCompletos * 100 / this.totalPasos;
+  }
+
+  actualizarProgresoSoportes(cantidad: number): void {
+    this.soportesCargados = Math.max(0, Math.min(4, cantidad));
+  }
+
+  private camposRadicacionCompletos(): boolean {
+    return this.pasoDatosCompleto && this.pasoTrabajoCompleto;
   }
 
   async radicar(): Promise<void> {
@@ -820,6 +866,7 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
     let enviando = false;
     try {
 	  const soportes = await firstValueFrom(this.servicio.soportes(contexto.solicitudId, this.terceroId, contexto.formularioId));
+      this.actualizarProgresoSoportes(new Set(soportes.map(soporte => soporte.TipoSoporte)).size);
       if (soportes.length !== 4 || new Set(soportes.map(s => s.TipoSoporte)).size !== 4) {
         this.errorBorrador = this.tr('errores.soportes_radicacion');
         return;
@@ -892,19 +939,18 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
 
   estado(evento: EventoGrado): string {
     const ahora = Date.now();
-    const inicio = fechaGrado(evento.FechaInicioEvento)!;
-    const fin = fechaGrado(evento.FechaFinEvento)!;
+    const inicio = fechaGradoPersistida(evento.FechaInicioEvento)!;
+    const fin = fechaGradoPersistida(evento.FechaFinEvento)!;
     return ahora < inicio ? this.tr('estados.proxima_apertura') : ahora > fin ? this.tr('estados.cerrado') : this.tr('estados.abierto');
   }
   eventoEstaAbierto(evento: EventoGrado): boolean {
     const ahora = Date.now();
-    return ahora >= fechaGrado(evento.FechaInicioEvento)! && ahora <= fechaGrado(evento.FechaFinEvento)!;
+    return ahora >= fechaGradoPersistida(evento.FechaInicioEvento)! && ahora <= fechaGradoPersistida(evento.FechaFinEvento)!;
   }
   fecha(valor: string): string {
-    const fecha = fechaGrado(valor);
-    const locale = this.translate.currentLang === 'en' ? 'en-US' : 'es-CO';
-    return fecha === null ? this.tr('estados.fecha_invalida') : new Intl.DateTimeFormat(locale, {
-      timeZone: 'America/Bogota', dateStyle: 'long', timeStyle: 'short'
-    }).format(fecha);
+    if (fechaGradoPersistida(valor) === null) return this.tr('estados.fecha_invalida');
+    return valor.trim()
+      .replace('T', ' ')
+      .replace(/(?:Z|[+-]\d{2}:?\d{2})$/i, '');
   }
 }

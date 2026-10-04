@@ -1,233 +1,301 @@
-<main class="inscripcion" [attr.aria-busy]="cargando || consultando || cargandoBorrador || guardandoBorrador || radicando">
-  <header>
+<section class="inscripcion" [attr.aria-busy]="cargando || consultando || cargandoBorrador || guardandoBorrador || radicando">
+  <header class="encabezado-pagina">
     <h1>{{ 'INSCRIPCION_GRADO.vista.titulo' | translate }}</h1>
     <p>{{ 'INSCRIPCION_GRADO.vista.subtitulo' | translate }}</p>
   </header>
 
-  <p *ngIf="permisos.estado === 'listo' && !permisos.permite('inscripciones_grado', 'Menú')" role="status">{{ 'INSCRIPCION_GRADO.vista.sin_permiso' | translate }}</p>
-  <ng-container *ngIf="permisos.permite('inscripciones_grado', 'Menú')">
+  <mat-progress-bar *ngIf="cargando || consultando || cargandoBorrador" mode="indeterminate"></mat-progress-bar>
+  <div *ngIf="error" class="mensaje error" role="alert">
+    <p>{{ error }}</p>
+    <button *appOpcion="'grado_reintentar_carga'" mat-stroked-button color="primary" type="button" (click)="cargar()">
+      {{ 'INSCRIPCION_GRADO.vista.reintentar' | translate }}
+    </button>
+  </div>
+  <p *ngIf="errorBorrador" class="mensaje error" role="alert">{{ errorBorrador }}</p>
+  <p *ngIf="mensajeBorrador" class="mensaje exito" role="status">{{ mensajeBorrador }}</p>
+  <p *ngIf="cargandoBorrador" class="mensaje info" role="status">{{ 'INSCRIPCION_GRADO.vista.consultando_borrador' | translate }}</p>
 
-  <mat-progress-bar *ngIf="cargando || consultando" mode="indeterminate" [attr.aria-label]="'INSCRIPCION_GRADO.vista.consultando_info' | translate"></mat-progress-bar>
-
-  <mat-card *ngIf="error" role="alert" class="mensaje">
-    <mat-card-content>{{ error }}</mat-card-content>
-    <mat-card-actions><button *appOpcion="'grado_reintentar_carga'" mat-button (click)="cargar()">{{ 'INSCRIPCION_GRADO.vista.reintentar' | translate }}</button></mat-card-actions>
-  </mat-card>
-
-  <mat-card *ngIf="!error" class="seleccion">
-    <mat-card-header><mat-card-title>{{ 'INSCRIPCION_GRADO.vista.periodo_programa' | translate }}</mat-card-title></mat-card-header>
-    <mat-card-content>
-      <div class="campos">
-        <mat-form-field appearance="outline" subscriptSizing="dynamic">
-          <mat-label>{{ 'INSCRIPCION_GRADO.vista.periodo_academico' | translate }}</mat-label>
-          <mat-select [ngModel]="periodoId" (selectionChange)="seleccionarPeriodo($event.value)" [disabled]="cargando || confirmandoDescarte || guardandoBorrador || guardandoSoporte || radicando || !periodos.length">
-            <mat-option *ngFor="let periodo of periodos" [value]="periodo.Id">{{ periodo.Nombre }}</mat-option>
-          </mat-select>
-        </mat-form-field>
-        <mat-form-field appearance="outline" subscriptSizing="dynamic">
-          <mat-label>{{ 'INSCRIPCION_GRADO.vista.programa_academico' | translate }}</mat-label>
-          <mat-select [ngModel]="programaId" (selectionChange)="seleccionarPrograma($event.value)" [disabled]="cargando || consultando || confirmandoDescarte || guardandoBorrador || guardandoSoporte || radicando || !periodoId || !programasHabilitados.length">
-            <mat-option *ngFor="let programa of programasHabilitados" [value]="programa.Id">{{ programa.Nombre }} · {{ estadoInscripcionPrograma(programa.Id) }}</mat-option>
-          </mat-select>
-        </mat-form-field>
+  <ng-container *ngIf="!error">
+    <section class="resumen-progreso" aria-labelledby="progreso-inscripcion">
+      <div class="progreso-encabezado">
+        <h2 id="progreso-inscripcion">{{ 'INSCRIPCION_GRADO.progreso.titulo' | translate }}</h2>
+        <span>{{ 'INSCRIPCION_GRADO.progreso.conteo' | translate:{ completados: pasosCompletos, total: totalPasos } }}</span>
       </div>
-      <p *ngIf="!cargando && !programas.length" role="status">{{ 'INSCRIPCION_GRADO.vista.sin_programas' | translate }}</p>
-      <p *ngIf="!cargando && !periodos.length" role="status">{{ 'INSCRIPCION_GRADO.vista.sin_periodos' | translate }}</p>
-    </mat-card-content>
-  </mat-card>
+      <mat-progress-bar mode="determinate" [value]="progresoFormulario"
+        [attr.aria-label]="'INSCRIPCION_GRADO.progreso.aria' | translate:{ porcentaje: progresoFormulario }"></mat-progress-bar>
+    </section>
 
-  <section aria-live="polite" aria-atomic="true">
-    <mat-card *ngIf="errorConsulta" class="mensaje" role="alert">
-      <mat-card-content>{{ errorConsulta }}</mat-card-content>
-      <mat-card-actions><button *appOpcion="'grado_consultar_disponibilidad'" mat-button (click)="cambiarPeriodo()">{{ 'INSCRIPCION_GRADO.vista.reintentar_consulta' | translate }}</button></mat-card-actions>
-    </mat-card>
-    <p *ngIf="consultado && !programasHabilitados.length && !errorConsulta">{{ 'INSCRIPCION_GRADO.vista.sin_programas_periodo' | translate }}</p>
-    <p *ngIf="consultado && programasHabilitados.length && !programaId">{{ 'INSCRIPCION_GRADO.vista.seleccionar_programa' | translate }}</p>
-    <ng-container *ngIf="programaId">
-      <ng-container *ngIf="disponibilidad as datos">
-      <h2>{{ 'INSCRIPCION_GRADO.vista.fechas_proceso' | translate }}</h2>
-      <div class="eventos">
-        <mat-card *ngFor="let evento of [datos.inscripcion, datos.aprobacion]">
-          <mat-card-header>
-            <mat-card-title>{{ (evento.CodigoAbreviacion === 'INSC_GRADO' ? 'INSCRIPCION_GRADO.vista.evento_inscripcion' : 'INSCRIPCION_GRADO.vista.evento_aprobacion') | translate }}</mat-card-title>
-            <mat-card-subtitle>{{ estado(evento) }}</mat-card-subtitle>
-          </mat-card-header>
+    <section *ngIf="!esRadicada" class="barra-borrador" aria-labelledby="titulo-guardado-borrador">
+      <div>
+        <h2 id="titulo-guardado-borrador">{{ 'INSCRIPCION_GRADO.vista.borrador_titulo' | translate }}</h2>
+        <p>{{ 'INSCRIPCION_GRADO.vista.borrador_descripcion' | translate }}</p>
+      </div>
+      <div class="acciones-borrador">
+        <ng-container *ngIf="borrador">
+          <button *appOpcion="'grado_consultar_borrador'" mat-button type="button" (click)="recargarBorrador()"
+            [disabled]="cargandoBorrador || guardandoBorrador || guardandoSoporte || radicando">
+            {{ 'INSCRIPCION_GRADO.vista.recargar_borrador' | translate }}
+          </button>
+        </ng-container>
+        <button *appOpcion="borrador ? 'grado_actualizar_borrador' : 'grado_crear_borrador'" mat-stroked-button color="primary"
+          type="button" (click)="guardarBorrador()" [disabled]="!puedeGuardarBorrador">
+          {{ (guardandoBorrador ? 'INSCRIPCION_GRADO.vista.guardando' : 'INSCRIPCION_GRADO.vista.guardar_borrador') | translate }}
+        </button>
+      </div>
+    </section>
+
+    <mat-stepper class="formulario-stepper" [linear]="!esRadicada" [orientation]="(orientacionStepper | async) || 'horizontal'"
+      [(selectedIndex)]="pasoActivo">
+      <mat-step [completed]="pasoConvocatoriaCompleto">
+        <ng-template matStepLabel>{{ 'INSCRIPCION_GRADO.pasos.convocatoria' | translate }}</ng-template>
+        <mat-card>
+          <mat-card-header><mat-card-title>{{ 'INSCRIPCION_GRADO.vista.periodo_programa' | translate }}</mat-card-title></mat-card-header>
           <mat-card-content>
-            <dl><dt>{{ 'INSCRIPCION_GRADO.vista.apertura' | translate }}</dt><dd>{{ fecha(evento.FechaInicioEvento) }}</dd><dt>{{ 'INSCRIPCION_GRADO.vista.cierre' | translate }}</dt><dd>{{ fecha(evento.FechaFinEvento) }}</dd></dl>
+            <div class="campos seleccion">
+              <mat-form-field appearance="outline">
+                <mat-label>{{ 'INSCRIPCION_GRADO.vista.periodo_academico' | translate }}</mat-label>
+                <mat-select [ngModel]="periodoId" (ngModelChange)="seleccionarPeriodo($event)" [disabled]="consultando || guardandoBorrador || guardandoSoporte || radicando">
+                  <mat-option *ngFor="let p of periodos" [value]="p.Id">{{ p.Nombre }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>{{ 'INSCRIPCION_GRADO.vista.programa_academico' | translate }}</mat-label>
+                <mat-select [ngModel]="programaId" (ngModelChange)="seleccionarPrograma($event)" [disabled]="!periodoId || consultando || guardandoBorrador || guardandoSoporte || radicando">
+                  <mat-option *ngFor="let p of programasHabilitados" [value]="p.Id">{{ p.Nombre }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+            <p *ngIf="!cargando && !periodos.length" class="mensaje info">{{ 'INSCRIPCION_GRADO.vista.sin_periodos' | translate }}</p>
+            <p *ngIf="periodoId && !consultando && consultado && !programasHabilitados.length" class="mensaje info">
+              {{ 'INSCRIPCION_GRADO.vista.sin_programas_periodo' | translate }}
+            </p>
+            <p *ngIf="errorConsulta" class="mensaje advertencia" role="alert">{{ errorConsulta }}</p>
+            <ng-container *ngIf="disponibilidad as d">
+              <h3>{{ 'INSCRIPCION_GRADO.vista.fechas_proceso' | translate }}</h3>
+              <div class="eventos-grid">
+                <article class="evento">
+                  <strong>{{ 'INSCRIPCION_GRADO.vista.evento_inscripcion' | translate }}</strong>
+                  <dl>
+                    <div><dt>{{ 'INSCRIPCION_GRADO.vista.apertura' | translate }}</dt><dd>{{ fecha(d.inscripcion.FechaInicioEvento) }}</dd></div>
+                    <div><dt>{{ 'INSCRIPCION_GRADO.vista.cierre' | translate }}</dt><dd>{{ fecha(d.inscripcion.FechaFinEvento) }}</dd></div>
+                  </dl>
+                  <span class="estado" [class.abierto]="eventoEstaAbierto(d.inscripcion)">
+                    {{ (eventoEstaAbierto(d.inscripcion) ? 'INSCRIPCION_GRADO.estados.abierto' : 'INSCRIPCION_GRADO.estados.cerrado') | translate }}
+                  </span>
+                </article>
+                <article class="evento">
+                  <strong>{{ 'INSCRIPCION_GRADO.vista.evento_aprobacion' | translate }}</strong>
+                  <dl>
+                    <div><dt>{{ 'INSCRIPCION_GRADO.vista.apertura' | translate }}</dt><dd>{{ fecha(d.aprobacion.FechaInicioEvento) }}</dd></div>
+                    <div><dt>{{ 'INSCRIPCION_GRADO.vista.cierre' | translate }}</dt><dd>{{ fecha(d.aprobacion.FechaFinEvento) }}</dd></div>
+                  </dl>
+                  <span class="estado" [class.abierto]="eventoEstaAbierto(d.aprobacion)">
+                    {{ (eventoEstaAbierto(d.aprobacion) ? 'INSCRIPCION_GRADO.estados.abierto' : 'INSCRIPCION_GRADO.estados.cerrado') | translate }}
+                  </span>
+                </article>
+              </div>
+              <p class="nota">{{ 'INSCRIPCION_GRADO.vista.nota_horario' | translate }}</p>
+            </ng-container>
           </mat-card-content>
         </mat-card>
-      </div>
-      <p class="nota">{{ 'INSCRIPCION_GRADO.vista.nota_horario' | translate }}</p>
-      </ng-container>
-      <mat-card class="seleccion">
-        <mat-card-header><mat-card-title>{{ 'INSCRIPCION_GRADO.vista.borrador_titulo' | translate }}</mat-card-title></mat-card-header>
-        <mat-card-content>
-          <section class="datos-basicos" aria-labelledby="titulo-datos-basicos" [attr.aria-busy]="cargandoDatosBasicos">
-            <h3 id="titulo-datos-basicos">{{ 'INSCRIPCION_GRADO.vista.datos_basicos' | translate }}</h3>
-            <p class="nota">{{ 'INSCRIPCION_GRADO.vista.datos_nota' | translate }}</p>
-            <p *ngIf="cargandoDatosBasicos" role="status">{{ 'INSCRIPCION_GRADO.vista.consultando_datos' | translate }}</p>
-            <div *ngIf="errorDatosBasicos" role="alert">
-              <p>{{ errorDatosBasicos }}</p>
-              <button *appOpcion="'grado_consultar_datos_basicos'" mat-button type="button" (click)="cargarDatosBasicos()">{{ 'INSCRIPCION_GRADO.vista.reintentar_consulta' | translate }}</button>
-            </div>
-            <dl *ngIf="datosBasicos as estudiante" class="datos-basicos-grid">
-              <div><dt>{{ 'INSCRIPCION_GRADO.vista.nombre_completo' | translate }}</dt><dd>{{ nombreEstudiante }}</dd></div>
-              <div><dt>{{ 'INSCRIPCION_GRADO.vista.programa_academico' | translate }}</dt><dd>{{ programaSeleccionadoNombre }}</dd></div>
-              <div *ngIf="borrador?.Solicitud?.CodigoEstudiante"><dt>{{ 'INSCRIPCION_GRADO.vista.codigo_estudiantil' | translate }}</dt><dd>{{ borrador?.Solicitud?.CodigoEstudiante }}</dd></div>
-              <div><dt>{{ 'INSCRIPCION_GRADO.vista.tipo_identificacion' | translate }}</dt><dd>{{ estudiante.TipoIdentificacion?.Nombre || ('INSCRIPCION_GRADO.vista.no_registrado' | translate) }}</dd></div>
-              <div><dt>{{ 'INSCRIPCION_GRADO.vista.numero_identificacion' | translate }}</dt><dd>{{ estudiante.NumeroIdentificacion || ('INSCRIPCION_GRADO.vista.no_registrado' | translate) }}</dd></div>
-              <div><dt>{{ 'INSCRIPCION_GRADO.vista.fecha_nacimiento' | translate }}</dt><dd>{{ estudiante.FechaNacimiento?.slice(0, 10) || ('INSCRIPCION_GRADO.vista.no_registrada' | translate) }}</dd></div>
-              <div><dt>{{ 'INSCRIPCION_GRADO.vista.fecha_expedicion' | translate }}</dt><dd>{{ estudiante.FechaExpedicion?.slice(0, 10) || ('INSCRIPCION_GRADO.vista.no_registrada' | translate) }}</dd></div>
-              <div><dt>{{ 'INSCRIPCION_GRADO.vista.genero' | translate }}</dt><dd>{{ estudiante.Genero?.Nombre || ('INSCRIPCION_GRADO.vista.no_registrado' | translate) }}</dd></div>
-              <div><dt>{{ 'INSCRIPCION_GRADO.vista.telefono' | translate }}</dt><dd>{{ estudiante.Telefono || ('INSCRIPCION_GRADO.vista.no_registrado' | translate) }}</dd></div>
-              <div><dt>{{ 'INSCRIPCION_GRADO.vista.telefono_alterno' | translate }}</dt><dd>{{ estudiante.TelefonoAlterno || ('INSCRIPCION_GRADO.vista.no_registrado' | translate) }}</dd></div>
-            </dl>
-          </section>
-          <p>{{ (esRadicada ? 'INSCRIPCION_GRADO.vista.radicada_descripcion' : 'INSCRIPCION_GRADO.vista.borrador_descripcion') | translate }}</p>
-          <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>{{ 'INSCRIPCION_GRADO.vista.trabajo_grado' | translate }}</mat-label>
-            <textarea matInput [(ngModel)]="trabajoGrado" rows="5" [disabled]="!puedeEditarFormulario"></textarea>
-          </mat-form-field>
-          <div class="campos">
-            <mat-form-field appearance="outline" subscriptSizing="dynamic">
-              <mat-label>{{ 'INSCRIPCION_GRADO.vista.pais_expedicion' | translate }}</mat-label>
-              <input matInput [(ngModel)]="busquedaPais" (input)="buscarPais($any($event.target).value)" [matAutocomplete]="autoPais"
-                [disabled]="!puedeEditarFormulario || cargandoCatalogos || !!errorCatalogos">
-              <mat-autocomplete #autoPais="matAutocomplete" [displayWith]="mostrarPais" [requireSelection]="true" [autoActiveFirstOption]="true"
-                (optionSelected)="seleccionarPais($event.option.value)">
-                <mat-option *ngFor="let pais of opcionesPaises" [value]="pais">{{ pais.Nombre }}</mat-option>
-              </mat-autocomplete>
-            </mat-form-field>
-            <mat-form-field appearance="outline" subscriptSizing="dynamic">
-              <mat-label>{{ 'INSCRIPCION_GRADO.vista.departamento_expedicion' | translate }}</mat-label>
-              <input matInput [(ngModel)]="busquedaDepartamento" (input)="buscarDepartamento($any($event.target).value)" [matAutocomplete]="autoDepartamento"
-                [disabled]="!puedeEditarFormulario || !paisExpedicionDocumentoId || cargandoUbicaciones || !!errorUbicaciones">
-              <mat-autocomplete #autoDepartamento="matAutocomplete" [displayWith]="mostrarDepartamento" [requireSelection]="true" [autoActiveFirstOption]="true"
-                (optionSelected)="seleccionarDepartamento($event.option.value)">
-                <mat-option *ngFor="let departamento of opcionesDepartamentos" [value]="departamento">{{ departamento.Nombre }}</mat-option>
-              </mat-autocomplete>
-            </mat-form-field>
-            <mat-form-field appearance="outline" subscriptSizing="dynamic">
-              <mat-label>{{ 'INSCRIPCION_GRADO.vista.ciudad_expedicion' | translate }}</mat-label>
-              <input matInput [(ngModel)]="busquedaLugar" (input)="buscarLugar($any($event.target).value)" [matAutocomplete]="autoLugar"
-                [disabled]="!puedeEditarFormulario || !departamentoExpedicionDocumentoId || cargandoUbicaciones || !!errorUbicaciones">
-              <mat-autocomplete #autoLugar="matAutocomplete" [displayWith]="mostrarLugar" [requireSelection]="true" [autoActiveFirstOption]="true"
-                (optionSelected)="seleccionarLugar($event.option.value)">
-                <mat-option *ngFor="let lugar of opcionesLugares" [value]="lugar">
-                  {{ lugar.Nombre }}
-                </mat-option>
-              </mat-autocomplete>
-              <mat-hint>{{ 'INSCRIPCION_GRADO.vista.lugar_expedicion_hint' | translate }}</mat-hint>
-            </mat-form-field>
-            <mat-form-field appearance="outline" subscriptSizing="dynamic">
-              <mat-label>{{ 'INSCRIPCION_GRADO.vista.numero_acta' | translate }}</mat-label>
-              <input matInput [(ngModel)]="numeroActaSustentacion" [disabled]="!puedeEditarFormulario" maxlength="80">
-            </mat-form-field>
-            <mat-form-field appearance="outline" subscriptSizing="dynamic">
-              <mat-label>{{ 'INSCRIPCION_GRADO.vista.numero_snp' | translate }}</mat-label>
-              <input matInput [(ngModel)]="numeroRegistroSnp" [disabled]="!puedeEditarFormulario" maxlength="80">
-              <mat-hint>{{ 'INSCRIPCION_GRADO.vista.numero_snp_hint' | translate }}</mat-hint>
-            </mat-form-field>
-            <mat-form-field appearance="outline" subscriptSizing="dynamic">
-              <mat-label>{{ 'INSCRIPCION_GRADO.vista.trabaja_actualmente' | translate }}</mat-label>
-              <mat-select [ngModel]="trabajaActualmente" (selectionChange)="cambiarSituacionLaboral($event.value)" [disabled]="!puedeEditarFormulario">
-                <mat-option [value]="true">{{ 'INSCRIPCION_GRADO.vista.si' | translate }}</mat-option>
-                <mat-option [value]="false">{{ 'INSCRIPCION_GRADO.vista.no' | translate }}</mat-option>
-              </mat-select>
-            </mat-form-field>
-          </div>
-          <div *ngIf="trabajaActualmente" class="campos">
-            <mat-form-field appearance="outline" subscriptSizing="dynamic">
-              <mat-label>{{ 'INSCRIPCION_GRADO.vista.empresa' | translate }}</mat-label>
-              <input matInput [(ngModel)]="empresa" [disabled]="!puedeEditarFormulario" maxlength="180">
-            </mat-form-field>
-            <mat-form-field appearance="outline" subscriptSizing="dynamic">
-              <mat-label>{{ 'INSCRIPCION_GRADO.vista.direccion_empresa' | translate }}</mat-label>
-              <input matInput [(ngModel)]="direccionEmpresa" [disabled]="!puedeEditarFormulario" maxlength="180">
-            </mat-form-field>
-            <mat-form-field appearance="outline" subscriptSizing="dynamic">
-              <mat-label>{{ 'INSCRIPCION_GRADO.vista.telefono_empresa' | translate }}</mat-label>
-              <input matInput [(ngModel)]="telefonoEmpresa" [disabled]="!puedeEditarFormulario" maxlength="60">
-            </mat-form-field>
-          </div>
-          <p *ngIf="cargandoUbicaciones" role="status">{{ 'INSCRIPCION_GRADO.vista.consultando_ubicaciones' | translate }}</p>
-          <p *ngIf="errorUbicaciones" role="alert">{{ errorUbicaciones }}</p>
-          <p *ngIf="cargandoCatalogos" role="status">{{ 'INSCRIPCION_GRADO.vista.consultando_catalogos' | translate }}</p>
-          <div *ngIf="errorCatalogos" role="alert">
-            <p>{{ errorCatalogos }}</p>
-            <button *appOpcion="'grado_consultar_catalogos'" mat-button type="button" (click)="cargarCatalogos()">{{ 'INSCRIPCION_GRADO.vista.reintentar_catalogos' | translate }}</button>
-          </div>
-          <div class="campos">
-            <mat-form-field appearance="outline" subscriptSizing="dynamic">
-              <mat-label>{{ 'INSCRIPCION_GRADO.vista.director_uno' | translate }}</mat-label>
-              <input matInput [(ngModel)]="busquedaDirector1" (ngModelChange)="buscarDirector(false, $event)"
-                [matAutocomplete]="autoDirector1" [disabled]="!puedeEditarFormulario || cargandoCatalogos || !!errorCatalogos">
-              <mat-autocomplete #autoDirector1="matAutocomplete" [displayWith]="mostrarDirector"
-                (optionSelected)="seleccionarDirector(false, $event.option.value)">
-                <mat-option *ngFor="let director of opcionesDirector1" [value]="director">
-                  {{ director.DIR_NOMBRE }} {{ director.DIR_APELLIDO }}
-                </mat-option>
-              </mat-autocomplete>
-              <mat-hint>{{ 'INSCRIPCION_GRADO.vista.director_uno_hint' | translate }}</mat-hint>
-            </mat-form-field>
-            <mat-form-field appearance="outline" subscriptSizing="dynamic">
-              <mat-label>{{ 'INSCRIPCION_GRADO.vista.director_dos' | translate }}</mat-label>
-              <input matInput [(ngModel)]="busquedaDirector2" (ngModelChange)="buscarDirector(true, $event)"
-                [matAutocomplete]="autoDirector2" [disabled]="!puedeEditarFormulario || cargandoCatalogos || !!errorCatalogos">
-              <mat-autocomplete #autoDirector2="matAutocomplete" [displayWith]="mostrarDirector"
-                (optionSelected)="seleccionarDirector(true, $event.option.value)">
-                <mat-option *ngFor="let director of opcionesDirector2" [value]="director">
-                  {{ director.DIR_NOMBRE }} {{ director.DIR_APELLIDO }}
-                </mat-option>
-              </mat-autocomplete>
-              <mat-hint>{{ 'INSCRIPCION_GRADO.vista.director_dos_hint' | translate }}</mat-hint>
-            </mat-form-field>
-          </div>
-          <p *ngIf="directoresRepetidos" role="alert">{{ 'INSCRIPCION_GRADO.errores.directores_repetidos' | translate }}</p>
-          <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>{{ 'INSCRIPCION_GRADO.vista.modalidad' | translate }}</mat-label>
-            <mat-select [(ngModel)]="modalidad" [disabled]="!puedeEditarFormulario || cargandoCatalogos || !!errorCatalogos">
-              <mat-option *ngFor="let opcion of modalidades" [value]="opcion.CodigoAbreviacion">
-                {{ opcion.Nombre }}
-              </mat-option>
-            </mat-select>
-          </mat-form-field>
-          <div *ngIf="cargandoBorrador" class="carga-formulario" role="status" aria-live="polite">
-            <mat-progress-bar mode="indeterminate" [attr.aria-label]="'INSCRIPCION_GRADO.vista.consultando_borrador' | translate"></mat-progress-bar>
-            <span>{{ 'INSCRIPCION_GRADO.vista.consultando_borrador' | translate }}</span>
-          </div>
-          <section *ngIf="borrador as solicitud" class="estado-solicitud" [class.estado-solicitud-radicada]="esRadicada" role="status">
-            <div class="estado-solicitud-encabezado">
-              <span class="estado-solicitud-etiqueta">{{ (esRadicada ? 'INSCRIPCION_GRADO.vista.estado_radicada' : 'INSCRIPCION_GRADO.vista.estado_borrador') | translate }}</span>
-              <strong>{{ 'INSCRIPCION_GRADO.vista.solicitud_numero' | translate:{ id: solicitud.Solicitud.Id } }}</strong>
-            </div>
-            <dl *ngIf="solicitud.Formulario.FechaRadicacion" class="estado-solicitud-fecha">
-              <dt>{{ 'INSCRIPCION_GRADO.vista.fecha_radicacion' | translate }}</dt>
-              <dd>{{ fecha(solicitud.Formulario.FechaRadicacion!) }}</dd>
-            </dl>
-            <p *ngIf="esRadicada">{{ 'INSCRIPCION_GRADO.vista.radicada_consulta' | translate }}</p>
-          </section>
-          <p *ngIf="borradorConsultado && !borrador && !puedeGuardarBorrador" role="status">{{ 'INSCRIPCION_GRADO.vista.sin_borrador' | translate }}</p>
-          <p *ngIf="borrador && !esRadicada && (!disponibilidad || !eventoEstaAbierto(disponibilidad.aprobacion))" role="status">{{ 'INSCRIPCION_GRADO.vista.borrador_consulta' | translate }}</p>
-          <p *ngIf="puedeEditarFormulario && !puedeGuardarBorrador && !cargandoBorrador" role="status">{{ 'INSCRIPCION_GRADO.vista.preparar_formulario' | translate }}</p>
-          <p *ngIf="errorBorrador" role="alert">{{ errorBorrador }}</p>
-          <p *ngIf="mensajeBorrador" role="status">{{ mensajeBorrador }}</p>
-        </mat-card-content>
-      </mat-card>
-      <app-soportes-grado [borrador]="borrador" [habilitado]="puedeModificarSoportes" (ocupado)="guardandoSoporte = $event"></app-soportes-grado>
-      <p class="nota">{{ (esRadicada ? 'INSCRIPCION_GRADO.vista.nota_pdf_radicada' : 'INSCRIPCION_GRADO.vista.nota_pdf') | translate }}</p>
-      <footer *ngIf="!esRadicada" class="acciones-formulario acciones-formulario-sin-recarga">
-        <div class="acciones-principales">
-          <button *appOpcion="borrador ? 'grado_actualizar_borrador' : 'grado_crear_borrador'" mat-raised-button color="primary" type="button"
-            (click)="guardarBorrador()" [disabled]="!puedeGuardarBorrador">
-            {{ (guardandoBorrador ? 'INSCRIPCION_GRADO.vista.guardando' : 'INSCRIPCION_GRADO.vista.guardar_borrador') | translate }}
-          </button>
-          <button *appOpcion="'grado_radicar_inscripcion'" mat-raised-button color="accent" type="button" (click)="radicar()" [disabled]="!puedeRadicar">
-            {{ (radicando ? 'INSCRIPCION_GRADO.vista.radicando' : 'INSCRIPCION_GRADO.vista.radicar') | translate }}
+        <div class="navegacion-pasos">
+          <button mat-flat-button color="primary" matStepperNext [disabled]="!pasoConvocatoriaCompleto">
+            {{ 'INSCRIPCION_GRADO.acciones.siguiente' | translate }}
           </button>
         </div>
-      </footer>
-    </ng-container>
-  </section>
+      </mat-step>
+
+      <mat-step [completed]="pasoDatosCompleto">
+        <ng-template matStepLabel>{{ 'INSCRIPCION_GRADO.pasos.datos' | translate }}</ng-template>
+        <mat-card>
+          <mat-card-header><mat-card-title>{{ 'INSCRIPCION_GRADO.vista.datos_basicos' | translate }}</mat-card-title></mat-card-header>
+          <mat-card-content>
+            <p *ngIf="cargandoDatosBasicos" class="mensaje info">{{ 'INSCRIPCION_GRADO.vista.consultando_datos' | translate }}</p>
+            <p *ngIf="errorDatosBasicos" class="mensaje advertencia" role="alert">{{ errorDatosBasicos }}</p>
+            <div *ngIf="datosBasicos" class="datos-estudiante">
+              <p class="nota">{{ 'INSCRIPCION_GRADO.vista.datos_nota' | translate }}</p>
+              <dl>
+                <div><dt>{{ 'INSCRIPCION_GRADO.vista.nombre_completo' | translate }}</dt><dd>{{ nombreEstudiante }}</dd></div>
+                <div><dt>{{ 'INSCRIPCION_GRADO.vista.codigo_estudiantil' | translate }}</dt><dd>{{ borrador?.Solicitud?.CodigoEstudiante || ('INSCRIPCION_GRADO.vista.no_registrado' | translate) }}</dd></div>
+                <div><dt>{{ 'INSCRIPCION_GRADO.vista.tipo_identificacion' | translate }}</dt><dd>{{ datosBasicos.TipoIdentificacion?.Nombre || ('INSCRIPCION_GRADO.vista.no_registrado' | translate) }}</dd></div>
+                <div><dt>{{ 'INSCRIPCION_GRADO.vista.numero_identificacion' | translate }}</dt><dd>{{ datosBasicos.NumeroIdentificacion || ('INSCRIPCION_GRADO.vista.no_registrado' | translate) }}</dd></div>
+                <div><dt>{{ 'INSCRIPCION_GRADO.vista.fecha_nacimiento' | translate }}</dt><dd>{{ (datosBasicos.FechaNacimiento | date:'mediumDate') || ('INSCRIPCION_GRADO.vista.no_registrada' | translate) }}</dd></div>
+                <div><dt>{{ 'INSCRIPCION_GRADO.vista.fecha_expedicion' | translate }}</dt><dd>{{ (datosBasicos.FechaExpedicion | date:'mediumDate') || ('INSCRIPCION_GRADO.vista.no_registrada' | translate) }}</dd></div>
+                <div><dt>{{ 'INSCRIPCION_GRADO.vista.genero' | translate }}</dt><dd>{{ datosBasicos.Genero?.Nombre || ('INSCRIPCION_GRADO.vista.no_registrado' | translate) }}</dd></div>
+                <div><dt>{{ 'INSCRIPCION_GRADO.vista.telefono' | translate }}</dt><dd>{{ datosBasicos.Telefono || ('INSCRIPCION_GRADO.vista.no_registrado' | translate) }}</dd></div>
+                <div><dt>{{ 'INSCRIPCION_GRADO.vista.telefono_alterno' | translate }}</dt><dd>{{ datosBasicos.TelefonoAlterno || ('INSCRIPCION_GRADO.vista.no_registrado' | translate) }}</dd></div>
+              </dl>
+            </div>
+            <p *ngIf="cargandoCatalogos || cargandoUbicaciones" class="mensaje info">{{ 'INSCRIPCION_GRADO.vista.consultando_catalogos' | translate }}</p>
+            <p *ngIf="errorCatalogos" class="mensaje advertencia" role="alert">
+              {{ errorCatalogos }}
+              <button type="button" mat-button color="primary" (click)="cargarCatalogos()" [disabled]="cargandoCatalogos">{{ 'INSCRIPCION_GRADO.vista.reintentar_catalogos' | translate }}</button>
+            </p>
+            <p *ngIf="errorUbicaciones" class="mensaje advertencia" role="alert">{{ errorUbicaciones }}</p>
+            <div class="formulario-secciones">
+              <section class="formulario-seccion" aria-labelledby="titulo-lugar-expedicion">
+                <h3 id="titulo-lugar-expedicion">{{ 'INSCRIPCION_GRADO.vista.seccion_lugar_expedicion' | translate }}</h3>
+                <div class="campos formulario">
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ 'INSCRIPCION_GRADO.vista.pais_expedicion' | translate }}</mat-label>
+                    <input matInput [(ngModel)]="busquedaPais" [matAutocomplete]="autoPais" (ngModelChange)="buscarPais($event)" [disabled]="!puedeEditarFormulario || cargandoCatalogos" required>
+                    <mat-autocomplete #autoPais="matAutocomplete" [displayWith]="mostrarPais" (optionSelected)="seleccionarPais($event.option.value)">
+                      <mat-option *ngFor="let pais of opcionesPaises" [value]="pais">{{ pais.Nombre }}</mat-option>
+                    </mat-autocomplete>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ 'INSCRIPCION_GRADO.vista.departamento_expedicion' | translate }}</mat-label>
+                    <input matInput [(ngModel)]="busquedaDepartamento" [matAutocomplete]="autoDepartamento" (ngModelChange)="buscarDepartamento($event)" [disabled]="!puedeEditarFormulario || !paisExpedicionDocumentoId || cargandoUbicaciones" required>
+                    <mat-autocomplete #autoDepartamento="matAutocomplete" [displayWith]="mostrarDepartamento" (optionSelected)="seleccionarDepartamento($event.option.value)">
+                      <mat-option *ngFor="let departamento of opcionesDepartamentos" [value]="departamento">{{ departamento.Nombre }}</mat-option>
+                    </mat-autocomplete>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ 'INSCRIPCION_GRADO.vista.ciudad_expedicion' | translate }}</mat-label>
+                    <input matInput [(ngModel)]="busquedaLugar" [matAutocomplete]="autoLugar" (ngModelChange)="buscarLugar($event)" [disabled]="!puedeEditarFormulario || !departamentoExpedicionDocumentoId || cargandoUbicaciones" required>
+                    <mat-hint>{{ 'INSCRIPCION_GRADO.vista.lugar_expedicion_hint' | translate }}</mat-hint>
+                    <mat-autocomplete #autoLugar="matAutocomplete" [displayWith]="mostrarLugar" (optionSelected)="seleccionarLugar($event.option.value)">
+                      <mat-option *ngFor="let lugar of opcionesLugares" [value]="lugar">{{ lugar.Nombre }}</mat-option>
+                    </mat-autocomplete>
+                  </mat-form-field>
+                </div>
+              </section>
+
+              <section class="formulario-seccion" aria-labelledby="titulo-informacion-laboral">
+                <h3 id="titulo-informacion-laboral">{{ 'INSCRIPCION_GRADO.vista.seccion_informacion_laboral' | translate }}</h3>
+                <div class="campos formulario">
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ 'INSCRIPCION_GRADO.vista.trabaja_actualmente' | translate }}</mat-label>
+                    <mat-select [(ngModel)]="trabajaActualmente" (ngModelChange)="cambiarSituacionLaboral($event)" [disabled]="!puedeEditarFormulario" required>
+                      <mat-option [value]="true">{{ 'INSCRIPCION_GRADO.vista.si' | translate }}</mat-option>
+                      <mat-option [value]="false">{{ 'INSCRIPCION_GRADO.vista.no' | translate }}</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                  <ng-container *ngIf="trabajaActualmente">
+                    <mat-form-field appearance="outline"><mat-label>{{ 'INSCRIPCION_GRADO.vista.empresa' | translate }}</mat-label><input matInput [(ngModel)]="empresa" [disabled]="!puedeEditarFormulario" required></mat-form-field>
+                    <mat-form-field appearance="outline"><mat-label>{{ 'INSCRIPCION_GRADO.vista.direccion_empresa' | translate }}</mat-label><input matInput [(ngModel)]="direccionEmpresa" [disabled]="!puedeEditarFormulario" required></mat-form-field>
+                    <mat-form-field appearance="outline"><mat-label>{{ 'INSCRIPCION_GRADO.vista.telefono_empresa' | translate }}</mat-label><input matInput [(ngModel)]="telefonoEmpresa" [disabled]="!puedeEditarFormulario" required></mat-form-field>
+                  </ng-container>
+                </div>
+              </section>
+
+              <section class="formulario-seccion" aria-labelledby="titulo-informacion-academica">
+                <h3 id="titulo-informacion-academica">{{ 'INSCRIPCION_GRADO.vista.seccion_informacion_academica' | translate }}</h3>
+                <div class="campos formulario">
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ 'INSCRIPCION_GRADO.vista.numero_acta' | translate }}</mat-label>
+                    <input matInput [(ngModel)]="numeroActaSustentacion" [disabled]="!puedeEditarFormulario" required>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ 'INSCRIPCION_GRADO.vista.numero_snp' | translate }}</mat-label>
+                    <input matInput [(ngModel)]="numeroRegistroSnp" [disabled]="!puedeEditarFormulario" pattern="[A-Za-z0-9-]+" required>
+                    <mat-hint>{{ 'INSCRIPCION_GRADO.vista.numero_snp_hint' | translate }}</mat-hint>
+                  </mat-form-field>
+                </div>
+              </section>
+            </div>
+          </mat-card-content>
+        </mat-card>
+        <div class="navegacion-pasos">
+          <button mat-button matStepperPrevious>{{ 'INSCRIPCION_GRADO.acciones.anterior' | translate }}</button>
+          <button mat-flat-button color="primary" matStepperNext [disabled]="!pasoDatosCompleto">{{ 'INSCRIPCION_GRADO.acciones.siguiente' | translate }}</button>
+        </div>
+      </mat-step>
+
+      <mat-step [completed]="pasoTrabajoCompleto">
+        <ng-template matStepLabel>{{ 'INSCRIPCION_GRADO.pasos.trabajo' | translate }}</ng-template>
+        <mat-card>
+          <mat-card-header><mat-card-title>{{ 'INSCRIPCION_GRADO.vista.formulario' | translate }}</mat-card-title></mat-card-header>
+          <mat-card-content>
+            <p *ngIf="cargandoCatalogos" class="mensaje info">{{ 'INSCRIPCION_GRADO.vista.consultando_catalogos' | translate }}</p>
+            <p *ngIf="errorCatalogos" class="mensaje advertencia" role="alert">
+              {{ errorCatalogos }}
+              <button type="button" mat-button color="primary" (click)="cargarCatalogos()" [disabled]="cargandoCatalogos">{{ 'INSCRIPCION_GRADO.vista.reintentar_catalogos' | translate }}</button>
+            </p>
+            <div class="campos formulario">
+              <mat-form-field appearance="outline" class="campo-ancho">
+                <mat-label>{{ 'INSCRIPCION_GRADO.vista.trabajo_grado' | translate }}</mat-label>
+                <textarea matInput rows="3" [(ngModel)]="trabajoGrado" [disabled]="!puedeEditarFormulario" required></textarea>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>{{ 'INSCRIPCION_GRADO.vista.director_uno' | translate }}</mat-label>
+                <input matInput [(ngModel)]="busquedaDirector1" [matAutocomplete]="autoDirector1" (ngModelChange)="buscarDirector(false, $event)" [disabled]="!puedeEditarFormulario || cargandoCatalogos" required>
+                <mat-hint>{{ 'INSCRIPCION_GRADO.vista.director_uno_hint' | translate }}</mat-hint>
+                <mat-autocomplete #autoDirector1="matAutocomplete" [displayWith]="mostrarDirector" (optionSelected)="seleccionarDirector(false, $event.option.value)">
+                  <mat-option *ngFor="let director of opcionesDirector1" [value]="director">{{ director.DIR_NOMBRE }} {{ director.DIR_APELLIDO }}</mat-option>
+                </mat-autocomplete>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>{{ 'INSCRIPCION_GRADO.vista.director_dos' | translate }}</mat-label>
+                <input matInput [(ngModel)]="busquedaDirector2" [matAutocomplete]="autoDirector2" (ngModelChange)="buscarDirector(true, $event)" [disabled]="!puedeEditarFormulario || cargandoCatalogos">
+                <mat-hint>{{ 'INSCRIPCION_GRADO.vista.director_dos_hint' | translate }}</mat-hint>
+                <mat-autocomplete #autoDirector2="matAutocomplete" [displayWith]="mostrarDirector" (optionSelected)="seleccionarDirector(true, $event.option.value)">
+                  <mat-option [value]="null">{{ 'INSCRIPCION_GRADO.vista.sin_segundo_director' | translate }}</mat-option>
+                  <mat-option *ngFor="let director of opcionesDirector2" [value]="director">{{ director.DIR_NOMBRE }} {{ director.DIR_APELLIDO }}</mat-option>
+                </mat-autocomplete>
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="campo-ancho">
+                <mat-label>{{ 'INSCRIPCION_GRADO.vista.modalidad' | translate }}</mat-label>
+                <mat-select [(ngModel)]="modalidad" [disabled]="!puedeEditarFormulario || cargandoCatalogos" required>
+                  <mat-option *ngFor="let opcion of modalidades" [value]="opcion.CodigoAbreviacion">{{ opcion.Nombre }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+            <p *ngIf="directoresRepetidos" class="mensaje error" role="alert">{{ 'INSCRIPCION_GRADO.errores.directores_repetidos' | translate }}</p>
+          </mat-card-content>
+        </mat-card>
+        <div class="navegacion-pasos">
+          <button mat-button matStepperPrevious>{{ 'INSCRIPCION_GRADO.acciones.anterior' | translate }}</button>
+          <button mat-flat-button color="primary" matStepperNext [disabled]="!pasoTrabajoCompleto">{{ 'INSCRIPCION_GRADO.acciones.siguiente' | translate }}</button>
+        </div>
+      </mat-step>
+
+      <mat-step [completed]="pasoSoportesCompleto">
+        <ng-template matStepLabel>{{ 'INSCRIPCION_GRADO.pasos.soportes' | translate }}</ng-template>
+        <app-soportes-grado *ngIf="borrador; else guardarPrimero" [borrador]="borrador"
+          [habilitado]="puedeModificarSoportes" (ocupado)="guardandoSoporte = $event"
+          (progreso)="actualizarProgresoSoportes($event)"></app-soportes-grado>
+        <ng-template #guardarPrimero>
+          <p class="mensaje info">{{ 'INSCRIPCION_GRADO.soportes.guardar_primero' | translate }}</p>
+        </ng-template>
+        <div class="navegacion-pasos">
+          <button mat-button matStepperPrevious>{{ 'INSCRIPCION_GRADO.acciones.anterior' | translate }}</button>
+          <button mat-flat-button color="primary" matStepperNext [disabled]="!pasoSoportesCompleto">{{ 'INSCRIPCION_GRADO.acciones.siguiente' | translate }}</button>
+        </div>
+      </mat-step>
+
+      <mat-step [completed]="esRadicada">
+        <ng-template matStepLabel>{{ 'INSCRIPCION_GRADO.pasos.resumen' | translate }}</ng-template>
+        <mat-card>
+          <mat-card-header><mat-card-title>{{ 'INSCRIPCION_GRADO.vista.resumen' | translate }}</mat-card-title></mat-card-header>
+          <mat-card-content>
+            <dl class="resumen-radicacion">
+              <div><dt>{{ 'INSCRIPCION_GRADO.vista.periodo_academico' | translate }}</dt><dd>{{ periodoSeleccionadoNombre }}</dd></div>
+              <div><dt>{{ 'INSCRIPCION_GRADO.vista.programa_academico' | translate }}</dt><dd>{{ programaSeleccionadoNombre }}</dd></div>
+              <div><dt>{{ 'INSCRIPCION_GRADO.vista.trabajo_grado' | translate }}</dt><dd>{{ trabajoGrado }}</dd></div>
+              <div><dt>{{ 'INSCRIPCION_GRADO.vista.soportes_completos' | translate }}</dt><dd>{{ soportesCargados }} / 4</dd></div>
+            </dl>
+            <div *ngIf="borrador" class="estado-inscripcion">
+              <strong>{{ 'INSCRIPCION_GRADO.vista.estado' | translate }}:</strong>
+              <span>{{ (esRadicada ? 'INSCRIPCION_GRADO.vista.estado_radicada' : 'INSCRIPCION_GRADO.vista.estado_borrador') | translate }}</span>
+            </div>
+            <dl *ngIf="borrador" class="resumen-radicacion">
+              <div><dt>{{ 'INSCRIPCION_GRADO.vista.solicitud' | translate }}</dt><dd>#{{ borrador.Solicitud.Id }}</dd></div>
+              <div *ngIf="borrador.Formulario.FechaRadicacion"><dt>{{ 'INSCRIPCION_GRADO.vista.fecha_radicacion' | translate }}</dt><dd>{{ fecha(borrador.Formulario.FechaRadicacion) }}</dd></div>
+            </dl>
+            <p class="mensaje info">{{ (esRadicada ? 'INSCRIPCION_GRADO.vista.radicada_ayuda' : 'INSCRIPCION_GRADO.vista.resumen_ayuda') | translate }}</p>
+          </mat-card-content>
+        </mat-card>
+        <div class="navegacion-pasos">
+          <button mat-button matStepperPrevious>{{ 'INSCRIPCION_GRADO.acciones.anterior' | translate }}</button>
+          <ng-container *ngIf="!esRadicada">
+            <button *appOpcion="'grado_radicar_inscripcion'" mat-flat-button color="primary"
+              (click)="radicar()" [disabled]="!puedeRadicar">
+              {{ (radicando ? 'INSCRIPCION_GRADO.vista.radicando' : 'INSCRIPCION_GRADO.vista.radicar') | translate }}
+            </button>
+          </ng-container>
+        </div>
+      </mat-step>
+    </mat-stepper>
   </ng-container>
-</main>
+</section>
