@@ -46,7 +46,10 @@ export interface DisponibilidadGrado {
 }
 export interface BorradorGrado {
   Solicitud: { Id: number; TerceroId: number; PeriodoId: number; ProgramaAcademicoId: number; CodigoEstudiante?: string };
-  Formulario: { Id: number; Contenido: { [campo: string]: unknown }; FechaRadicacion: string | null };
+	Formulario: { Id: number; Version?: number; Contenido: { [campo: string]: unknown }; FechaRadicacion: string | null };
+	Estado?: 'SG_BORRADOR' | 'SG_RADICADA' | 'SG_OBSERVADA' | 'SG_DOC_APROBADA';
+	Comentario?: string | null;
+	EstadosSoportes?: { SoporteGradoId: number; EstadoSoporteId: number; Observacion: string }[];
 }
 export interface DatosBasicosGrado {
   Id: number;
@@ -70,10 +73,33 @@ export interface DirectorGrado {
   DIR_ESTADO: string;
 }
 export interface ModalidadGrado {
-  AMG_COD: number;
-  AMG_NOMBRE: string;
-  AMG_ABREVIATURA: string;
-  AMG_ESTADO: string;
+  Id: number;
+  Nombre: string;
+  CodigoAbreviacion: string;
+  Activo: boolean;
+  NumeroOrden: number;
+}
+export interface LugarExpedicionGrado {
+  Id: number;
+  Nombre: string;
+  DepartamentoId: number;
+  DepartamentoNombre: string;
+  PaisId: number;
+  PaisNombre: string;
+}
+export interface LugarExpedicionIdentificacionGrado {
+  Registrado: boolean;
+  Lugar: LugarExpedicionGrado | null;
+}
+export interface PaisExpedicionGrado {
+  Id: number;
+  Nombre: string;
+}
+export interface DepartamentoExpedicionGrado {
+  Id: number;
+  Nombre: string;
+  PaisId: number;
+  PaisNombre: string;
 }
 export type TipoSoporteGrado = 'TSG_ACTA_SUST' | 'TSG_RESULTADO_SABER' | 'TSG_PAGO_DERECHOS' | 'TSG_TITULO_PREVIO';
 export interface SoporteGrado {
@@ -121,6 +147,14 @@ export function fechaGrado(valor?: string | null): number | null {
   return Number.isFinite(resultado) ? resultado : null;
 }
 
+// PostgreSQL entrega los timestamp without time zone con la hora de pared de Bogotá,
+// aunque algunos serializadores agreguen Z u otro offset al convertir time.Time a JSON.
+export function fechaGradoPersistida(valor?: string | null): number | null {
+  if (!valor) return null;
+  const horaBogota = valor.trim().replace(/(?:Z|[+-]\d{2}:?\d{2})$/i, '');
+  return fechaGrado(horaBogota);
+}
+
 export function vinculacionVigente(v: Vinculacion, ahora = Date.now()): boolean {
   if (!v.Activo) return false;
   const inicio = fechaGrado(v.FechaInicioVinculacion);
@@ -142,8 +176,8 @@ export function resolverEventos(datos: CalendarioPrograma[], programaId: number)
     const coincidencias = eventos.filter(e => e.CodigoAbreviacion === codigo);
     if (coincidencias.length !== 1) throw new Error(`Configuración incompleta o duplicada del evento ${codigo}.`);
     const evento = coincidencias[0];
-    const inicio = fechaGrado(evento.FechaInicioEvento);
-    const fin = fechaGrado(evento.FechaFinEvento);
+    const inicio = fechaGradoPersistida(evento.FechaInicioEvento);
+    const fin = fechaGradoPersistida(evento.FechaFinEvento);
     if (inicio === null || fin === null || fin < inicio) throw new Error(`Fechas inválidas en ${codigo}.`);
     return evento;
   };
@@ -202,12 +236,69 @@ export class InscripcionGradoService {
 
   modalidades(terceroId: number): Observable<ModalidadGrado[]> {
     return this.mid<ModalidadGrado[]>('get', `solicitud-grado/modalidades?tercero_id=${terceroId}`).pipe(map(datos => {
-      if (!Array.isArray(datos) || datos.some(m => !m || !Number.isSafeInteger(m.AMG_COD) || m.AMG_COD <= 0 ||
-        !m.AMG_NOMBRE?.trim() || !m.AMG_ABREVIATURA?.trim() || m.AMG_ESTADO !== 'A') ||
-        new Set(datos.map(m => m.AMG_COD)).size !== datos.length) {
+      if (!Array.isArray(datos) || !datos.length || datos.some(m => !m || !Number.isSafeInteger(m.Id) || m.Id <= 0 ||
+        !m.Nombre?.trim() || !m.CodigoAbreviacion?.trim() || m.Activo !== true) ||
+        new Set(datos.map(m => m.Id)).size !== datos.length || new Set(datos.map(m => m.CodigoAbreviacion)).size !== datos.length) {
         throw new Error('Catálogo de modalidades no verificable.');
       }
       return datos;
+    }));
+  }
+
+  paisesExpedicion(terceroId: number): Observable<PaisExpedicionGrado[]> {
+    return this.mid<PaisExpedicionGrado[]>('get', `solicitud-grado/paises-expedicion?tercero_id=${terceroId}`).pipe(map(datos => {
+      if (!Array.isArray(datos) || !datos.length || datos.some(p => !p || !Number.isSafeInteger(p.Id) || p.Id <= 0 || !p.Nombre?.trim()) ||
+        new Set(datos.map(p => p.Id)).size !== datos.length) {
+        throw new Error('Catálogo de países no verificable.');
+      }
+      return datos;
+    }));
+  }
+
+  departamentosExpedicion(terceroId: number, paisId: number): Observable<DepartamentoExpedicionGrado[]> {
+    return this.mid<DepartamentoExpedicionGrado[]>('get',
+      `solicitud-grado/departamentos-expedicion?tercero_id=${terceroId}&pais_id=${paisId}`).pipe(map(datos => {
+      if (!Array.isArray(datos) || datos.some(d => !d || !Number.isSafeInteger(d.Id) || d.Id <= 0 || d.PaisId !== paisId ||
+        !d.Nombre?.trim() || !d.PaisNombre?.trim()) || new Set(datos.map(d => d.Id)).size !== datos.length) {
+        throw new Error('Catálogo de departamentos no verificable.');
+      }
+      return datos;
+    }));
+  }
+
+  lugaresExpedicion(terceroId: number, paisId: number, departamentoId: number): Observable<LugarExpedicionGrado[]> {
+    return this.mid<LugarExpedicionGrado[]>('get',
+      `solicitud-grado/lugares-expedicion?tercero_id=${terceroId}&pais_id=${paisId}&departamento_id=${departamentoId}`).pipe(map(datos => {
+      if (!Array.isArray(datos) || datos.some(l => !l || !Number.isSafeInteger(l.Id) || l.Id <= 0 ||
+        l.PaisId !== paisId || l.DepartamentoId !== departamentoId || !l.Nombre?.trim() || !l.DepartamentoNombre?.trim() || !l.PaisNombre?.trim()) ||
+        new Set(datos.map(l => l.Id)).size !== datos.length) {
+        throw new Error('Catálogo de lugares de expedición no verificable.');
+      }
+      return datos;
+    }));
+  }
+
+  lugarExpedicion(terceroId: number, lugarId: number): Observable<LugarExpedicionGrado> {
+    return this.mid<LugarExpedicionGrado>('get', `solicitud-grado/lugares-expedicion/${lugarId}?tercero_id=${terceroId}`).pipe(map(lugar => {
+      if (!lugar || lugar.Id !== lugarId || !Number.isSafeInteger(lugar.PaisId) || lugar.PaisId <= 0 ||
+        !Number.isSafeInteger(lugar.DepartamentoId) || lugar.DepartamentoId <= 0 || !lugar.Nombre?.trim() ||
+        !lugar.DepartamentoNombre?.trim() || !lugar.PaisNombre?.trim()) {
+        throw new Error('Lugar de expedición no verificable.');
+      }
+      return lugar;
+    }));
+  }
+
+  lugarExpedicionIdentificacion(terceroId: number): Observable<LugarExpedicionIdentificacionGrado> {
+    return this.mid<LugarExpedicionIdentificacionGrado>('get',
+      `solicitud-grado/lugar-expedicion-identificacion?tercero_id=${terceroId}`).pipe(map(resultado => {
+      if (!resultado || typeof resultado.Registrado !== 'boolean' ||
+        (resultado.Registrado && (!resultado.Lugar || !Number.isSafeInteger(resultado.Lugar.Id) || resultado.Lugar.Id <= 0 ||
+          !resultado.Lugar.Nombre?.trim() || !resultado.Lugar.DepartamentoNombre?.trim() || !resultado.Lugar.PaisNombre?.trim())) ||
+        (!resultado.Registrado && resultado.Lugar !== null)) {
+        throw new Error('Lugar de expedición de Terceros no verificable.');
+      }
+      return resultado;
     }));
   }
 
@@ -240,11 +331,12 @@ export class InscripcionGradoService {
       .pipe(map(datos => resolverEventos(datos, programa.Id)));
   }
 
-  private mid<T>(metodo: 'get' | 'post' | 'put', endpoint: string, body?: object): Observable<T> {
+  private mid<T>(metodo: 'get' | 'post' | 'put' | 'delete', endpoint: string, body?: object): Observable<T> {
     return defer(() => {
       this.request.setPath('SGA_PAZ_Y_SALVOS_MID_SERVICE');
       const peticion = metodo === 'get' ? this.request.get(endpoint)
-        : metodo === 'post' ? this.request.post(endpoint, body) : this.request.put(endpoint, body);
+        : metodo === 'post' ? this.request.post(endpoint, body)
+          : metodo === 'put' ? this.request.put(endpoint, body) : this.request.delete(endpoint);
       return peticion;
     }).pipe(map(respuesta => {
       if (respuesta?.Success !== true || !respuesta?.Data) {
@@ -276,6 +368,10 @@ export class InscripcionGradoService {
 	return this.mid<BorradorGrado>('post', `solicitud-grado/borrador/${id}/radicar`, { TerceroId: terceroId, FormularioId: formularioId, Contenido: contenido });
   }
 
+  subsanar(id: number, terceroId: number, formularioId: number): Observable<BorradorGrado> {
+	return this.mid<BorradorGrado>('post', `solicitud-grado/borrador/${id}/subsanar`, { TerceroId: terceroId, FormularioId: formularioId });
+  }
+
   soportes(id: number, terceroId: number, formularioId: number): Observable<SoporteGrado[]> {
 	return this.mid<SoporteGrado[]>('get', `solicitud-grado/borrador/${id}/soportes?tercero_id=${terceroId}`).pipe(map(datos => {
       if (!Array.isArray(datos) || datos.length > 4 || new Set(datos.map(s => s?.TipoSoporte)).size !== datos.length ||
@@ -297,6 +393,17 @@ export class InscripcionGradoService {
       }
       return soporte;
     }));
+  }
+
+  eliminarSoporte(id: number, terceroId: number, formularioId: number, tipo: TipoSoporteGrado, actual: number): Observable<void> {
+    return this.mid<{ Id: number; FormularioId: number; TipoSoporte: TipoSoporteGrado }>('delete',
+      `solicitud-grado/borrador/${id}/soportes/${tipo}?tercero_id=${terceroId}&formulario_id=${formularioId}&soporte_actual_id=${actual}`).pipe(
+      map(resultado => {
+        if (!resultado || resultado.Id !== actual || resultado.FormularioId !== formularioId || resultado.TipoSoporte !== tipo) {
+          throw new Error('No se pudo confirmar la eliminación del PDF. Recarga los soportes.');
+        }
+      })
+    );
   }
 
   archivoSoporte(id: number, terceroId: number, tipo: TipoSoporteGrado): Observable<{ nombre: string; blob: Blob }> {

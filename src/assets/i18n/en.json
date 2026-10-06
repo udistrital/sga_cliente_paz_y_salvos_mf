@@ -18,6 +18,61 @@
     "si": "Yes",
     "no": "No"
   },
+  "REVISION_GRADO": {
+    "sobrelinea": "Academic Office",
+    "titulo": "Graduation document review",
+    "subtitulo": "Review applications within your scope, verify every supporting document, and record a traceable decision.",
+    "solicitudes": "applications",
+    "version": "Version {{version}}",
+    "periodo": "Term {{periodo}}",
+    "programa": "Program {{programa}}",
+    "expediente": "File",
+    "filtros": {
+      "titulo": "Application inbox", "ayuda": "Results are restricted to the programs authorized for your session.",
+	  "buscar": "Search application", "filtrar": "Application filters", "buscar_placeholder": "Code, project, or program", "estado": "Document status", "todos": "All statuses",
+	  "periodo": "Academic period", "programa": "Academic program", "selecciona_periodo": "Select a period", "todos_periodos": "All periods", "todos_programas": "All programs", "selecciona_programa": "Select a program",
+	  "selecciona_ambos": "Select an academic period and a program to view applications."
+    },
+	"paginacion": { "aria": "Application pages", "por_pagina": "Applications per page", "siguiente": "Next page", "anterior": "Previous page", "primera": "First page", "ultima": "Last page", "sin_resultados": "0 of 0", "rango": "{{inicio}}–{{fin}} of {{total}}" },
+    "columnas": { "codigo": "Code", "trabajo": "Degree project", "programa": "Program", "radicacion": "Submission", "estado": "Status", "acciones": "Actions" },
+    "estados": { "SG_BORRADOR": "Draft", "SG_RADICADA": "Submitted", "SG_OBSERVADA": "Returned", "SG_DOC_APROBADA": "Documents approved" },
+    "acciones": {
+      "revisar": "Open file", "volver": "Back to inbox", "ver_pdf": "View PDF", "aprobar_soporte": "Approve document",
+      "observar": "Flag issue", "devolver": "Return documents", "aprobar_expediente": "Approve documents"
+    },
+    "vacio": { "titulo": "No applications to display", "texto": "Adjust the filters or refresh the inbox." },
+    "estudiante": {
+      "titulo": "Student details", "nombre": "Full name", "identificacion": "Identification", "fecha_nacimiento": "Date of birth",
+      "fecha_expedicion": "Issue date", "genero": "Gender", "telefono": "Phone", "telefono_alterno": "Alternate phone",
+      "correo": "Email", "direccion": "Home address", "codigo": "Student code"
+    },
+    "resumen": {
+      "titulo": "Academic and graduation details", "programa": "Academic program", "periodo": "Academic term", "version": "Submitted version", "radicacion": "Submission date",
+      "modalidad": "Modality", "director": "Primary advisor", "director_secundario": "Second advisor", "lugar_expedicion": "Identification issue place",
+      "acta": "Defense record", "snp": "SNP registration", "trabaja": "Currently employed", "comentario": "Review comment"
+    },
+    "laboral": { "titulo": "Employment details", "empresa": "Employer", "direccion": "Address", "telefono": "Phone" },
+    "documentos": { "paso": "Step 1 of 2", "titulo": "Supporting document verification", "conteo": "{{total}} documents", "decision": "Supporting document decision", "observacion": "Required note for this document" },
+    "soportes": {
+      "TSG_ACTA_SUST": "Defense record", "TSG_RESULTADO_SABER": "Saber T&T / Saber Pro results",
+      "TSG_PAGO_DERECHOS": "Graduation fee payment", "TSG_TITULO_PREVIO": "Previous academic degree"
+    },
+    "decision": {
+      "paso": "Step 2 of 2", "titulo": "Document decision", "ayuda_aprobar": "Approve all submitted documents to enable file approval.",
+      "ayuda_devolver": "Returning the file requires a general comment and a note for every flagged document.",
+      "comentario": "General comment", "obligatorio": "Required when returning", "opcional": "Optional when approving", "progreso": "{{revisados}} of {{total}} documents reviewed"
+    },
+    "confirmaciones": {
+      "aprobar_titulo": "Confirm document approval", "aprobar_texto": "The documents will be approved and the eight pending clearance checks will be created.",
+      "devolver_titulo": "Confirm document return", "devolver_texto": "The application will be returned and the student must address the recorded comments."
+    },
+    "mensajes": { "guardando": "Recording the document decision…", "aprobada": "The documents were approved.", "devuelta": "The documents were returned with comments." },
+    "errores": {
+	  "cargar": "The inbox could not be loaded.", "filtros": "The periods and programs for your faculties could not be loaded.", "detalle": "The file could not be retrieved.", "soporte": "The document could not be opened.",
+      "guardar": "The decision could not be recorded.", "comentarios": "Enter a general comment and a note for every flagged document."
+    },
+    "valores": { "si": "Yes", "no": "No", "sin_dato": "No information" }
+  },
   "SEMAFORO": {
     "titulo": "Academic Standing Status",
     "subtitulo": "Academic Clearance Overview",
@@ -145,13 +200,24 @@
       "genero": "Gender",
       "telefono": "Phone",
       "telefono_alterno": "Alternate phone",
+      "correo": "Email address",
       "no_registrado": "Not registered",
       "no_registrada": "Not registered",
       "programa_no_disponible": "Program unavailable",
       "borrador_descripcion": "Save now and continue later. Saving does not submit the application.",
       "radicada_descripcion": "Review the information submitted with your application.",
       "trabajo_grado": "Graduation project",
+      "formulario": "Graduation project information",
       "lugar_expedicion": "Place of issue",
+      "seccion_lugar_expedicion": "Identity document place of issue",
+      "seccion_informacion_laboral": "Employment information",
+      "seccion_informacion_academica": "Academic information",
+      "pais_expedicion": "Country of issue",
+      "departamento_expedicion": "State or department",
+      "ciudad_expedicion": "City of issue",
+      "lugar_expedicion_hint": "Search for and select a city in the chosen state or department.",
+      "lugar_expedicion_faltante": "This information is missing in Terceros. Select it to update your identification.",
+      "lugar_no_disponible": "Previously selected city · unavailable in the current catalog",
       "numero_acta": "Defense report number",
       "numero_snp": "SNP registration number",
       "numero_snp_hint": "Code shown on your Saber results.",
@@ -161,19 +227,28 @@
       "telefono_empresa": "Employer phone number",
       "si": "Yes",
       "no": "No",
-      "consultando_catalogos": "Loading active faculty members and modalities…",
+      "consultando_catalogos": "Loading active faculty members, modalities, and countries…",
+      "consultando_ubicaciones": "Loading locations…",
       "reintentar_catalogos": "Retry catalogs",
       "director_uno": "Primary advisor",
       "director_uno_hint": "Search by first or last name.",
       "director_dos": "Second advisor (optional)",
       "director_dos_hint": "Must be different from the primary advisor.",
+      "sin_segundo_director": "No second advisor",
       "director_no_disponible": "Previously selected advisor · unavailable in the current catalog",
       "modalidad": "Graduation modality",
       "consultando_borrador": "Loading your draft…",
       "borrador_numero": "Draft {{id}} · Not submitted",
       "estado_borrador": "Draft",
       "estado_radicada": "Submitted",
+	  "estado_observada": "Changes requested",
+	  "estado_aprobada": "Documents approved",
+	  "comentario_revision": "Review comment",
+	  "iniciar_subsanacion": "Start corrections",
+	  "subsanacion_ayuda": "The application was returned with observations. Start corrections to create an editable version and update the indicated fields or documents.",
+      "estado": "Status",
       "solicitud_numero": "Application {{id}}",
+      "solicitud": "Application",
       "fecha_radicacion": "Submission date:",
       "radicada_consulta": "The application was submitted and is available for viewing only.",
       "sin_borrador": "There is no saved draft. Check the dates to create a new one.",
@@ -185,7 +260,22 @@
       "radicar": "Submit application",
       "recargar_borrador": "Reload draft",
       "nota_pdf": "Files are saved with this draft.",
-      "nota_pdf_radicada": "These files are linked to the submitted application."
+      "nota_pdf_radicada": "These files are linked to the submitted application.",
+      "resumen": "Application summary",
+      "soportes_completos": "Uploaded documents",
+      "resumen_ayuda": "Review the information before submitting. You will not be able to edit the application after submission.",
+      "radicada_ayuda": "The application has been submitted and is now available for viewing only."
+    },
+    "pasos": {
+      "convocatoria": "Application period",
+      "datos": "Student information",
+      "trabajo": "Degree project",
+      "soportes": "Supporting documents",
+      "resumen": "Summary and submission"
+    },
+    "acciones": {
+      "anterior": "Previous",
+      "siguiente": "Next"
     },
     "soportes": {
       "acta_titulo": "Defense report",
@@ -197,8 +287,9 @@
       "titulo_previo_titulo": "Previous academic degree",
       "titulo_previo_descripcion": "Diploma or certificate used to enter the program.",
       "titulo": "Application supporting documents",
-      "descripcion": "Attach all four PDFs. You can replace them before submitting. Maximum 5 MiB per file.",
-      "guardar_primero": "Save the draft first to link files to your application.",
+	  "observacion": "Review note",
+      "descripcion": "Attach the required PDFs. You can replace or remove them before submitting. Maximum 5 MiB per file.",
+      "guardar_primero": "Save the draft first from the bar above the form to link files to your application.",
       "solo_consulta": "You may view saved PDF files. Uploading and replacing require an active window.",
       "procesando": "Processing supporting documents",
       "recargar": "Reload supporting documents",
@@ -206,12 +297,15 @@
       "radicado": "Submitted",
       "pendiente": "Pending upload",
       "cargando": "Uploading and validating the PDF…",
+      "eliminando": "Removing the PDF from the draft…",
       "recuperando": "Retrieving PDF…",
       "aria_reemplazar": "Replace {{soporte}}",
       "aria_cargar": "Upload {{soporte}}",
       "aria_ver": "View {{soporte}}",
+      "aria_eliminar": "Remove {{soporte}}",
       "reemplazar_pdf": "Replace PDF",
       "cargar_pdf": "Upload PDF",
+      "eliminar_pdf": "Remove PDF",
       "ver_pdf": "View PDF",
       "vista_previa": "Supporting document PDF preview",
       "descargar_pdf": "Download PDF"
@@ -225,8 +319,9 @@
       "sin_permiso_datos": "You do not have permission to view student information.",
       "datos_basicos": "Your information could not be retrieved from the Third Parties service. Try again.",
       "sin_permiso_catalogos": "You do not have permission to view these catalogs.",
-      "catalogos_rutas": "The Clearance MID does not expose the advisor and modality routes. Restart it with the current version.",
-      "catalogos": "Advisors and modalities could not be verified. Check that the MID is running the current version and try again.",
+      "catalogos_rutas": "The Clearance MID does not expose the advisor, modality, and country routes. Restart it with the current version.",
+      "catalogos": "Advisors, modalities, and countries could not be verified. Check the MID configuration and try again.",
+      "ubicaciones": "The states, departments, or cities for the selected location could not be loaded.",
       "sin_permiso_fechas": "You do not have permission to view the process dates.",
       "programas": "These programs could not be verified: {{programas}}. You may retry; they are not considered closed because of this error.",
       "calendario": "The Calendar service could not be queried. This does not mean that the application window is closed.",
@@ -241,21 +336,31 @@
       "consultar_soportes": "Supporting documents could not be retrieved. Reload before attaching files.",
       "cargar_pdf": "The PDF upload could not be confirmed.",
       "recargar_tras_carga": "Reload the supporting documents to verify the result before retrying.",
+      "eliminar_pdf": "The PDF removal could not be confirmed.",
+      "recargar_tras_eliminar": "Reload the supporting documents to verify whether the PDF is still linked before retrying.",
       "recuperar_pdf": "The PDF could not be retrieved. You may retry.",
       "campos_radicacion": "Complete all required fields and select active options before submitting.",
-      "soportes_radicacion": "Upload all four required supporting documents before submitting.",
-      "radicar": "Submission could not be confirmed. Check the current status before retrying."
+      "soportes_radicacion": "Upload all required supporting documents before submitting.",
+	  "radicar": "Submission could not be confirmed. Check the current status before retrying.",
+	  "subsanar": "The correction version could not be created. Check the current status before trying again."
     },
     "mensajes": {
       "borrador_guardado": "Draft saved. Your application has not been submitted yet.",
       "pdf_guardado": "PDF saved in the draft. Provisional document.",
-      "inscripcion_radicada": "Application submitted successfully. This submission can no longer be modified."
+      "pdf_eliminado": "PDF removed from the draft. Its history is preserved.",
+	  "inscripcion_radicada": "Application submitted successfully. This submission can no longer be modified.",
+	  "subsanacion_iniciada": "A new editable version was created with the documents from the reviewed submission."
     },
     "progreso": {
+      "titulo": "Application progress",
+      "conteo": "{{completados}} of {{total}} steps completed",
+      "aria": "Application progress: {{porcentaje}} percent",
       "guardando_borrador": "Saving the draft…",
       "cargando_soporte": "Uploading and validating the PDF…",
       "reemplazando_soporte": "Replacing and validating the PDF…",
-      "radicando": "Submitting the application…"
+      "eliminando_soporte": "Removing the PDF from the draft…",
+	  "radicando": "Submitting the application…",
+	  "subsanando": "Creating the correction version…"
     },
     "estados": {
       "sin_calendario": "No calendar",
@@ -272,8 +377,14 @@
       "cargar_soporte_texto": "{{archivo}} will be uploaded as {{soporte}} in the draft.",
       "reemplazar_soporte_titulo": "Confirm supporting document replacement",
       "reemplazar_soporte_texto": "{{soporte}} will be replaced with {{archivo}}. The previous reference will remain in the history.",
+      "eliminar_soporte_titulo": "Confirm supporting document removal",
+      "eliminar_soporte_texto": "{{soporte}} will be removed from the draft. The document and its history will be preserved for traceability.",
       "radicar_titulo": "Confirm application submission",
-      "radicar_texto": "The application for {{programa}} in period {{periodo}} will be submitted. The form and its four supporting documents will become immutable.",
+      "radicar_texto": "The application for {{programa}} in period {{periodo}} will be submitted. The form and submitted supporting documents will become immutable.",
+	  "radicar_registro_lugar_texto": "The application for {{programa}} in period {{periodo}} will be submitted and {{ciudad}} will remain as your document's place of issue. Confirm that this information is correct; you will not be able to change it from this application afterward.",
+	  "subsanar_titulo": "Start corrections",
+	  "subsanar_texto": "A new editable version will be created. The reviewed submission will remain unchanged in the history.",
+	  "subsanar": "Create new version",
       "descartar_titulo": "Discard unsaved changes",
       "descartar_periodo_texto": "You will change from period {{anterior}} to period {{siguiente}} and lose any unsaved changes.",
       "descartar_programa_texto": "You will change from {{anterior}} to {{siguiente}} and lose any unsaved changes.",
@@ -282,6 +393,7 @@
       "guardar": "Save draft",
       "cargar": "Upload PDF",
       "reemplazar": "Replace PDF",
+      "eliminar": "Remove PDF",
       "descartar": "Discard changes",
       "radicar": "Submit application"
     }

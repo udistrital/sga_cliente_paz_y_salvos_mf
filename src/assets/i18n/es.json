@@ -18,6 +18,73 @@
     "si": "Sí",
     "no": "No"
   },
+  "REVISION_GRADO": {
+    "sobrelinea": "Secretaría Académica",
+    "titulo": "Revisión documental de grado",
+    "subtitulo": "Consulta las solicitudes de tu ámbito, verifica cada soporte y registra una decisión documental trazable.",
+    "solicitudes": "solicitudes",
+    "version": "Versión {{version}}",
+    "periodo": "Periodo {{periodo}}",
+    "programa": "Programa {{programa}}",
+    "expediente": "Expediente",
+    "filtros": {
+      "titulo": "Bandeja de solicitudes",
+      "ayuda": "Los resultados se restringen a los programas autorizados para tu sesión.",
+      "buscar": "Buscar solicitud",
+	  "filtrar": "Filtros de solicitudes",
+      "buscar_placeholder": "Código, trabajo o programa",
+      "estado": "Estado documental",
+	  "todos": "Todos los estados",
+      "periodo": "Periodo académico",
+	  "programa": "Programa académico",
+	  "selecciona_periodo": "Selecciona un periodo", "todos_periodos": "Todos los periodos",
+	  "todos_programas": "Todos los programas",
+	  "selecciona_programa": "Selecciona un programa",
+	  "selecciona_ambos": "Selecciona un periodo académico y un programa para consultar las solicitudes."
+    },
+	"paginacion": { "aria": "Páginas de solicitudes", "por_pagina": "Solicitudes por página", "siguiente": "Página siguiente", "anterior": "Página anterior", "primera": "Primera página", "ultima": "Última página", "sin_resultados": "0 de 0", "rango": "{{inicio}}–{{fin}} de {{total}}" },
+    "columnas": { "codigo": "Código", "trabajo": "Trabajo de grado", "programa": "Programa", "radicacion": "Radicación", "estado": "Estado", "acciones": "Acciones" },
+    "estados": { "SG_BORRADOR": "Borrador", "SG_RADICADA": "Radicada", "SG_OBSERVADA": "Observada", "SG_DOC_APROBADA": "Documentación aprobada" },
+    "acciones": {
+      "revisar": "Abrir expediente", "volver": "Volver a la bandeja", "ver_pdf": "Ver PDF", "aprobar_soporte": "Aprobar soporte",
+      "observar": "Observar", "devolver": "Devolver documentación", "aprobar_expediente": "Aprobar documentación"
+    },
+    "vacio": { "titulo": "No hay solicitudes para mostrar", "texto": "Ajusta los filtros o actualiza la bandeja." },
+    "estudiante": {
+      "titulo": "Datos del estudiante", "nombre": "Nombre completo", "identificacion": "Identificación", "fecha_nacimiento": "Fecha de nacimiento",
+      "fecha_expedicion": "Fecha de expedición", "genero": "Género", "telefono": "Teléfono", "telefono_alterno": "Teléfono alterno",
+      "correo": "Correo electrónico", "direccion": "Dirección de residencia", "codigo": "Código estudiantil"
+    },
+    "resumen": {
+      "titulo": "Información académica y de grado", "programa": "Programa académico", "periodo": "Periodo académico", "version": "Versión radicada", "radicacion": "Fecha de radicación",
+      "modalidad": "Modalidad", "director": "Director principal", "director_secundario": "Segundo director", "lugar_expedicion": "Lugar de expedición del documento",
+      "acta": "Acta de sustentación", "snp": "Registro SNP", "trabaja": "Trabaja actualmente", "comentario": "Comentario de la revisión"
+    },
+    "laboral": { "titulo": "Información laboral", "empresa": "Empresa", "direccion": "Dirección", "telefono": "Teléfono" },
+    "documentos": {
+      "paso": "Paso 1 de 2", "titulo": "Verificación de soportes", "conteo": "{{total}} documentos", "decision": "Decisión sobre el soporte",
+      "observacion": "Observación obligatoria para este soporte"
+    },
+    "soportes": {
+      "TSG_ACTA_SUST": "Acta de sustentación", "TSG_RESULTADO_SABER": "Resultados Saber T&T / Saber Pro",
+      "TSG_PAGO_DERECHOS": "Pago de derechos de grado", "TSG_TITULO_PREVIO": "Título académico previo"
+    },
+    "decision": {
+      "paso": "Paso 2 de 2", "titulo": "Decisión documental", "ayuda_aprobar": "Aprueba los soportes presentados para habilitar la aprobación del expediente.",
+      "ayuda_devolver": "La devolución requiere un comentario general y una observación por cada soporte observado.",
+      "comentario": "Comentario general", "obligatorio": "Obligatorio al devolver", "opcional": "Opcional al aprobar", "progreso": "{{revisados}} de {{total}} soportes revisados"
+    },
+    "confirmaciones": {
+      "aprobar_titulo": "Confirmar aprobación documental", "aprobar_texto": "La documentación quedará aprobada y se crearán los ocho checks de Paz y Salvos pendientes.",
+      "devolver_titulo": "Confirmar devolución documental", "devolver_texto": "La solicitud quedará observada y el estudiante deberá atender los comentarios registrados."
+    },
+    "mensajes": { "guardando": "Registrando la decisión documental…", "aprobada": "La documentación fue aprobada.", "devuelta": "La documentación fue devuelta con observaciones." },
+    "errores": {
+	  "cargar": "No fue posible cargar la bandeja.", "filtros": "No fue posible consultar los periodos y programas de tus facultades.", "detalle": "No fue posible consultar el expediente.", "soporte": "No fue posible abrir el soporte.",
+      "guardar": "No fue posible registrar la decisión.", "comentarios": "Registra un comentario general y una observación para cada soporte observado."
+    },
+    "valores": { "si": "Sí", "no": "No", "sin_dato": "Sin información" }
+  },
   "SEMAFORO": {
     "titulo": "Semáforo Paz y Salvos",
     "subtitulo": "Gestión de Paz y Salvos",
@@ -145,13 +212,24 @@
       "genero": "Género",
       "telefono": "Teléfono",
       "telefono_alterno": "Teléfono alterno",
+      "correo": "Correo electrónico",
       "no_registrado": "No registrado",
       "no_registrada": "No registrada",
       "programa_no_disponible": "Programa no disponible",
       "borrador_descripcion": "Puedes guardar y continuar después. Guardar no radica la inscripción.",
       "radicada_descripcion": "Consulta la información enviada en tu inscripción.",
       "trabajo_grado": "Trabajo de grado",
+      "formulario": "Información del trabajo de grado",
       "lugar_expedicion": "Lugar de expedición",
+      "seccion_lugar_expedicion": "Lugar de expedición del documento de identidad",
+      "seccion_informacion_laboral": "Información laboral",
+      "seccion_informacion_academica": "Información académica",
+      "pais_expedicion": "País de expedición",
+      "departamento_expedicion": "Departamento o estado",
+      "ciudad_expedicion": "Ciudad de expedición",
+      "lugar_expedicion_hint": "Busca y selecciona una ciudad del departamento o estado.",
+      "lugar_expedicion_faltante": "Este dato no está registrado en Terceros. Selecciónalo para actualizar tu identificación.",
+      "lugar_no_disponible": "Ciudad seleccionada previamente · no disponible en el catálogo actual",
       "numero_acta": "Número de acta de sustentación",
       "numero_snp": "Número de registro SNP",
       "numero_snp_hint": "Código que aparece en tu resultado Saber.",
@@ -161,19 +239,28 @@
       "telefono_empresa": "Teléfono de la empresa",
       "si": "Sí",
       "no": "No",
-      "consultando_catalogos": "Consultando docentes activos y modalidades…",
+      "consultando_catalogos": "Consultando docentes, modalidades y países…",
+      "consultando_ubicaciones": "Consultando ubicaciones…",
       "reintentar_catalogos": "Reintentar catálogos",
       "director_uno": "Director principal",
       "director_uno_hint": "Busca por nombre o apellido.",
       "director_dos": "Segundo director (opcional)",
       "director_dos_hint": "Debe ser diferente del director principal.",
+      "sin_segundo_director": "Sin segundo director",
       "director_no_disponible": "Director seleccionado previamente · no disponible en el catálogo actual",
       "modalidad": "Modalidad de grado",
       "consultando_borrador": "Consultando tu borrador…",
       "borrador_numero": "Borrador {{id}} · Sin radicar",
       "estado_borrador": "Borrador",
       "estado_radicada": "Radicada",
+	  "estado_observada": "Observada",
+	  "estado_aprobada": "Documentación aprobada",
+	  "comentario_revision": "Comentario de la revisión",
+	  "iniciar_subsanacion": "Iniciar subsanación",
+	  "subsanacion_ayuda": "La solicitud fue observada. Inicia la subsanación para crear una nueva versión editable y corregir los campos o soportes indicados.",
+      "estado": "Estado",
       "solicitud_numero": "Solicitud {{id}}",
+      "solicitud": "Solicitud",
       "fecha_radicacion": "Fecha de radicación:",
       "radicada_consulta": "La solicitud fue radicada y se encuentra disponible únicamente para consulta.",
       "sin_borrador": "No hay un borrador guardado. Verifica las fechas para crear uno nuevo.",
@@ -185,7 +272,22 @@
       "radicar": "Radicar inscripción",
       "recargar_borrador": "Recargar borrador",
       "nota_pdf": "Los archivos quedan guardados en este borrador.",
-      "nota_pdf_radicada": "Estos son los archivos vinculados a la solicitud radicada."
+      "nota_pdf_radicada": "Estos son los archivos vinculados a la solicitud radicada.",
+      "resumen": "Resumen de la inscripción",
+      "soportes_completos": "Soportes cargados",
+      "resumen_ayuda": "Revisa la información antes de radicar. Después de radicar no podrás modificar la inscripción.",
+      "radicada_ayuda": "La inscripción fue radicada y se encuentra disponible únicamente para consulta."
+    },
+    "pasos": {
+      "convocatoria": "Convocatoria",
+      "datos": "Datos del estudiante",
+      "trabajo": "Trabajo de grado",
+      "soportes": "Soportes",
+      "resumen": "Resumen y radicación"
+    },
+    "acciones": {
+      "anterior": "Anterior",
+      "siguiente": "Siguiente"
     },
     "soportes": {
       "acta_titulo": "Acta de sustentación",
@@ -197,8 +299,9 @@
       "titulo_previo_titulo": "Título académico previo",
       "titulo_previo_descripcion": "Diploma o acta del título con el que ingresaste.",
       "titulo": "Soportes de la inscripción",
-      "descripcion": "Adjunta los cuatro PDF. Puedes reemplazarlos antes de radicar. Máximo 5 MiB por archivo.",
-      "guardar_primero": "Guarda primero el borrador para asociar los archivos a tu inscripción.",
+	  "observacion": "Observación",
+      "descripcion": "Adjunta los PDF requeridos. Puedes reemplazarlos o eliminarlos antes de radicar. Máximo 5 MiB por archivo.",
+      "guardar_primero": "Guarda primero el borrador desde la barra ubicada sobre el formulario para asociar los archivos a tu inscripción.",
       "solo_consulta": "Puedes consultar los PDF guardados. La carga y el reemplazo requieren fechas vigentes.",
       "procesando": "Procesando soportes",
       "recargar": "Recargar soportes",
@@ -206,12 +309,15 @@
       "radicado": "Radicado",
       "pendiente": "Pendiente de cargar",
       "cargando": "Cargando y verificando el PDF…",
+      "eliminando": "Eliminando el PDF del borrador…",
       "recuperando": "Recuperando PDF…",
       "aria_reemplazar": "Reemplazar {{soporte}}",
       "aria_cargar": "Cargar {{soporte}}",
       "aria_ver": "Ver {{soporte}}",
+      "aria_eliminar": "Eliminar {{soporte}}",
       "reemplazar_pdf": "Reemplazar PDF",
       "cargar_pdf": "Cargar PDF",
+      "eliminar_pdf": "Eliminar PDF",
       "ver_pdf": "Ver PDF",
       "vista_previa": "Vista previa del soporte PDF",
       "descargar_pdf": "Descargar PDF"
@@ -225,8 +331,9 @@
       "sin_permiso_datos": "No tienes permiso para consultar los datos básicos.",
       "datos_basicos": "No fue posible consultar tus datos básicos en Terceros. Intenta nuevamente.",
       "sin_permiso_catalogos": "No tienes permiso para consultar estos catálogos.",
-      "catalogos_rutas": "El MID de Paz y Salvos no tiene las rutas de directores y modalidades. Reinícialo con la versión actual.",
-      "catalogos": "No fue posible verificar directores y modalidades. Comprueba que el MID esté reiniciado y reintenta.",
+      "catalogos_rutas": "El MID de Paz y Salvos no tiene las rutas de directores, modalidades y países. Reinícialo con la versión actual.",
+      "catalogos": "No fue posible verificar directores, modalidades y países. Comprueba la configuración del MID y reintenta.",
+      "ubicaciones": "No fue posible consultar los departamentos o ciudades de la ubicación seleccionada.",
       "sin_permiso_fechas": "No tienes permiso para consultar las fechas del proceso.",
       "programas": "No fue posible verificar estos programas: {{programas}}. Puedes reintentar; no se consideran cerrados por este error.",
       "calendario": "No fue posible consultar Calendario. Esto no significa que la inscripción esté cerrada.",
@@ -241,21 +348,31 @@
       "consultar_soportes": "No se pudieron consultar los soportes. Recarga antes de adjuntar archivos.",
       "cargar_pdf": "No se pudo confirmar la carga del PDF.",
       "recargar_tras_carga": "Recarga los soportes para comprobar el resultado antes de reintentar.",
+      "eliminar_pdf": "No se pudo confirmar la eliminación del PDF.",
+      "recargar_tras_eliminar": "Recarga los soportes para comprobar si el PDF continúa asociado antes de reintentar.",
       "recuperar_pdf": "No fue posible recuperar el PDF. Puedes reintentar.",
       "campos_radicacion": "Completa todos los campos obligatorios y selecciona opciones vigentes antes de radicar.",
-      "soportes_radicacion": "Carga los cuatro soportes obligatorios antes de radicar.",
-      "radicar": "No fue posible confirmar la radicación. Consulta el estado vigente antes de reintentar."
+      "soportes_radicacion": "Carga todos los soportes obligatorios antes de radicar.",
+	  "radicar": "No fue posible confirmar la radicación. Consulta el estado vigente antes de reintentar.",
+	  "subsanar": "No fue posible iniciar la subsanación. Consulta el estado vigente antes de reintentar."
     },
     "mensajes": {
       "borrador_guardado": "Borrador guardado. Todavía no has radicado tu inscripción.",
       "pdf_guardado": "PDF guardado en el borrador. Documento provisional.",
-      "inscripcion_radicada": "Inscripción radicada correctamente. Esta entrega ya no puede modificarse."
+      "pdf_eliminado": "PDF eliminado del borrador. Su historial se conserva.",
+	  "inscripcion_radicada": "Inscripción radicada correctamente. Esta entrega ya no puede modificarse.",
+	  "subsanacion_iniciada": "Se creó una nueva versión editable con los soportes de la entrega observada."
     },
     "progreso": {
+      "titulo": "Progreso de la inscripción",
+      "conteo": "{{completados}} de {{total}} pasos completados",
+      "aria": "Progreso de la inscripción: {{porcentaje}} por ciento",
       "guardando_borrador": "Guardando el borrador…",
       "cargando_soporte": "Cargando y verificando el PDF…",
       "reemplazando_soporte": "Reemplazando y verificando el PDF…",
-      "radicando": "Radicando la inscripción…"
+      "eliminando_soporte": "Eliminando el PDF del borrador…",
+	  "radicando": "Radicando la inscripción…",
+	  "subsanando": "Creando la nueva versión para subsanar…"
     },
     "estados": {
       "sin_calendario": "Sin calendario",
@@ -272,8 +389,14 @@
       "cargar_soporte_texto": "Se cargará {{archivo}} como {{soporte}} en el borrador.",
       "reemplazar_soporte_titulo": "Confirmar reemplazo del soporte",
       "reemplazar_soporte_texto": "Se reemplazará {{soporte}} por {{archivo}}. La referencia anterior se conservará en el historial.",
+      "eliminar_soporte_titulo": "Confirmar eliminación del soporte",
+      "eliminar_soporte_texto": "Se eliminará {{soporte}} del borrador. El documento y su historial se conservarán para trazabilidad.",
       "radicar_titulo": "Confirmar radicación de la inscripción",
-      "radicar_texto": "Se radicará la inscripción de {{programa}} para el periodo {{periodo}}. El formulario y sus cuatro soportes quedarán inmutables.",
+      "radicar_texto": "Se radicará la inscripción de {{programa}} para el periodo {{periodo}}. El formulario y los soportes presentados quedarán inmutables.",
+	  "radicar_registro_lugar_texto": "Se radicará la inscripción de {{programa}} para el periodo {{periodo}} y {{ciudad}} quedará como lugar de expedición de tu documento. Confirma que el dato es correcto; después no podrás modificarlo desde esta inscripción.",
+	  "subsanar_titulo": "Iniciar subsanación",
+	  "subsanar_texto": "Se creará una nueva versión editable. La entrega observada se conservará sin cambios en el historial.",
+	  "subsanar": "Crear nueva versión",
       "descartar_titulo": "Descartar cambios sin guardar",
       "descartar_periodo_texto": "Cambiarás del periodo {{anterior}} al periodo {{siguiente}} y perderás los cambios que no hayas guardado.",
       "descartar_programa_texto": "Cambiarás de {{anterior}} a {{siguiente}} y perderás los cambios que no hayas guardado.",
@@ -282,6 +405,7 @@
       "guardar": "Guardar borrador",
       "cargar": "Cargar PDF",
       "reemplazar": "Reemplazar PDF",
+      "eliminar": "Eliminar PDF",
       "descartar": "Descartar cambios",
       "radicar": "Radicar inscripción"
     }

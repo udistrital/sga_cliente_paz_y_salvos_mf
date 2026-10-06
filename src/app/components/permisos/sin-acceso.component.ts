@@ -16,6 +16,8 @@ export class SinAccesoComponent {
   constructor(public permisos: PermisosService, private route: ActivatedRoute, private router: Router) {}
   reintentar(): void {
     const destino = this.route.snapshot.queryParamMap.get('destino');
-    if (destino === 'semaforo' || destino === 'inscripcion-grado') void this.router.navigate(['/' + destino]);
+    if (['semaforo', 'inscripcion-grado', 'revision-solicitudes-grado'].includes(destino || '')) {
+      void this.router.navigate(['/' + destino]);
+    }
   }
 }

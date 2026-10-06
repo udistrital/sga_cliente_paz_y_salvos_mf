@@ -8,20 +8,23 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatInputModule } from '@angular/material/input';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatStepperModule } from '@angular/material/stepper';
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { StepperOrientation } from '@angular/cdk/stepper';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { Subscription, firstValueFrom, forkJoin, defer, of } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { Observable, Subscription, firstValueFrom, forkJoin, defer, of } from 'rxjs';
+import { catchError, map, switchMap } from 'rxjs/operators';
 import { UserService } from '../../services/user.service';
 import { SoportesGradoComponent } from './soportes-grado.component';
 import { PermisosService } from '../../services/permisos.service';
 import { OpcionDirective } from '../../directives/opcion.directive';
 import { AlertService } from '../../services/alert.service';
-import { BorradorGrado, DatosBasicosGrado, DirectorGrado, DisponibilidadGrado, EventoGrado, InscripcionGradoService, ModalidadGrado, PeriodoGrado, ProgramaGrado, fechaGrado, mensajeErrorBorrador } from '../../services/inscripcion-grado.service';
+import { BorradorGrado, DatosBasicosGrado, DepartamentoExpedicionGrado, DirectorGrado, DisponibilidadGrado, EventoGrado, InscripcionGradoService, LugarExpedicionGrado, LugarExpedicionIdentificacionGrado, ModalidadGrado, PaisExpedicionGrado, PeriodoGrado, ProgramaGrado, TipoSoporteGrado, fechaGradoPersistida, mensajeErrorBorrador } from '../../services/inscripcion-grado.service';
 
 @Component({
   selector: 'app-inscripcion-grado',
   standalone: true,
-  imports: [CommonModule, FormsModule, TranslateModule, MatButtonModule, MatCardModule, MatFormFieldModule, MatSelectModule, MatProgressBarModule, MatInputModule, MatAutocompleteModule, SoportesGradoComponent, OpcionDirective],
+  imports: [CommonModule, FormsModule, TranslateModule, MatButtonModule, MatCardModule, MatFormFieldModule, MatSelectModule, MatProgressBarModule, MatInputModule, MatAutocompleteModule, MatStepperModule, SoportesGradoComponent, OpcionDirective],
   templateUrl: './inscripcion-grado.component.html',
   styleUrls: ['./inscripcion-grado.component.scss']
 })
@@ -39,7 +42,9 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   errorDatosBasicos = '';
   private terceroId: number | null = null;
   trabajoGrado = '';
-  lugarExpedicionDocumento = '';
+  paisExpedicionDocumentoId: number | null = null;
+  departamentoExpedicionDocumentoId: number | null = null;
+  lugarExpedicionDocumentoId: number | null = null;
   numeroActaSustentacion = '';
   numeroRegistroSnp = '';
   trabajaActualmente: boolean | null = null;
@@ -48,22 +53,39 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   telefonoEmpresa = '';
   directores: DirectorGrado[] = [];
   modalidades: ModalidadGrado[] = [];
+  paisesExpedicion: PaisExpedicionGrado[] = [];
+  departamentosExpedicion: DepartamentoExpedicionGrado[] = [];
+  lugaresExpedicion: LugarExpedicionGrado[] = [];
+  lugarExpedicionIdentificacion: LugarExpedicionIdentificacionGrado | null = null;
   director1: string | null = null;
   director2: string | null = null;
-  modalidad: number | null = null;
+  modalidad: string | null = null;
+  busquedaPais: PaisExpedicionGrado | string | null = null;
+  busquedaDepartamento: DepartamentoExpedicionGrado | string | null = null;
+  busquedaLugar: LugarExpedicionGrado | string | null = null;
+  opcionesPaises: PaisExpedicionGrado[] = [];
+  opcionesDepartamentos: DepartamentoExpedicionGrado[] = [];
+  opcionesLugares: LugarExpedicionGrado[] = [];
   busquedaDirector1: DirectorGrado | string | null = null;
   busquedaDirector2: DirectorGrado | string | null = null;
   opcionesDirector1: DirectorGrado[] = [];
   opcionesDirector2: DirectorGrado[] = [];
   cargandoCatalogos = false;
   errorCatalogos = '';
+  cargandoUbicaciones = false;
+  errorUbicaciones = '';
   cargandoBorrador = false;
   guardandoBorrador = false;
   guardandoSoporte = false;
   radicando = false;
+	subsanando = false;
   borradorConsultado = false;
   errorBorrador = '';
   mensajeBorrador = '';
+  pasoActivo = 0;
+  soportesCargados = 0;
+  readonly totalPasos = 5;
+  readonly orientacionStepper: Observable<StepperOrientation>;
   cargando = false;
   consultando = false;
   consultado = false;
@@ -77,6 +99,8 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   private guardarActual?: Subscription;
   private consultaDatosBasicos?: Subscription;
   private consultaCatalogos?: Subscription;
+  private consultaDepartamentos?: Subscription;
+  private consultaLugares?: Subscription;
 
   private cambioSesion?: Subscription;
   private cargaVersion = 0;
@@ -84,14 +108,18 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   confirmandoDescarte = false;
   private contenidoPersistido = '';
   constructor(private servicio: InscripcionGradoService, private usuario: UserService, public permisos: PermisosService,
-    private alertas: AlertService, private translate: TranslateService) {}
+    private alertas: AlertService, private translate: TranslateService, breakpointObserver?: BreakpointObserver) {
+    this.orientacionStepper = breakpointObserver
+      ? breakpointObserver.observe('(max-width: 700px)').pipe(map(resultado => resultado.matches ? 'vertical' : 'horizontal'))
+      : of('horizontal');
+  }
 
   private tr(key: string, params?: Record<string, string | number>): string {
     return this.translate.instant(`INSCRIPCION_GRADO.${key}`, params);
   }
   ngOnInit(): void {
     this.cambioSesion = this.permisos.sesionCambiada$.subscribe(() => {
-      if (this.guardandoBorrador || this.guardandoSoporte || this.radicando) this.alertas.closeLoading();
+	  if (this.guardandoBorrador || this.guardandoSoporte || this.radicando || this.subsanando) this.alertas.closeLoading();
       this.guardarActual?.unsubscribe();
       this.guardandoBorrador = this.guardandoSoporte = false;
       void this.cargar();
@@ -100,7 +128,7 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   }
   ngOnDestroy(): void {
     this.destruido = true;
-    if (this.guardandoBorrador || this.guardandoSoporte || this.radicando) this.alertas.closeLoading();
+	if (this.guardandoBorrador || this.guardandoSoporte || this.radicando || this.subsanando) this.alertas.closeLoading();
     this.cambioSesion?.unsubscribe();
     this.inicial?.unsubscribe();
     this.consulta?.unsubscribe();
@@ -109,6 +137,8 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
     this.guardarActual?.unsubscribe();
     this.consultaDatosBasicos?.unsubscribe();
     this.consultaCatalogos?.unsubscribe();
+    this.consultaDepartamentos?.unsubscribe();
+    this.consultaLugares?.unsubscribe();
   }
 
   async cargar(): Promise<void> {
@@ -125,6 +155,10 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
     this.consultaCatalogos?.unsubscribe();
     this.directores = [];
     this.modalidades = [];
+    this.paisesExpedicion = [];
+    this.lugarExpedicionIdentificacion = null;
+    this.departamentosExpedicion = [];
+    this.lugaresExpedicion = [];
     this.cargandoCatalogos = false;
     this.errorCatalogos = '';
     this.programaId = this.periodoId = null;
@@ -194,27 +228,52 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
     return this.programas.find(p => p.Id === this.programaId)?.Nombre || this.tr('vista.programa_no_disponible');
   }
 
+  get periodoSeleccionadoNombre(): string {
+    return this.periodos.find(periodo => periodo.Id === this.periodoId)?.Nombre || this.tr('vista.no_registrado');
+  }
+
   cargarCatalogos(): void {
     this.consultaCatalogos?.unsubscribe();
 	if (!this.terceroId || !this.permisos.permite('grado_consultar_catalogos')) {
       this.cargandoCatalogos = false;
       this.directores = [];
       this.modalidades = [];
+      this.paisesExpedicion = [];
+      this.departamentosExpedicion = [];
+      this.lugaresExpedicion = [];
       this.errorCatalogos = this.tr('errores.sin_permiso_catalogos');
       return;
     }
     this.cargandoCatalogos = true;
     this.errorCatalogos = '';
-	this.consultaCatalogos = forkJoin({ directores: this.servicio.directores(this.terceroId), modalidades: this.servicio.modalidades(this.terceroId) }).subscribe({
+    this.consultaCatalogos = forkJoin({
+      directores: this.servicio.directores(this.terceroId),
+      modalidades: this.servicio.modalidades(this.terceroId),
+      lugarIdentificacion: this.servicio.lugarExpedicionIdentificacion(this.terceroId)
+    }).pipe(switchMap(datos => datos.lugarIdentificacion.Registrado
+      ? of({ ...datos, paises: [] as PaisExpedicionGrado[] })
+      : this.servicio.paisesExpedicion(this.terceroId!).pipe(map(paises => ({ ...datos, paises })))))
+      .subscribe({
       next: datos => {
         this.directores = datos.directores;
         this.modalidades = datos.modalidades;
+        this.lugarExpedicionIdentificacion = datos.lugarIdentificacion;
+        this.paisesExpedicion = datos.paises;
+        this.opcionesPaises = datos.paises.slice();
         this.cargandoCatalogos = false;
         this.restaurarDirectores();
+        this.restaurarLugarExpedicion();
       },
       error: error => {
         this.directores = [];
         this.modalidades = [];
+        this.paisesExpedicion = [];
+        this.lugarExpedicionIdentificacion = null;
+        this.departamentosExpedicion = [];
+        this.lugaresExpedicion = [];
+        this.opcionesPaises = [];
+        this.opcionesDepartamentos = [];
+        this.opcionesLugares = [];
         this.opcionesDirector1 = [];
         this.opcionesDirector2 = [];
         this.cargandoCatalogos = false;
@@ -230,6 +289,206 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
     if (typeof director === 'string') return director;
     return director ? `${director.DIR_NOMBRE} ${director.DIR_APELLIDO}` : '';
   };
+
+  mostrarLugar = (lugar: LugarExpedicionGrado | string | null): string => {
+    if (typeof lugar === 'string') return lugar;
+    return lugar ? lugar.Nombre : '';
+  };
+
+  mostrarPais = (pais: PaisExpedicionGrado | string | null): string => typeof pais === 'string' ? pais : pais?.Nombre || '';
+
+  mostrarDepartamento = (departamento: DepartamentoExpedicionGrado | string | null): string =>
+    typeof departamento === 'string' ? departamento : departamento?.Nombre || '';
+
+  private normalizarBusquedaUbicacion(valor: string): string {
+    return valor.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  }
+
+  buscarPais(valor: PaisExpedicionGrado | string | null): void {
+    if (typeof valor === 'string') {
+      this.consultaDepartamentos?.unsubscribe();
+      this.consultaLugares?.unsubscribe();
+      this.paisExpedicionDocumentoId = null;
+      this.departamentoExpedicionDocumentoId = null;
+      this.lugarExpedicionDocumentoId = null;
+      this.departamentosExpedicion = [];
+      this.lugaresExpedicion = [];
+      this.busquedaDepartamento = null;
+      this.busquedaLugar = null;
+      this.opcionesDepartamentos = [];
+      this.opcionesLugares = [];
+      this.cargandoUbicaciones = false;
+      this.errorUbicaciones = '';
+    }
+    const termino = this.normalizarBusquedaUbicacion(typeof valor === 'string' ? valor : '');
+    this.opcionesPaises = this.paisesExpedicion.filter(pais =>
+      !termino || this.normalizarBusquedaUbicacion(pais.Nombre).includes(termino));
+  }
+
+  buscarDepartamento(valor: DepartamentoExpedicionGrado | string | null): void {
+    if (typeof valor === 'string') {
+      this.consultaLugares?.unsubscribe();
+      this.departamentoExpedicionDocumentoId = null;
+      this.lugarExpedicionDocumentoId = null;
+      this.lugaresExpedicion = [];
+      this.busquedaLugar = null;
+      this.opcionesLugares = [];
+      this.cargandoUbicaciones = false;
+      this.errorUbicaciones = '';
+    }
+    const termino = this.normalizarBusquedaUbicacion(typeof valor === 'string' ? valor : '');
+    this.opcionesDepartamentos = this.departamentosExpedicion.filter(departamento =>
+      !termino || this.normalizarBusquedaUbicacion(departamento.Nombre).includes(termino));
+  }
+
+  seleccionarPais(pais: PaisExpedicionGrado): void {
+    this.busquedaPais = pais;
+    this.paisExpedicionDocumentoId = pais.Id;
+    this.departamentoExpedicionDocumentoId = null;
+    this.lugarExpedicionDocumentoId = null;
+    this.departamentosExpedicion = [];
+    this.lugaresExpedicion = [];
+    this.busquedaDepartamento = null;
+    this.busquedaLugar = null;
+    this.opcionesDepartamentos = [];
+    this.opcionesLugares = [];
+    this.cargarDepartamentos(false);
+  }
+
+  seleccionarDepartamento(departamento: DepartamentoExpedicionGrado): void {
+    this.busquedaDepartamento = departamento;
+    this.departamentoExpedicionDocumentoId = departamento.Id;
+    this.lugarExpedicionDocumentoId = null;
+    this.lugaresExpedicion = [];
+    this.busquedaLugar = null;
+    this.opcionesLugares = [];
+    this.cargarLugares(false);
+  }
+
+  private cargarDepartamentos(restaurar: boolean): void {
+    this.consultaDepartamentos?.unsubscribe();
+    this.consultaLugares?.unsubscribe();
+    this.errorUbicaciones = '';
+    if (!this.terceroId || !this.paisExpedicionDocumentoId) {
+      this.cargandoUbicaciones = false;
+      return;
+    }
+    this.cargandoUbicaciones = true;
+    this.consultaDepartamentos = this.servicio.departamentosExpedicion(this.terceroId, this.paisExpedicionDocumentoId).subscribe({
+      next: departamentos => {
+        this.departamentosExpedicion = departamentos;
+        this.opcionesDepartamentos = departamentos.slice();
+        if (restaurar && this.departamentoExpedicionDocumentoId && departamentos.some(d => d.Id === this.departamentoExpedicionDocumentoId)) {
+          this.busquedaDepartamento = departamentos.find(d => d.Id === this.departamentoExpedicionDocumentoId) || null;
+          this.cargarLugares(true);
+        } else {
+          this.departamentoExpedicionDocumentoId = null;
+          this.lugarExpedicionDocumentoId = null;
+          this.busquedaDepartamento = null;
+          this.cargandoUbicaciones = false;
+        }
+      },
+      error: () => {
+        this.departamentosExpedicion = [];
+        this.lugaresExpedicion = [];
+        this.opcionesDepartamentos = [];
+        this.cargandoUbicaciones = false;
+        this.errorUbicaciones = this.tr('errores.ubicaciones');
+      }
+    });
+  }
+
+  private cargarLugares(restaurar: boolean): void {
+    this.consultaLugares?.unsubscribe();
+    this.errorUbicaciones = '';
+    if (!this.terceroId || !this.paisExpedicionDocumentoId || !this.departamentoExpedicionDocumentoId) {
+      this.cargandoUbicaciones = false;
+      return;
+    }
+    this.cargandoUbicaciones = true;
+    this.consultaLugares = this.servicio.lugaresExpedicion(this.terceroId, this.paisExpedicionDocumentoId,
+      this.departamentoExpedicionDocumentoId).subscribe({
+      next: lugares => {
+        this.lugaresExpedicion = lugares;
+        this.cargandoUbicaciones = false;
+        if (!restaurar || !lugares.some(l => l.Id === this.lugarExpedicionDocumentoId)) this.lugarExpedicionDocumentoId = null;
+        this.restaurarLugarSeleccionado();
+      },
+      error: () => {
+        this.lugaresExpedicion = [];
+        this.opcionesLugares = [];
+        this.cargandoUbicaciones = false;
+        this.errorUbicaciones = this.tr('errores.ubicaciones');
+      }
+    });
+  }
+
+  buscarLugar(valor: LugarExpedicionGrado | string | null): void {
+    if (typeof valor === 'string') this.lugarExpedicionDocumentoId = null;
+    const texto = typeof valor === 'string' ? valor : '';
+    const termino = this.normalizarBusquedaUbicacion(texto);
+    this.opcionesLugares = this.lugaresExpedicion.filter(lugar =>
+      !termino || this.normalizarBusquedaUbicacion(lugar.Nombre).includes(termino));
+  }
+
+  seleccionarLugar(lugar: LugarExpedicionGrado): void {
+    this.lugarExpedicionDocumentoId = lugar.Id;
+    this.errorBorrador = '';
+  }
+
+  private restaurarLugarExpedicion(): void {
+    this.consultaDepartamentos?.unsubscribe();
+    this.consultaLugares?.unsubscribe();
+    this.paisExpedicionDocumentoId = null;
+    this.departamentoExpedicionDocumentoId = null;
+    this.departamentosExpedicion = [];
+    this.lugaresExpedicion = [];
+    this.busquedaPais = null;
+    this.busquedaDepartamento = null;
+    this.busquedaLugar = null;
+    this.opcionesLugares = [];
+    const registrado = this.lugarExpedicionIdentificacion?.Registrado ? this.lugarExpedicionIdentificacion.Lugar : null;
+    if (registrado) {
+      this.paisExpedicionDocumentoId = registrado.PaisId;
+      this.departamentoExpedicionDocumentoId = registrado.DepartamentoId;
+      this.lugarExpedicionDocumentoId = registrado.Id;
+      this.busquedaPais = { Id: registrado.PaisId, Nombre: registrado.PaisNombre };
+      this.busquedaDepartamento = {
+        Id: registrado.DepartamentoId, Nombre: registrado.DepartamentoNombre,
+        PaisId: registrado.PaisId, PaisNombre: registrado.PaisNombre
+      };
+      this.busquedaLugar = registrado;
+      return;
+    }
+    if (!this.lugarExpedicionDocumentoId || !this.terceroId || !this.paisesExpedicion.length) {
+      return;
+    }
+    this.cargandoUbicaciones = true;
+    this.consultaLugares = this.servicio.lugarExpedicion(this.terceroId, this.lugarExpedicionDocumentoId).subscribe({
+      next: lugar => {
+        if (!this.paisesExpedicion.some(p => p.Id === lugar.PaisId)) {
+          this.cargandoUbicaciones = false;
+          this.busquedaLugar = this.tr('vista.lugar_no_disponible');
+          return;
+        }
+        this.paisExpedicionDocumentoId = lugar.PaisId;
+        this.departamentoExpedicionDocumentoId = lugar.DepartamentoId;
+        this.busquedaPais = this.paisesExpedicion.find(p => p.Id === lugar.PaisId) || null;
+        this.cargarDepartamentos(true);
+      },
+      error: () => {
+        this.cargandoUbicaciones = false;
+        this.busquedaLugar = this.tr('vista.lugar_no_disponible');
+        this.errorUbicaciones = this.tr('errores.ubicaciones');
+      }
+    });
+  }
+
+  private restaurarLugarSeleccionado(): void {
+    const lugar = this.lugaresExpedicion.find(item => item.Id === this.lugarExpedicionDocumentoId);
+    this.busquedaLugar = lugar || (this.lugarExpedicionDocumentoId ? this.tr('vista.lugar_no_disponible') : null);
+    this.opcionesLugares = this.lugaresExpedicion.slice();
+  }
 
   private filtrarDirectores(valor: DirectorGrado | string | null, segundo: boolean): DirectorGrado[] {
     const texto = typeof valor === 'string' ? valor : '';
@@ -251,9 +510,9 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
     }
   }
 
-  seleccionarDirector(segundo: boolean, director: DirectorGrado): void {
-    if (segundo) this.director2 = director.DIR_NRO_IDEN;
-    else this.director1 = director.DIR_NRO_IDEN;
+  seleccionarDirector(segundo: boolean, director: DirectorGrado | null): void {
+    if (segundo) this.director2 = director?.DIR_NRO_IDEN || null;
+    else this.director1 = director?.DIR_NRO_IDEN || null;
     this.errorBorrador = '';
     this.opcionesDirector2 = this.filtrarDirectores(this.busquedaDirector2, true);
   }
@@ -273,7 +532,8 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
 
   private restaurarContenido(contenido: { [campo: string]: unknown }): void {
     this.trabajoGrado = typeof contenido['trabajoGrado'] === 'string' ? contenido['trabajoGrado'] as string : '';
-    this.lugarExpedicionDocumento = typeof contenido['lugarExpedicionDocumento'] === 'string' ? contenido['lugarExpedicionDocumento'] as string : '';
+    this.lugarExpedicionDocumentoId = typeof contenido['lugarExpedicionDocumentoId'] === 'number' && Number.isSafeInteger(contenido['lugarExpedicionDocumentoId'])
+      ? contenido['lugarExpedicionDocumentoId'] as number : null;
     this.numeroActaSustentacion = typeof contenido['numeroActaSustentacion'] === 'string' ? contenido['numeroActaSustentacion'] as string : '';
     this.numeroRegistroSnp = typeof contenido['numeroRegistroSnp'] === 'string' ? contenido['numeroRegistroSnp'] as string : '';
     this.trabajaActualmente = typeof contenido['trabajaActualmente'] === 'boolean' ? contenido['trabajaActualmente'] as boolean : null;
@@ -282,9 +542,10 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
     this.telefonoEmpresa = this.trabajaActualmente && typeof contenido['telefonoEmpresa'] === 'string' ? contenido['telefonoEmpresa'] as string : '';
     this.director1 = typeof contenido['director1'] === 'string' ? contenido['director1'] as string : null;
     this.director2 = typeof contenido['director2'] === 'string' ? contenido['director2'] as string : null;
-    this.modalidad = typeof contenido['modalidad'] === 'number' && Number.isSafeInteger(contenido['modalidad'])
-      ? contenido['modalidad'] as number : null;
+    this.modalidad = typeof contenido['modalidad'] === 'string' && contenido['modalidad'].trim()
+      ? contenido['modalidad'].trim() : null;
     this.restaurarDirectores();
+    this.restaurarLugarExpedicion();
     this.contenidoPersistido = JSON.stringify(this.contenidoFormulario());
   }
 
@@ -294,7 +555,18 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
       const normalizado = (mayusculas ? valor.toUpperCase() : valor).trim();
       if (normalizado) contenido[campo] = normalizado; else delete contenido[campo];
     };
-    asignarTexto('lugarExpedicionDocumento', this.lugarExpedicionDocumento);
+    const lugar = this.lugaresExpedicion.find(item => item.Id === this.lugarExpedicionDocumentoId);
+    delete contenido['departamentoExpedicionDocumentoId'];
+    delete contenido['departamentoExpedicionDocumento'];
+    delete contenido['paisExpedicionDocumentoId'];
+    delete contenido['paisExpedicionDocumento'];
+    if (this.lugarExpedicionDocumentoId) {
+      contenido['lugarExpedicionDocumentoId'] = this.lugarExpedicionDocumentoId;
+      if (lugar) contenido['lugarExpedicionDocumento'] = lugar.Nombre;
+    } else {
+      delete contenido['lugarExpedicionDocumentoId'];
+      delete contenido['lugarExpedicionDocumento'];
+    }
     asignarTexto('numeroActaSustentacion', this.numeroActaSustentacion);
     asignarTexto('numeroRegistroSnp', this.numeroRegistroSnp, true);
     if (this.trabajaActualmente === null) delete contenido['trabajaActualmente'];
@@ -324,12 +596,17 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   }
 
   private limpiarContenidoFormulario(): void {
-    this.trabajoGrado = this.lugarExpedicionDocumento = this.numeroActaSustentacion = this.numeroRegistroSnp = '';
+    this.trabajoGrado = this.numeroActaSustentacion = this.numeroRegistroSnp = '';
+    this.paisExpedicionDocumentoId = null;
+    this.departamentoExpedicionDocumentoId = null;
+    this.lugarExpedicionDocumentoId = null;
     this.trabajaActualmente = null;
     this.empresa = this.direccionEmpresa = this.telefonoEmpresa = '';
     this.director1 = this.director2 = null;
     this.modalidad = null;
+    this.soportesCargados = 0;
     this.restaurarDirectores();
+    this.restaurarLugarExpedicion();
   }
 
   get tieneCambiosSinGuardar(): boolean {
@@ -353,7 +630,7 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   }
 
   async seleccionarPeriodo(periodoId: number): Promise<void> {
-    if (periodoId === this.periodoId || this.guardandoBorrador || this.guardandoSoporte || this.radicando) return;
+    if (periodoId === this.periodoId || this.guardandoBorrador || this.guardandoSoporte || this.radicando || this.subsanando) return;
     const anterior = this.periodos.find(p => p.Id === this.periodoId)?.Nombre || '';
     const siguiente = this.periodos.find(p => p.Id === periodoId)?.Nombre || String(periodoId);
     if (!await this.confirmarDescarte('INSCRIPCION_GRADO.confirmaciones.descartar_periodo_texto', { anterior, siguiente })) return;
@@ -362,7 +639,7 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   }
 
   async seleccionarPrograma(programaId: number): Promise<void> {
-    if (programaId === this.programaId || this.guardandoBorrador || this.guardandoSoporte || this.radicando) return;
+    if (programaId === this.programaId || this.guardandoBorrador || this.guardandoSoporte || this.radicando || this.subsanando) return;
     const anterior = this.programaSeleccionadoNombre;
     const siguiente = this.programas.find(p => p.Id === programaId)?.Nombre || String(programaId);
     if (!await this.confirmarDescarte('INSCRIPCION_GRADO.confirmaciones.descartar_programa_texto', { anterior, siguiente })) return;
@@ -371,6 +648,7 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   }
 
   async recargarBorrador(): Promise<void> {
+    if (this.subsanando) return;
     if (!await this.confirmarDescarte('INSCRIPCION_GRADO.confirmaciones.descartar_recarga_texto')) return;
     this.cambiarPrograma();
   }
@@ -387,12 +665,13 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   }
 
   cambiarPeriodo(): void {
-    if (this.guardandoBorrador || this.guardandoSoporte || this.radicando) return;
+    if (this.guardandoBorrador || this.guardandoSoporte || this.radicando || this.subsanando) return;
     this.consulta?.unsubscribe();
     this.consultaBorrador?.unsubscribe();
     this.consultaFechasBorrador?.unsubscribe();
     this.guardarActual?.unsubscribe();
     this.borrador = null;
+    this.pasoActivo = 0;
     this.limpiarContenidoFormulario();
     this.errorBorrador = this.mensajeBorrador = '';
     this.cargandoBorrador = this.guardandoBorrador = false;
@@ -446,11 +725,12 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   }
 
   cambiarPrograma(): void {
-    if (this.guardandoBorrador || this.guardandoSoporte || this.radicando) return;
+    if (this.guardandoBorrador || this.guardandoSoporte || this.radicando || this.subsanando) return;
     this.consultaBorrador?.unsubscribe();
     this.consultaFechasBorrador?.unsubscribe();
     this.guardarActual?.unsubscribe();
     this.borrador = null;
+    this.pasoActivo = 0;
     this.limpiarContenidoFormulario();
     this.errorBorrador = this.mensajeBorrador = '';
     this.borradorConsultado = false;
@@ -537,10 +817,10 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
     if (contexto.contenido !== JSON.stringify(contenidoVigente)) return;
     this.guardandoBorrador = true;
     this.alertas.showLoading(this.tr('progreso.guardando_borrador'));
-    const operacion = this.borrador
-	  ? this.servicio.guardarBorrador(this.borrador.Solicitud.Id, this.terceroId, contenidoVigente)
-	  : this.servicio.crearBorrador(this.terceroId, this.periodoId, this.programaId, contenidoVigente);
-    this.guardarActual = operacion.subscribe({
+    const guardar = this.borrador
+		  ? this.servicio.guardarBorrador(this.borrador.Solicitud.Id, this.terceroId, contenidoVigente)
+		  : this.servicio.crearBorrador(this.terceroId, this.periodoId, this.programaId, contenidoVigente);
+    this.guardarActual = guardar.subscribe({
       next: borrador => {
         this.borrador = borrador;
         this.restaurarContenido(borrador.Formulario.Contenido || {});
@@ -557,14 +837,54 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
     });
   }
 
-  private camposRadicacionCompletos(): boolean {
+  get pasoConvocatoriaCompleto(): boolean {
+    return !!this.periodoId && !!this.programaId && this.borradorConsultado && !this.cargandoBorrador;
+  }
+
+  get pasoDatosCompleto(): boolean {
     const texto = (valor: string) => !!valor.trim();
-    return texto(this.trabajoGrado) && texto(this.lugarExpedicionDocumento) && texto(this.numeroActaSustentacion) &&
+    return !!this.lugarExpedicionSeleccionado &&
+      texto(this.numeroActaSustentacion) &&
       /^[A-Za-z0-9-]+$/.test(this.numeroRegistroSnp.trim()) && this.trabajaActualmente !== null &&
-      !!this.director1 && this.directores.some(d => d.DIR_NRO_IDEN === this.director1) &&
-      (!this.director2 || this.directores.some(d => d.DIR_NRO_IDEN === this.director2)) && !this.directoresRepetidos &&
-      !!this.modalidad && this.modalidades.some(m => m.AMG_COD === this.modalidad) &&
       (!this.trabajaActualmente || (texto(this.empresa) && texto(this.direccionEmpresa) && texto(this.telefonoEmpresa)));
+  }
+
+  get pasoTrabajoCompleto(): boolean {
+    return !!this.trabajoGrado.trim() && !!this.director1 && this.directores.some(d => d.DIR_NRO_IDEN === this.director1) &&
+      (!this.director2 || this.directores.some(d => d.DIR_NRO_IDEN === this.director2)) && !this.directoresRepetidos &&
+      !!this.modalidad && this.modalidades.some(m => m.CodigoAbreviacion === this.modalidad);
+  }
+
+  get pasoSoportesCompleto(): boolean {
+    return this.esRadicada || this.soportesCargados === 3;
+  }
+
+  get pasosCompletos(): number {
+    return [this.pasoConvocatoriaCompleto, this.pasoDatosCompleto, this.pasoTrabajoCompleto,
+      this.pasoSoportesCompleto, this.esRadicada].filter(Boolean).length;
+  }
+
+  get progresoFormulario(): number {
+    return this.pasosCompletos * 100 / this.totalPasos;
+  }
+
+  actualizarProgresoSoportes(cantidad: number): void {
+    this.soportesCargados = Math.max(0, Math.min(3, cantidad));
+  }
+
+  private camposRadicacionCompletos(): boolean {
+    return this.pasoDatosCompleto && this.pasoTrabajoCompleto;
+  }
+
+  get lugarExpedicionSeleccionado(): LugarExpedicionGrado | null {
+    const registrado = this.lugarExpedicionIdentificacion?.Lugar;
+    if (registrado?.Id === this.lugarExpedicionDocumentoId) return registrado;
+    return this.lugaresExpedicion.find(lugar => lugar.Id === this.lugarExpedicionDocumentoId) || null;
+  }
+
+  get lugarExpedicionResumen(): string {
+    const lugar = this.lugarExpedicionSeleccionado;
+    return lugar ? `${lugar.Nombre}, ${lugar.DepartamentoNombre}, ${lugar.PaisNombre}` : '';
   }
 
   async radicar(): Promise<void> {
@@ -577,33 +897,45 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
     const contexto = {
       cargaVersion: this.cargaVersion, periodoId: this.periodoId, programaId: this.programaId,
       solicitudId: this.borrador.Solicitud.Id, formularioId: this.borrador.Formulario.Id,
-      contenido: JSON.stringify(this.contenidoFormulario())
+      contenido: JSON.stringify(this.contenidoFormulario()), lugar: this.lugarExpedicionSeleccionado!
     };
     this.radicando = true;
     let enviando = false;
     try {
 	  const soportes = await firstValueFrom(this.servicio.soportes(contexto.solicitudId, this.terceroId, contexto.formularioId));
-      if (soportes.length !== 4 || new Set(soportes.map(s => s.TipoSoporte)).size !== 4) {
+	  const tiposSoporte = new Set(soportes.map(soporte => soporte.TipoSoporte));
+	  const obligatorios: TipoSoporteGrado[] = ['TSG_ACTA_SUST', 'TSG_PAGO_DERECHOS', 'TSG_TITULO_PREVIO'];
+	  this.actualizarProgresoSoportes(obligatorios.filter(tipo => tiposSoporte.has(tipo)).length);
+	  if (!obligatorios.every(tipo => tiposSoporte.has(tipo))) {
         this.errorBorrador = this.tr('errores.soportes_radicacion');
         return;
       }
-      const resultado = await this.alertas.showConfirmAlert('INSCRIPCION_GRADO.confirmaciones.radicar_texto', {
+      const resultado = await this.alertas.showConfirmAlert(
+        this.lugarExpedicionIdentificacion?.Registrado
+          ? 'INSCRIPCION_GRADO.confirmaciones.radicar_texto'
+          : 'INSCRIPCION_GRADO.confirmaciones.radicar_registro_lugar_texto', {
         titleKey: 'INSCRIPCION_GRADO.confirmaciones.radicar_titulo',
         confirmButtonKey: 'INSCRIPCION_GRADO.confirmaciones.radicar',
-        textParams: { programa: this.programaSeleccionadoNombre, periodo: this.periodos.find(p => p.Id === this.periodoId)?.Nombre || String(this.periodoId) }
+        textParams: {
+          programa: this.programaSeleccionadoNombre,
+          periodo: this.periodos.find(p => p.Id === this.periodoId)?.Nombre || String(this.periodoId),
+          ciudad: contexto.lugar.Nombre
+        }
       });
       const vigente = this.borrador && !this.destruido && contexto.cargaVersion === this.cargaVersion &&
         contexto.periodoId === this.periodoId && contexto.programaId === this.programaId &&
         contexto.solicitudId === this.borrador.Solicitud.Id && contexto.formularioId === this.borrador.Formulario.Id &&
         contexto.contenido === JSON.stringify(this.contenidoFormulario()) && this.camposRadicacionCompletos() &&
         this.permisos.permite('inscripciones_grado', 'Menú') && this.permisos.permite('grado_radicar_inscripcion') &&
-        !!this.disponibilidad && this.eventoEstaAbierto(this.disponibilidad.inscripcion) && this.eventoEstaAbierto(this.disponibilidad.aprobacion);
+		!!this.disponibilidad && ((this.borrador.Formulario.Version || 1) > 1 || this.eventoEstaAbierto(this.disponibilidad.inscripcion)) &&
+		this.eventoEstaAbierto(this.disponibilidad.aprobacion);
       if (resultado.isConfirmed !== true || !vigente) return;
       this.alertas.showLoading(this.tr('progreso.radicando'));
       enviando = true;
-	  const radicado = await firstValueFrom(this.servicio.radicar(contexto.solicitudId, this.terceroId, contexto.formularioId, this.contenidoFormulario()));
+      const radicado = await firstValueFrom(this.servicio.radicar(contexto.solicitudId, this.terceroId, contexto.formularioId, this.contenidoFormulario()));
       if (this.destruido || contexto.cargaVersion !== this.cargaVersion) return;
       this.borrador = radicado;
+      this.lugarExpedicionIdentificacion = { Registrado: true, Lugar: contexto.lugar };
       this.restaurarContenido(radicado.Formulario.Contenido || {});
       this.mensajeBorrador = this.tr('mensajes.inscripcion_radicada');
       this.alertas.showSuccessAlert(this.mensajeBorrador);
@@ -620,19 +952,74 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   get puedeGuardarBorrador(): boolean {
     if (!this.permisos.permite('inscripciones_grado', 'Menú') || !this.permisos.permite(this.borrador ? 'grado_actualizar_borrador' : 'grado_crear_borrador')) return false;
     if (!this.borradorConsultado || this.cargandoBorrador || this.confirmandoBorrador || this.guardandoBorrador || this.guardandoSoporte || this.radicando || !this.disponibilidad) return false;
-    if (this.borrador?.Formulario.FechaRadicacion) return false;
+    if (this.borrador?.Formulario.FechaRadicacion || this.esSubsanacion) return false;
     return this.eventoEstaAbierto(this.disponibilidad.aprobacion) &&
       (!!this.borrador || this.eventoEstaAbierto(this.disponibilidad.inscripcion));
   }
 
   get esRadicada(): boolean {
-    return !!this.borrador?.Formulario.FechaRadicacion;
+	return !!this.borrador && (this.borrador.Estado ? this.borrador.Estado !== 'SG_BORRADOR' : !!this.borrador.Formulario.FechaRadicacion);
+  }
+
+  get esObservada(): boolean { return this.borrador?.Estado === 'SG_OBSERVADA'; }
+
+  get esSubsanacion(): boolean {
+    return (this.borrador?.Formulario.Version || 1) > 1 && !this.borrador?.Formulario.FechaRadicacion;
+  }
+
+  get puedeIniciarSubsanacion(): boolean {
+	return !!this.borrador && !!this.terceroId && this.esObservada && !this.subsanando && !!this.disponibilidad &&
+	  this.eventoEstaAbierto(this.disponibilidad.aprobacion);
+  }
+
+  get estadoSolicitud(): string {
+	const claves: Record<string, string> = {
+	  SG_BORRADOR: 'estado_borrador', SG_RADICADA: 'estado_radicada',
+	  SG_OBSERVADA: 'estado_observada', SG_DOC_APROBADA: 'estado_aprobada'
+	};
+	return this.tr(`vista.${claves[this.borrador?.Estado || 'SG_BORRADOR'] || 'estado_borrador'}`);
+  }
+
+  async iniciarSubsanacion(): Promise<void> {
+	if (!this.puedeIniciarSubsanacion || !this.borrador || !this.terceroId) return;
+	const id = this.borrador.Solicitud.Id;
+	const formularioId = this.borrador.Formulario.Id;
+	this.subsanando = true;
+	let confirmacion;
+	try {
+	  confirmacion = await this.alertas.showConfirmAlert('INSCRIPCION_GRADO.confirmaciones.subsanar_texto', {
+		titleKey: 'INSCRIPCION_GRADO.confirmaciones.subsanar_titulo', confirmButtonKey: 'INSCRIPCION_GRADO.confirmaciones.subsanar'
+	  });
+	} catch {
+	  this.subsanando = false;
+	  return;
+	}
+	if (!confirmacion.isConfirmed || !this.borrador || this.borrador.Formulario.Id !== formularioId || !this.esObservada) {
+	  this.subsanando = false;
+	  return;
+	}
+	this.alertas.showLoading(this.tr('progreso.subsanando'));
+	this.guardarActual = this.servicio.subsanar(id, this.terceroId, formularioId).subscribe({
+	  next: borrador => {
+		this.borrador = borrador;
+		this.restaurarContenido(borrador.Formulario.Contenido || {});
+		this.subsanando = false;
+		this.mensajeBorrador = this.tr('mensajes.subsanacion_iniciada');
+		this.alertas.showSuccessAlert(this.mensajeBorrador);
+	  },
+	  error: error => {
+		this.subsanando = false;
+		this.errorBorrador = mensajeErrorBorrador(error, this.tr('errores.subsanar'));
+		this.alertas.showErrorAlert(this.errorBorrador);
+	  }
+	});
   }
 
   get puedeEditarFormulario(): boolean {
     return this.permisos.permite(this.borrador ? 'grado_actualizar_borrador' : 'grado_crear_borrador') &&
       !!this.programaId && !!this.periodoId && this.borradorConsultado && !this.cargandoBorrador &&
-      !this.guardandoBorrador && !this.guardandoSoporte && !this.radicando && !this.borrador?.Formulario.FechaRadicacion;
+      !this.guardandoBorrador && !this.guardandoSoporte && !this.radicando && !this.borrador?.Formulario.FechaRadicacion &&
+      !this.esSubsanacion;
   }
 
   get puedeModificarSoportes(): boolean {
@@ -644,7 +1031,8 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   get puedeRadicar(): boolean {
     return this.permisos.permite('inscripciones_grado', 'Menú') && this.permisos.permite('grado_radicar_inscripcion') &&
       !!this.borrador && !this.borrador.Formulario.FechaRadicacion && !this.cargandoBorrador && !this.guardandoBorrador &&
-      !this.guardandoSoporte && !this.radicando && !!this.disponibilidad && this.eventoEstaAbierto(this.disponibilidad.inscripcion) &&
+	  !this.guardandoSoporte && !this.radicando && !!this.disponibilidad &&
+	  ((this.borrador.Formulario.Version || 1) > 1 || this.eventoEstaAbierto(this.disponibilidad.inscripcion)) &&
       this.eventoEstaAbierto(this.disponibilidad.aprobacion);
   }
 
@@ -655,19 +1043,18 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
 
   estado(evento: EventoGrado): string {
     const ahora = Date.now();
-    const inicio = fechaGrado(evento.FechaInicioEvento)!;
-    const fin = fechaGrado(evento.FechaFinEvento)!;
+    const inicio = fechaGradoPersistida(evento.FechaInicioEvento)!;
+    const fin = fechaGradoPersistida(evento.FechaFinEvento)!;
     return ahora < inicio ? this.tr('estados.proxima_apertura') : ahora > fin ? this.tr('estados.cerrado') : this.tr('estados.abierto');
   }
   eventoEstaAbierto(evento: EventoGrado): boolean {
     const ahora = Date.now();
-    return ahora >= fechaGrado(evento.FechaInicioEvento)! && ahora <= fechaGrado(evento.FechaFinEvento)!;
+    return ahora >= fechaGradoPersistida(evento.FechaInicioEvento)! && ahora <= fechaGradoPersistida(evento.FechaFinEvento)!;
   }
   fecha(valor: string): string {
-    const fecha = fechaGrado(valor);
-    const locale = this.translate.currentLang === 'en' ? 'en-US' : 'es-CO';
-    return fecha === null ? this.tr('estados.fecha_invalida') : new Intl.DateTimeFormat(locale, {
-      timeZone: 'America/Bogota', dateStyle: 'long', timeStyle: 'short'
-    }).format(fecha);
+    if (fechaGradoPersistida(valor) === null) return this.tr('estados.fecha_invalida');
+    return valor.trim()
+      .replace('T', ' ')
+      .replace(/(?:Z|[+-]\d{2}:?\d{2})$/i, '');
   }
 }

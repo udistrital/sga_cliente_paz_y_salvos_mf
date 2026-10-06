@@ -156,11 +156,12 @@ export class RequestManager {
   /**
    * Perform a DELETE http request
    * @param endpoint service's end-point
-   * @param id element's id for remove
+   * @param id optional element identifier appended to the endpoint
    * @returns Observable<any>
    */
-  delete(endpoint: string, id: number | string) {
-    return this.http.delete<any>(`${this.path}${endpoint}/${id}`, this.httpOptions).pipe(
+  delete(endpoint: string, id?: number | string) {
+	const suffix = id === undefined ? '' : `/${id}`;
+	return this.http.delete<any>(`${this.path}${endpoint}${suffix}`, this.httpOptions).pipe(
       map(
         (res) => {
           if (res instanceof HttpResponse) {
