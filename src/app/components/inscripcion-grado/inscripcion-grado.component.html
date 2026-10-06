@@ -1,4 +1,4 @@
-<section class="inscripcion" [attr.aria-busy]="cargando || consultando || cargandoBorrador || guardandoBorrador || radicando">
+<section class="inscripcion" [attr.aria-busy]="cargando || consultando || cargandoBorrador || guardandoBorrador || radicando || subsanando">
   <header class="encabezado-pagina">
     <h1>{{ 'INSCRIPCION_GRADO.vista.titulo' | translate }}</h1>
     <p>{{ 'INSCRIPCION_GRADO.vista.subtitulo' | translate }}</p>
@@ -13,6 +13,25 @@
   </div>
   <p *ngIf="errorBorrador" class="mensaje error" role="alert">{{ errorBorrador }}</p>
   <p *ngIf="mensajeBorrador" class="mensaje exito" role="status">{{ mensajeBorrador }}</p>
+	<div *ngIf="borrador?.Comentario" class="mensaje advertencia" role="status">
+	  <strong>{{ 'INSCRIPCION_GRADO.vista.comentario_revision' | translate }}:</strong> {{ borrador?.Comentario }}
+	</div>
+  <section *ngIf="borrador && esRadicada" class="estado-solicitud" [class.estado-solicitud-radicada]="!esObservada">
+    <div class="estado-solicitud-encabezado">
+      <strong>{{ 'INSCRIPCION_GRADO.vista.estado' | translate }}:</strong>
+      <span class="estado-solicitud-etiqueta">{{ estadoSolicitud }}</span>
+    </div>
+    <dl *ngIf="borrador.Formulario.FechaRadicacion" class="estado-solicitud-fecha">
+      <dt>{{ 'INSCRIPCION_GRADO.vista.fecha_radicacion' | translate }}:</dt>
+      <dd>{{ fecha(borrador.Formulario.FechaRadicacion) }}</dd>
+    </dl>
+    <p>{{ (esObservada ? 'INSCRIPCION_GRADO.vista.subsanacion_ayuda' : 'INSCRIPCION_GRADO.vista.radicada_ayuda') | translate }}</p>
+    <div *ngIf="esObservada" class="acciones-principales">
+      <button mat-flat-button color="primary" type="button" (click)="iniciarSubsanacion()" [disabled]="!puedeIniciarSubsanacion">
+        {{ 'INSCRIPCION_GRADO.vista.iniciar_subsanacion' | translate }}
+      </button>
+    </div>
+  </section>
   <p *ngIf="cargandoBorrador" class="mensaje info" role="status">{{ 'INSCRIPCION_GRADO.vista.consultando_borrador' | translate }}</p>
 
   <ng-container *ngIf="!error">
@@ -54,13 +73,13 @@
             <div class="campos seleccion">
               <mat-form-field appearance="outline">
                 <mat-label>{{ 'INSCRIPCION_GRADO.vista.periodo_academico' | translate }}</mat-label>
-                <mat-select [ngModel]="periodoId" (ngModelChange)="seleccionarPeriodo($event)" [disabled]="consultando || guardandoBorrador || guardandoSoporte || radicando">
+                <mat-select [ngModel]="periodoId" (ngModelChange)="seleccionarPeriodo($event)" [disabled]="consultando || guardandoBorrador || guardandoSoporte || radicando || subsanando">
                   <mat-option *ngFor="let p of periodos" [value]="p.Id">{{ p.Nombre }}</mat-option>
                 </mat-select>
               </mat-form-field>
               <mat-form-field appearance="outline">
                 <mat-label>{{ 'INSCRIPCION_GRADO.vista.programa_academico' | translate }}</mat-label>
-                <mat-select [ngModel]="programaId" (ngModelChange)="seleccionarPrograma($event)" [disabled]="!periodoId || consultando || guardandoBorrador || guardandoSoporte || radicando">
+                <mat-select [ngModel]="programaId" (ngModelChange)="seleccionarPrograma($event)" [disabled]="!periodoId || consultando || guardandoBorrador || guardandoSoporte || radicando || subsanando">
                   <mat-option *ngFor="let p of programasHabilitados" [value]="p.Id">{{ p.Nombre }}</mat-option>
                 </mat-select>
               </mat-form-field>
@@ -121,6 +140,7 @@
                 <div><dt>{{ 'INSCRIPCION_GRADO.vista.numero_identificacion' | translate }}</dt><dd>{{ datosBasicos.NumeroIdentificacion || ('INSCRIPCION_GRADO.vista.no_registrado' | translate) }}</dd></div>
                 <div><dt>{{ 'INSCRIPCION_GRADO.vista.fecha_nacimiento' | translate }}</dt><dd>{{ (datosBasicos.FechaNacimiento | date:'mediumDate') || ('INSCRIPCION_GRADO.vista.no_registrada' | translate) }}</dd></div>
                 <div><dt>{{ 'INSCRIPCION_GRADO.vista.fecha_expedicion' | translate }}</dt><dd>{{ (datosBasicos.FechaExpedicion | date:'mediumDate') || ('INSCRIPCION_GRADO.vista.no_registrada' | translate) }}</dd></div>
+                <div *ngIf="lugarExpedicionIdentificacion?.Registrado"><dt>{{ 'INSCRIPCION_GRADO.vista.ciudad_expedicion' | translate }}</dt><dd>{{ lugarExpedicionIdentificacion?.Lugar?.Nombre }}</dd></div>
                 <div><dt>{{ 'INSCRIPCION_GRADO.vista.genero' | translate }}</dt><dd>{{ datosBasicos.Genero?.Nombre || ('INSCRIPCION_GRADO.vista.no_registrado' | translate) }}</dd></div>
                 <div><dt>{{ 'INSCRIPCION_GRADO.vista.telefono' | translate }}</dt><dd>{{ datosBasicos.Telefono || ('INSCRIPCION_GRADO.vista.no_registrado' | translate) }}</dd></div>
                 <div><dt>{{ 'INSCRIPCION_GRADO.vista.telefono_alterno' | translate }}</dt><dd>{{ datosBasicos.TelefonoAlterno || ('INSCRIPCION_GRADO.vista.no_registrado' | translate) }}</dd></div>
@@ -133,8 +153,9 @@
             </p>
             <p *ngIf="errorUbicaciones" class="mensaje advertencia" role="alert">{{ errorUbicaciones }}</p>
             <div class="formulario-secciones">
-              <section class="formulario-seccion" aria-labelledby="titulo-lugar-expedicion">
+              <section *ngIf="lugarExpedicionIdentificacion && !lugarExpedicionIdentificacion.Registrado" class="formulario-seccion" aria-labelledby="titulo-lugar-expedicion">
                 <h3 id="titulo-lugar-expedicion">{{ 'INSCRIPCION_GRADO.vista.seccion_lugar_expedicion' | translate }}</h3>
+                <p class="nota">{{ 'INSCRIPCION_GRADO.vista.lugar_expedicion_faltante' | translate }}</p>
                 <div class="campos formulario">
                   <mat-form-field appearance="outline">
                     <mat-label>{{ 'INSCRIPCION_GRADO.vista.pais_expedicion' | translate }}</mat-label>
@@ -188,7 +209,7 @@
                   </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>{{ 'INSCRIPCION_GRADO.vista.numero_snp' | translate }}</mat-label>
-                    <input matInput [(ngModel)]="numeroRegistroSnp" [disabled]="!puedeEditarFormulario" pattern="[A-Za-z0-9-]+" required>
+                    <input matInput [(ngModel)]="numeroRegistroSnp" [disabled]="!puedeEditarFormulario" pattern="[A-Za-z0-9\-]+" required>
                     <mat-hint>{{ 'INSCRIPCION_GRADO.vista.numero_snp_hint' | translate }}</mat-hint>
                   </mat-form-field>
                 </div>
@@ -273,15 +294,8 @@
               <div><dt>{{ 'INSCRIPCION_GRADO.vista.periodo_academico' | translate }}</dt><dd>{{ periodoSeleccionadoNombre }}</dd></div>
               <div><dt>{{ 'INSCRIPCION_GRADO.vista.programa_academico' | translate }}</dt><dd>{{ programaSeleccionadoNombre }}</dd></div>
               <div><dt>{{ 'INSCRIPCION_GRADO.vista.trabajo_grado' | translate }}</dt><dd>{{ trabajoGrado }}</dd></div>
-              <div><dt>{{ 'INSCRIPCION_GRADO.vista.soportes_completos' | translate }}</dt><dd>{{ soportesCargados }} / 4</dd></div>
-            </dl>
-            <div *ngIf="borrador" class="estado-inscripcion">
-              <strong>{{ 'INSCRIPCION_GRADO.vista.estado' | translate }}:</strong>
-              <span>{{ (esRadicada ? 'INSCRIPCION_GRADO.vista.estado_radicada' : 'INSCRIPCION_GRADO.vista.estado_borrador') | translate }}</span>
-            </div>
-            <dl *ngIf="borrador" class="resumen-radicacion">
-              <div><dt>{{ 'INSCRIPCION_GRADO.vista.solicitud' | translate }}</dt><dd>#{{ borrador.Solicitud.Id }}</dd></div>
-              <div *ngIf="borrador.Formulario.FechaRadicacion"><dt>{{ 'INSCRIPCION_GRADO.vista.fecha_radicacion' | translate }}</dt><dd>{{ fecha(borrador.Formulario.FechaRadicacion) }}</dd></div>
+              <div><dt>{{ 'INSCRIPCION_GRADO.vista.lugar_expedicion' | translate }}</dt><dd>{{ lugarExpedicionResumen }}</dd></div>
+              <div><dt>{{ 'INSCRIPCION_GRADO.vista.soportes_completos' | translate }}</dt><dd>{{ soportesCargados }} / 3</dd></div>
             </dl>
             <p class="mensaje info">{{ (esRadicada ? 'INSCRIPCION_GRADO.vista.radicada_ayuda' : 'INSCRIPCION_GRADO.vista.resumen_ayuda') | translate }}</p>
           </mat-card-content>

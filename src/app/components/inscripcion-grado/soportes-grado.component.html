@@ -1,9 +1,9 @@
-<section aria-labelledby="titulo-soportes" [attr.aria-busy]="cargando || !!subiendo">
+<section aria-labelledby="titulo-soportes" [attr.aria-busy]="cargando || !!subiendo || !!eliminando">
   <h3 id="titulo-soportes">{{ 'INSCRIPCION_GRADO.soportes.titulo' | translate }}</h3>
   <p *ngIf="!borrador?.Formulario?.FechaRadicacion">{{ 'INSCRIPCION_GRADO.soportes.descripcion' | translate }}</p>
   <p *ngIf="!borrador" role="status">{{ 'INSCRIPCION_GRADO.soportes.guardar_primero' | translate }}</p>
-  <p *ngIf="borrador && !habilitado && !subiendo" role="status">{{ 'INSCRIPCION_GRADO.soportes.solo_consulta' | translate }}</p>
-  <mat-progress-bar *ngIf="cargando || subiendo" mode="indeterminate" [attr.aria-label]="'INSCRIPCION_GRADO.soportes.procesando' | translate"></mat-progress-bar>
+  <p *ngIf="borrador && !habilitado && !subiendo && !eliminando" role="status">{{ 'INSCRIPCION_GRADO.soportes.solo_consulta' | translate }}</p>
+  <mat-progress-bar *ngIf="cargando || subiendo || eliminando" mode="indeterminate" [attr.aria-label]="'INSCRIPCION_GRADO.soportes.procesando' | translate"></mat-progress-bar>
   <div *ngIf="errorConsulta" role="alert"><p>{{ errorConsulta }}</p></div>
   <div class="soportes" *appOpcion="'grado_consultar_soportes'">
     <mat-card *ngFor="let doc of documentos">
@@ -11,8 +11,10 @@
       <mat-card-content>
         <p>{{ doc.descripcionKey | translate }}</p>
         <p *ngIf="doc.soporte" class="archivo">{{ doc.soporte.Nombre }} <span>· {{ (borrador?.Formulario?.FechaRadicacion ? 'INSCRIPCION_GRADO.soportes.radicado' : 'INSCRIPCION_GRADO.soportes.provisional') | translate }}</span></p>
+		<p *ngIf="doc.observacion" class="mensaje advertencia"><strong>{{ 'INSCRIPCION_GRADO.soportes.observacion' | translate }}:</strong> {{ doc.observacion }}</p>
         <p *ngIf="!doc.soporte && consultaCorrecta">{{ 'INSCRIPCION_GRADO.soportes.pendiente' | translate }}</p>
         <p *ngIf="subiendo === doc.codigo" role="status">{{ 'INSCRIPCION_GRADO.soportes.cargando' | translate }}</p>
+        <p *ngIf="eliminando === doc.codigo" role="status">{{ 'INSCRIPCION_GRADO.soportes.eliminando' | translate }}</p>
         <p *ngIf="descargando === doc.codigo" role="status">{{ 'INSCRIPCION_GRADO.soportes.recuperando' | translate }}</p>
         <p *ngIf="doc.error" role="alert">{{ doc.error }}</p>
         <p *ngIf="doc.mensaje" role="status">{{ doc.mensaje }}</p>
@@ -24,8 +26,14 @@
             [attr.aria-label]="(doc.soporte ? 'INSCRIPCION_GRADO.soportes.aria_reemplazar' : 'INSCRIPCION_GRADO.soportes.aria_cargar') | translate:{ soporte: (doc.tituloKey | translate) }">
             {{ (doc.soporte ? 'INSCRIPCION_GRADO.soportes.reemplazar_pdf' : 'INSCRIPCION_GRADO.soportes.cargar_pdf') | translate }}
           </button>
+          <ng-container *ngIf="doc.soporte">
+            <button *appOpcion="opcionCarga(doc)" mat-stroked-button type="button" (click)="eliminar(doc)" [disabled]="!puedeCargarDocumento(doc)"
+              [attr.aria-label]="'INSCRIPCION_GRADO.soportes.aria_eliminar' | translate:{ soporte: (doc.tituloKey | translate) }">
+              {{ 'INSCRIPCION_GRADO.soportes.eliminar_pdf' | translate }}
+            </button>
+          </ng-container>
         </ng-container>
-        <ng-container *ngIf="doc.soporte"><button *appOpcion="'grado_ver_soporte'" mat-button type="button" (click)="ver(doc)" [disabled]="!!descargando || !!subiendo"
+        <ng-container *ngIf="doc.soporte"><button *appOpcion="'grado_ver_soporte'" mat-button type="button" (click)="ver(doc)" [disabled]="!!descargando || !!subiendo || !!eliminando"
           [attr.aria-label]="'INSCRIPCION_GRADO.soportes.aria_ver' | translate:{ soporte: (doc.tituloKey | translate) }">{{ 'INSCRIPCION_GRADO.soportes.ver_pdf' | translate }}</button></ng-container>
       </mat-card-actions>
     </mat-card>

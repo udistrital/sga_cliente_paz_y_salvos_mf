@@ -1,0 +1,270 @@
+<main class="revision" aria-labelledby="titulo-revision">
+  <header class="encabezado-pagina">
+    <h1 id="titulo-revision">{{ 'REVISION_GRADO.titulo' | translate }}</h1>
+    <p>{{ 'REVISION_GRADO.subtitulo' | translate }}</p>
+  </header>
+  @if (!seleccionada) {
+    <section class="resumen-bandeja" aria-live="polite">
+      <div>
+        <h2>{{ 'REVISION_GRADO.filtros.titulo' | translate }}</h2>
+        <p>{{ 'REVISION_GRADO.filtros.ayuda' | translate }}</p>
+      </div>
+      <div class="contador" aria-live="polite">
+        <strong>{{ solicitudesFiltradas.length }}</strong>
+        <span>{{ 'REVISION_GRADO.solicitudes' | translate }}</span>
+      </div>
+    </section>
+  }
+
+  @if (cargando) {
+    <mat-progress-bar mode="indeterminate" [attr.aria-label]="'GLOBAL.cargando' | translate"></mat-progress-bar>
+  }
+  @if (error) {
+    <div class="mensaje-error" role="alert"><mat-icon>error_outline</mat-icon><span>{{ error }}</span></div>
+  }
+	@if (errorFiltros) {
+	  <div class="mensaje-error" role="alert"><mat-icon>error_outline</mat-icon><span>{{ errorFiltros }}</span>
+		<button mat-button type="button" (click)="cargarFiltros()">{{ 'GLOBAL.actualizar' | translate }}</button></div>
+	}
+
+  @if (!seleccionada) {
+    <mat-card class="panel-filtros" aria-labelledby="titulo-filtros">
+      <mat-card-header>
+        <mat-card-title id="titulo-filtros">{{ 'REVISION_GRADO.filtros.filtrar' | translate }}</mat-card-title>
+      </mat-card-header>
+      <mat-card-content class="filtros">
+		<mat-form-field appearance="outline">
+		  <mat-label>{{ 'REVISION_GRADO.filtros.periodo' | translate }}</mat-label>
+		  <mat-select [(ngModel)]="filtroPeriodo" (ngModelChange)="cambiarPeriodo()" [disabled]="cargandoFiltros || !!errorFiltros">
+			<mat-option [value]="null">{{ 'REVISION_GRADO.filtros.selecciona_periodo' | translate }}</mat-option>
+			<mat-option [value]="0">{{ 'REVISION_GRADO.filtros.todos_periodos' | translate }}</mat-option>
+			<mat-option *ngFor="let periodo of periodosFiltro; trackBy: identificarFiltro" [value]="periodo.id">{{ periodo.nombre }}</mat-option>
+		  </mat-select>
+		</mat-form-field>
+		<mat-form-field appearance="outline">
+		  <mat-label>{{ 'REVISION_GRADO.filtros.programa' | translate }}</mat-label>
+		  <mat-select [(ngModel)]="filtroPrograma" (ngModelChange)="cambiarPrograma()" [disabled]="filtroPeriodo === null || cargandoFiltros || !!errorFiltros">
+			<mat-option [value]="null">{{ 'REVISION_GRADO.filtros.selecciona_programa' | translate }}</mat-option>
+			<mat-option [value]="0">{{ 'REVISION_GRADO.filtros.todos_programas' | translate }}</mat-option>
+			<mat-option *ngFor="let programa of programasFiltro; trackBy: identificarFiltro" [value]="programa.id">{{ programa.nombre }}</mat-option>
+		  </mat-select>
+		</mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'REVISION_GRADO.filtros.estado' | translate }}</mat-label>
+          <mat-select [(ngModel)]="filtroEstado" (ngModelChange)="cambiarEstado()">
+            <mat-option value="">{{ 'REVISION_GRADO.filtros.todos' | translate }}</mat-option>
+            <mat-option value="SG_BORRADOR">{{ 'REVISION_GRADO.estados.SG_BORRADOR' | translate }}</mat-option>
+            <mat-option value="SG_RADICADA">{{ 'REVISION_GRADO.estados.SG_RADICADA' | translate }}</mat-option>
+            <mat-option value="SG_OBSERVADA">{{ 'REVISION_GRADO.estados.SG_OBSERVADA' | translate }}</mat-option>
+            <mat-option value="SG_DOC_APROBADA">{{ 'REVISION_GRADO.estados.SG_DOC_APROBADA' | translate }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <button mat-stroked-button color="primary" type="button" (click)="cargar()"
+		  [disabled]="filtroPeriodo === null || filtroPrograma === null || cargando || !permisos.permite('grado_consultar_solicitudes')">
+          <mat-icon>search</mat-icon>{{ 'GLOBAL.buscar' | translate }}
+        </button>
+      </mat-card-content>
+    </mat-card>
+
+    @if (filtroPeriodo === null || filtroPrograma === null) {
+      <p class="mensaje-seleccion" role="status">{{ 'REVISION_GRADO.filtros.selecciona_ambos' | translate }}</p>
+    } @else if (consultaRealizada) {
+      <mat-card class="bandeja" [attr.aria-label]="'REVISION_GRADO.filtros.titulo' | translate">
+		<div class="busqueda-tabla">
+		  <mat-form-field appearance="outline">
+			<mat-label>{{ 'REVISION_GRADO.filtros.buscar' | translate }}</mat-label>
+			<mat-icon matPrefix>search</mat-icon>
+			<input matInput [(ngModel)]="filtro" (keyup.enter)="aplicarBusqueda()" [placeholder]="'REVISION_GRADO.filtros.buscar_placeholder' | translate">
+			<button mat-icon-button matSuffix type="button" (click)="aplicarBusqueda()" [disabled]="cargando"
+			  [attr.aria-label]="'GLOBAL.buscar' | translate"><mat-icon>search</mat-icon></button>
+		  </mat-form-field>
+		</div>
+		<table mat-table [dataSource]="tabla" class="tabla-solicitudes">
+          <ng-container matColumnDef="codigo">
+			<th mat-header-cell *matHeaderCellDef>{{ 'REVISION_GRADO.columnas.codigo' | translate }}</th>
+            <td mat-cell *matCellDef="let solicitud" [attr.data-label]="'REVISION_GRADO.columnas.codigo' | translate">
+              <strong>{{ solicitud.Solicitud.CodigoEstudiante }}</strong><small>{{ solicitud.Estudiante.NombreCompleto }}</small>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="trabajo">
+			<th mat-header-cell *matHeaderCellDef>{{ 'REVISION_GRADO.columnas.trabajo' | translate }}</th>
+            <td mat-cell *matCellDef="let solicitud" [attr.data-label]="'REVISION_GRADO.columnas.trabajo' | translate">
+              <span>{{ solicitud.Formulario.TrabajoGrado }}</span><small>{{ 'REVISION_GRADO.version' | translate:{ version: solicitud.Version } }}</small>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="programa">
+			<th mat-header-cell *matHeaderCellDef>{{ 'REVISION_GRADO.columnas.programa' | translate }}</th>
+            <td mat-cell *matCellDef="let solicitud" [attr.data-label]="'REVISION_GRADO.columnas.programa' | translate">
+              <span>{{ solicitud.Programa }}</span><small>{{ solicitud.Periodo }}</small>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="radicacion">
+			<th mat-header-cell *matHeaderCellDef>{{ 'REVISION_GRADO.columnas.radicacion' | translate }}</th>
+            <td mat-cell *matCellDef="let solicitud" [attr.data-label]="'REVISION_GRADO.columnas.radicacion' | translate">{{ fecha(solicitud.RadicadaEn) }}</td>
+          </ng-container>
+          <ng-container matColumnDef="estado">
+			<th mat-header-cell *matHeaderCellDef>{{ 'REVISION_GRADO.columnas.estado' | translate }}</th>
+            <td mat-cell *matCellDef="let solicitud" [attr.data-label]="'REVISION_GRADO.columnas.estado' | translate">
+              <span class="estado" [attr.data-estado]="solicitud.Estado">{{ ('REVISION_GRADO.estados.' + solicitud.Estado) | translate }}</span>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="acciones">
+            <th mat-header-cell *matHeaderCellDef>{{ 'REVISION_GRADO.columnas.acciones' | translate }}</th>
+            <td mat-cell *matCellDef="let solicitud" [attr.data-label]="'REVISION_GRADO.columnas.acciones' | translate">
+              <button mat-flat-button color="primary" type="button" (click)="abrir(solicitud)"
+                [disabled]="cargando || !permisos.permite('grado_consultar_expediente')">
+                {{ 'REVISION_GRADO.acciones.revisar' | translate }}<mat-icon iconPositionEnd>arrow_forward</mat-icon>
+              </button>
+            </td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="columnas"></tr>
+          <tr mat-row *matRowDef="let solicitud; columns: columnas"></tr>
+        </table>
+        @if (!solicitudesFiltradas.length) {
+          <div class="vacio"><mat-icon>inbox</mat-icon><h2>{{ 'REVISION_GRADO.vacio.titulo' | translate }}</h2>
+            <p>{{ 'REVISION_GRADO.vacio.texto' | translate }}</p></div>
+        }
+		<mat-paginator [length]="totalSolicitudes" [pageIndex]="pageIndex" [pageSize]="pageSize"
+		  [pageSizeOptions]="[10, 25, 50]" (page)="cambiarPagina($event)" showFirstLastButtons
+          [attr.aria-label]="'REVISION_GRADO.paginacion.aria' | translate"></mat-paginator>
+      </mat-card>
+    }
+  } @else {
+    <button mat-button color="primary" type="button" class="volver" (click)="volver()" [disabled]="guardando">
+      <mat-icon>arrow_back</mat-icon>{{ 'REVISION_GRADO.acciones.volver' | translate }}
+    </button>
+
+    <mat-card class="expediente-hero">
+      <div>
+        <p>{{ seleccionada.Estudiante.NombreCompleto }}</p>
+        <h2>{{ seleccionada.Formulario.TrabajoGrado }}</h2>
+        <span>{{ seleccionada.Solicitud.CodigoEstudiante }} · {{ seleccionada.Programa }}</span>
+      </div>
+      <span class="estado" [attr.data-estado]="seleccionada.Estado">{{ ('REVISION_GRADO.estados.' + seleccionada.Estado) | translate }}</span>
+    </mat-card>
+
+    <mat-card class="resumen" aria-labelledby="titulo-estudiante">
+      <mat-card-header><mat-card-title id="titulo-estudiante">{{ 'REVISION_GRADO.estudiante.titulo' | translate }}</mat-card-title></mat-card-header>
+      <mat-card-content>
+      <dl>
+        <div><dt>{{ 'REVISION_GRADO.estudiante.nombre' | translate }}</dt><dd>{{ seleccionada.Estudiante.NombreCompleto }}</dd></div>
+        <div><dt>{{ 'REVISION_GRADO.estudiante.identificacion' | translate }}</dt><dd>{{ seleccionada.Estudiante.TipoIdentificacion }} {{ seleccionada.Estudiante.NumeroIdentificacion }}</dd></div>
+        <div><dt>{{ 'REVISION_GRADO.estudiante.fecha_nacimiento' | translate }}</dt><dd>{{ fecha(seleccionada.Estudiante.FechaNacimiento) }}</dd></div>
+        <div><dt>{{ 'REVISION_GRADO.estudiante.fecha_expedicion' | translate }}</dt><dd>{{ fecha(seleccionada.Estudiante.FechaExpedicion) }}</dd></div>
+        <div><dt>{{ 'REVISION_GRADO.estudiante.genero' | translate }}</dt><dd>{{ valor(seleccionada.Estudiante.Genero) }}</dd></div>
+        <div><dt>{{ 'REVISION_GRADO.estudiante.telefono' | translate }}</dt><dd>{{ valor(seleccionada.Estudiante.Telefono) }}</dd></div>
+        <div><dt>{{ 'REVISION_GRADO.estudiante.telefono_alterno' | translate }}</dt><dd>{{ valor(seleccionada.Estudiante.TelefonoAlterno) }}</dd></div>
+        <div><dt>{{ 'REVISION_GRADO.estudiante.correo' | translate }}</dt><dd>{{ valor(seleccionada.Estudiante.Correo) }}</dd></div>
+        <div><dt>{{ 'REVISION_GRADO.estudiante.direccion' | translate }}</dt><dd>{{ valor(seleccionada.Estudiante.Direccion) }}</dd></div>
+        <div><dt>{{ 'REVISION_GRADO.estudiante.codigo' | translate }}</dt><dd>{{ seleccionada.Solicitud.CodigoEstudiante }}</dd></div>
+      </dl>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="resumen" aria-labelledby="titulo-resumen">
+      <mat-card-header><mat-card-title id="titulo-resumen">{{ 'REVISION_GRADO.resumen.titulo' | translate }}</mat-card-title></mat-card-header>
+      <mat-card-content>
+      <dl>
+        <div><dt>{{ 'REVISION_GRADO.resumen.programa' | translate }}</dt><dd>{{ seleccionada.Programa }}</dd></div>
+        <div><dt>{{ 'REVISION_GRADO.resumen.periodo' | translate }}</dt><dd>{{ seleccionada.Periodo }}</dd></div>
+        <div><dt>{{ 'REVISION_GRADO.resumen.version' | translate }}</dt><dd>{{ seleccionada.Version }}</dd></div>
+        <div><dt>{{ 'REVISION_GRADO.resumen.radicacion' | translate }}</dt><dd>{{ fecha(seleccionada.RadicadaEn) }}</dd></div>
+        <div><dt>{{ 'REVISION_GRADO.resumen.modalidad' | translate }}</dt><dd>{{ seleccionada.Formulario.Modalidad }}</dd></div>
+        <div><dt>{{ 'REVISION_GRADO.resumen.director' | translate }}</dt><dd>{{ seleccionada.Formulario.DirectorPrincipal }}</dd></div>
+        <div><dt>{{ 'REVISION_GRADO.resumen.director_secundario' | translate }}</dt><dd>{{ valor(seleccionada.Formulario.DirectorSecundario) }}</dd></div>
+        <div><dt>{{ 'REVISION_GRADO.resumen.lugar_expedicion' | translate }}</dt><dd>{{ seleccionada.Formulario.CiudadExpedicion }}, {{ seleccionada.Formulario.DepartamentoExpedicion }}, {{ seleccionada.Formulario.PaisExpedicion }}</dd></div>
+        <div><dt>{{ 'REVISION_GRADO.resumen.acta' | translate }}</dt><dd>{{ seleccionada.Formulario.NumeroActaSustentacion }}</dd></div>
+        <div><dt>{{ 'REVISION_GRADO.resumen.snp' | translate }}</dt><dd>{{ seleccionada.Formulario.NumeroRegistroSnp }}</dd></div>
+        <div><dt>{{ 'REVISION_GRADO.resumen.trabaja' | translate }}</dt><dd>{{ valorBooleano(seleccionada.Formulario.TrabajaActualmente) }}</dd></div>
+      </dl>
+      @if (seleccionada.Formulario.TrabajaActualmente) {
+        <section class="datos-laborales" aria-labelledby="titulo-laboral">
+          <h3 id="titulo-laboral">{{ 'REVISION_GRADO.laboral.titulo' | translate }}</h3>
+          <dl>
+            <div><dt>{{ 'REVISION_GRADO.laboral.empresa' | translate }}</dt><dd>{{ seleccionada.Formulario.Empresa }}</dd></div>
+            <div><dt>{{ 'REVISION_GRADO.laboral.direccion' | translate }}</dt><dd>{{ seleccionada.Formulario.DireccionEmpresa }}</dd></div>
+            <div><dt>{{ 'REVISION_GRADO.laboral.telefono' | translate }}</dt><dd>{{ seleccionada.Formulario.TelefonoEmpresa }}</dd></div>
+          </dl>
+        </section>
+      }
+      @if (seleccionada.Comentario) {
+        <div class="comentario-previo"><strong>{{ 'REVISION_GRADO.resumen.comentario' | translate }}</strong><p>{{ seleccionada.Comentario }}</p></div>
+      }
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="documentos" aria-labelledby="titulo-documentos">
+      <div class="seccion-titulo">
+        <div><p>{{ 'REVISION_GRADO.documentos.paso' | translate }}</p><h2 id="titulo-documentos">{{ 'REVISION_GRADO.documentos.titulo' | translate }}</h2></div>
+        <span>{{ 'REVISION_GRADO.documentos.conteo' | translate:{ total: seleccionada.Soportes.length } }}</span>
+      </div>
+      <div class="documentos-grid">
+        @for (decision of decisiones; track decision.soporte.Id) {
+          <mat-card class="documento" [class.documento-aprobado]="decision.estado === 'aprobado'" [class.documento-observado]="decision.estado === 'observado'">
+            <div class="documento-encabezado">
+              <div class="icono-documento"><mat-icon>picture_as_pdf</mat-icon></div>
+              <div><h3>{{ ('REVISION_GRADO.' + soporteKey(decision.soporte.TipoSoporte)) | translate }}</h3><p>{{ decision.soporte.Nombre }}</p></div>
+              <button mat-stroked-button color="primary" type="button" (click)="ver(decision.soporte)"
+                [disabled]="!!descargando || !permisos.permite('grado_ver_soporte')">
+                <mat-icon>visibility</mat-icon>{{ 'REVISION_GRADO.acciones.ver_pdf' | translate }}
+              </button>
+            </div>
+            @if (puedeDecidir) {
+              <div class="decision" role="group" [attr.aria-label]="('REVISION_GRADO.documentos.decision' | translate)">
+                <button mat-stroked-button color="primary" type="button" class="decision-boton aprobar" [class.activo]="decision.estado === 'aprobado'"
+                  (click)="marcar(decision, 'aprobado')" [disabled]="guardando || !permisos.permite('grado_aprobar_soporte')">
+                  <mat-icon>check_circle</mat-icon>{{ 'REVISION_GRADO.acciones.aprobar_soporte' | translate }}
+                </button>
+                <button mat-stroked-button color="warn" type="button" class="decision-boton observar" [class.activo]="decision.estado === 'observado'"
+                  (click)="marcar(decision, 'observado')" [disabled]="guardando || !permisos.permite('grado_observar_soporte')">
+                  <mat-icon>rate_review</mat-icon>{{ 'REVISION_GRADO.acciones.observar' | translate }}
+                </button>
+              </div>
+              @if (decision.estado === 'observado') {
+                <mat-form-field appearance="outline" class="campo-completo">
+                  <mat-label>{{ 'REVISION_GRADO.documentos.observacion' | translate }}</mat-label>
+                  <textarea matInput rows="3" maxlength="500" [(ngModel)]="decision.observacion"></textarea>
+                  <mat-hint align="end">{{ decision.observacion.length }}/500</mat-hint>
+                </mat-form-field>
+              }
+            }
+          </mat-card>
+        }
+      </div>
+    </mat-card>
+
+    @if (puedeDecidir) {
+      <mat-card class="cierre" aria-labelledby="titulo-decision">
+        <div>
+          <p>{{ 'REVISION_GRADO.decision.paso' | translate }}</p>
+          <h2 id="titulo-decision">{{ 'REVISION_GRADO.decision.titulo' | translate }}</h2>
+          <span>{{ hayObservadas ? ('REVISION_GRADO.decision.ayuda_devolver' | translate) : ('REVISION_GRADO.decision.ayuda_aprobar' | translate) }}</span>
+        </div>
+        <mat-form-field appearance="outline" class="campo-completo">
+          <mat-label>{{ 'REVISION_GRADO.decision.comentario' | translate }}</mat-label>
+          <textarea matInput rows="4" maxlength="500" [(ngModel)]="comentarioGeneral"></textarea>
+          <mat-hint>{{ hayObservadas ? ('REVISION_GRADO.decision.obligatorio' | translate) : ('REVISION_GRADO.decision.opcional' | translate) }}</mat-hint>
+          <mat-hint align="end">{{ comentarioGeneral.length }}/500</mat-hint>
+        </mat-form-field>
+        <div class="acciones-finales">
+          <span>{{ 'REVISION_GRADO.decision.progreso' | translate:{ revisados: soportesRevisados, total: decisiones.length } }}</span>
+          @if (hayObservadas) {
+            <button mat-flat-button color="warn" type="button" (click)="guardarDecision()"
+              [disabled]="!decisionesCompletas || guardando || !permisos.permite('grado_devolver_documentacion')">
+              {{ 'REVISION_GRADO.acciones.devolver' | translate }}
+            </button>
+          } @else {
+            <button mat-flat-button color="warn" type="button" (click)="guardarDecision(true)"
+              [disabled]="!decisionesCompletas || !comentarioGeneral.trim() || guardando || !permisos.permite('grado_devolver_documentacion')">
+              {{ 'REVISION_GRADO.acciones.devolver' | translate }}
+            </button>
+            <button mat-flat-button color="primary" type="button" (click)="guardarDecision()"
+              [disabled]="!decisionesCompletas || guardando || !permisos.permite('grado_aprobar_documentacion')">
+              {{ 'REVISION_GRADO.acciones.aprobar_expediente' | translate }}
+            </button>
+          }
+        </div>
+      </mat-card>
+    }
+  }
+</main>

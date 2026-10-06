@@ -15,7 +15,13 @@ const routes: Routes = [
     data: { opcion: 'inscripciones_grado' },
     loadComponent: () => import('./components/inscripcion-grado/inscripcion-grado.component').then(m => m.InscripcionGradoComponent)
   },
-{
+  {
+    path: 'revision-solicitudes-grado',
+    canActivate: [opcionGuard],
+    data: { opcion: 'revision_solicitudes_grado' },
+    loadComponent: () => import('./components/revision-documental-grado/revision-documental-grado.component').then(m => m.RevisionDocumentalGradoComponent)
+  },
+  {
     path: 'semaforo',
     canActivate: [opcionGuard],
     data: { opcion: 'semaforo_paz_salvos' },
@@ -27,7 +33,7 @@ const routes: Routes = [
 @NgModule({
   imports: [RouterModule.forRoot(routes)],
   exports: [RouterModule],
-providers: [
+  providers: [
     { provide: APP_BASE_HREF, useValue: '/paz-y-salvos/' },
     ...getSingleSpaExtraProviders(),
     provideHttpClient(withFetch())

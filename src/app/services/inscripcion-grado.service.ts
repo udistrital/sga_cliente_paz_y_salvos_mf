@@ -46,7 +46,10 @@ export interface DisponibilidadGrado {
 }
 export interface BorradorGrado {
   Solicitud: { Id: number; TerceroId: number; PeriodoId: number; ProgramaAcademicoId: number; CodigoEstudiante?: string };
-  Formulario: { Id: number; Contenido: { [campo: string]: unknown }; FechaRadicacion: string | null };
+	Formulario: { Id: number; Version?: number; Contenido: { [campo: string]: unknown }; FechaRadicacion: string | null };
+	Estado?: 'SG_BORRADOR' | 'SG_RADICADA' | 'SG_OBSERVADA' | 'SG_DOC_APROBADA';
+	Comentario?: string | null;
+	EstadosSoportes?: { SoporteGradoId: number; EstadoSoporteId: number; Observacion: string }[];
 }
 export interface DatosBasicosGrado {
   Id: number;
@@ -83,6 +86,10 @@ export interface LugarExpedicionGrado {
   DepartamentoNombre: string;
   PaisId: number;
   PaisNombre: string;
+}
+export interface LugarExpedicionIdentificacionGrado {
+  Registrado: boolean;
+  Lugar: LugarExpedicionGrado | null;
 }
 export interface PaisExpedicionGrado {
   Id: number;
@@ -282,6 +289,19 @@ export class InscripcionGradoService {
     }));
   }
 
+  lugarExpedicionIdentificacion(terceroId: number): Observable<LugarExpedicionIdentificacionGrado> {
+    return this.mid<LugarExpedicionIdentificacionGrado>('get',
+      `solicitud-grado/lugar-expedicion-identificacion?tercero_id=${terceroId}`).pipe(map(resultado => {
+      if (!resultado || typeof resultado.Registrado !== 'boolean' ||
+        (resultado.Registrado && (!resultado.Lugar || !Number.isSafeInteger(resultado.Lugar.Id) || resultado.Lugar.Id <= 0 ||
+          !resultado.Lugar.Nombre?.trim() || !resultado.Lugar.DepartamentoNombre?.trim() || !resultado.Lugar.PaisNombre?.trim())) ||
+        (!resultado.Registrado && resultado.Lugar !== null)) {
+        throw new Error('Lugar de expedición de Terceros no verificable.');
+      }
+      return resultado;
+    }));
+  }
+
   programas(terceroId: number): Observable<ProgramaGrado[]> {
     if (!Number.isInteger(terceroId) || terceroId <= 0) throw new Error('No se pudo identificar al estudiante.');
     return this.lista<{ Id: number }>('PARAMETROS_SERVICE',
@@ -311,11 +331,12 @@ export class InscripcionGradoService {
       .pipe(map(datos => resolverEventos(datos, programa.Id)));
   }
 
-  private mid<T>(metodo: 'get' | 'post' | 'put', endpoint: string, body?: object): Observable<T> {
+  private mid<T>(metodo: 'get' | 'post' | 'put' | 'delete', endpoint: string, body?: object): Observable<T> {
     return defer(() => {
       this.request.setPath('SGA_PAZ_Y_SALVOS_MID_SERVICE');
       const peticion = metodo === 'get' ? this.request.get(endpoint)
-        : metodo === 'post' ? this.request.post(endpoint, body) : this.request.put(endpoint, body);
+        : metodo === 'post' ? this.request.post(endpoint, body)
+          : metodo === 'put' ? this.request.put(endpoint, body) : this.request.delete(endpoint);
       return peticion;
     }).pipe(map(respuesta => {
       if (respuesta?.Success !== true || !respuesta?.Data) {
@@ -347,6 +368,10 @@ export class InscripcionGradoService {
 	return this.mid<BorradorGrado>('post', `solicitud-grado/borrador/${id}/radicar`, { TerceroId: terceroId, FormularioId: formularioId, Contenido: contenido });
   }
 
+  subsanar(id: number, terceroId: number, formularioId: number): Observable<BorradorGrado> {
+	return this.mid<BorradorGrado>('post', `solicitud-grado/borrador/${id}/subsanar`, { TerceroId: terceroId, FormularioId: formularioId });
+  }
+
   soportes(id: number, terceroId: number, formularioId: number): Observable<SoporteGrado[]> {
 	return this.mid<SoporteGrado[]>('get', `solicitud-grado/borrador/${id}/soportes?tercero_id=${terceroId}`).pipe(map(datos => {
       if (!Array.isArray(datos) || datos.length > 4 || new Set(datos.map(s => s?.TipoSoporte)).size !== datos.length ||
@@ -368,6 +393,17 @@ export class InscripcionGradoService {
       }
       return soporte;
     }));
+  }
+
+  eliminarSoporte(id: number, terceroId: number, formularioId: number, tipo: TipoSoporteGrado, actual: number): Observable<void> {
+    return this.mid<{ Id: number; FormularioId: number; TipoSoporte: TipoSoporteGrado }>('delete',
+      `solicitud-grado/borrador/${id}/soportes/${tipo}?tercero_id=${terceroId}&formulario_id=${formularioId}&soporte_actual_id=${actual}`).pipe(
+      map(resultado => {
+        if (!resultado || resultado.Id !== actual || resultado.FormularioId !== formularioId || resultado.TipoSoporte !== tipo) {
+          throw new Error('No se pudo confirmar la eliminación del PDF. Recarga los soportes.');
+        }
+      })
+    );
   }
 
   archivoSoporte(id: number, terceroId: number, tipo: TipoSoporteGrado): Observable<{ nombre: string; blob: Blob }> {

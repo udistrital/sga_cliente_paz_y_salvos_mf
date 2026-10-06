@@ -159,7 +159,7 @@ export class PermisosService implements OnDestroy {
       if (!p || !o || typeof o.Nombre !== 'string') throw new Error('Asignación inválida');
       // SGA_MF comparte perfiles con otros módulos; sus opciones no autorizan
       // ni condicionan esta pantalla, incluso si contienen nombres duplicados.
-      if (!['grados_paz_salvos', 'semaforo_paz_salvos', 'inscripciones_grado'].includes(o.Nombre) &&
+      if (!['grados_paz_salvos', 'semaforo_paz_salvos', 'inscripciones_grado', 'revision_solicitudes_grado'].includes(o.Nombre) &&
         !o.Nombre.startsWith('grado_') && !o.Nombre.startsWith('paz_salvos_')) continue;
       if (!p || !o || p.Aplicacion?.Id !== app.Id || o.Aplicacion?.Id !== app.Id || !roles.includes(p.Nombre) ||
         !Number.isSafeInteger(p.Id) || p.Id <= 0 || !Number.isSafeInteger(o.Id) || o.Id <= 0 ||
