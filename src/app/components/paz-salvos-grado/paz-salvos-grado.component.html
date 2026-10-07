@@ -1,0 +1,161 @@
+@if (mostrarSelector) {
+  <app-perfil-selector [perfiles]="perfilesDisponibles" (perfilSeleccionado)="seleccionarPerfil($event)"></app-perfil-selector>
+} @else {
+<main class="gestion" aria-labelledby="titulo-paz-salvos-grado">
+  <header class="encabezado-pagina">
+    <div><p>{{ 'PAZ_SALVOS_GRADO.sobrelinea' | translate }}</p><h1 id="titulo-paz-salvos-grado">{{ 'PAZ_SALVOS_GRADO.titulo' | translate }}</h1></div>
+    <div class="perfil-acciones"><span class="perfil"><mat-icon>verified_user</mat-icon>{{ perfil.replace('_', ' ') }}</span>
+      @if (perfilesDisponibles.length > 1) { <button mat-stroked-button color="primary" type="button" (click)="cambiarPerfil()">{{ 'ROLE_SELECTOR.cambiar' | translate }}</button> }
+    </div>
+  </header>
+  <p class="subtitulo">{{ 'PAZ_SALVOS_GRADO.subtitulo' | translate }}</p>
+
+  @if (cargando) { <mat-progress-bar mode="indeterminate" [attr.aria-label]="'GLOBAL.cargando' | translate"></mat-progress-bar> }
+  @if (error) { <div class="mensaje-error" role="alert"><mat-icon>error_outline</mat-icon><span>{{ error }}</span></div> }
+
+  <section class="resumen-bandeja" aria-live="polite">
+      <div><h2>{{ tituloPerfil }}</h2><p>{{ 'PAZ_SALVOS_GRADO.alcance' | translate }}</p></div>
+      <div class="contador"><strong>{{ pagina?.Total || 0 }}</strong><span>{{ 'PAZ_SALVOS_GRADO.solicitudes' | translate }}</span></div>
+    </section>
+    @if (mostrarFiltros) {
+      <mat-card class="panel-filtros">
+        <mat-card-header><mat-card-title>{{ 'PAZ_SALVOS_GRADO.filtros.titulo' | translate }}</mat-card-title></mat-card-header>
+        <mat-card-content>
+          <p>{{ 'PAZ_SALVOS_GRADO.filtros.ayuda' | translate }}</p>
+          <div class="filtros-grid">
+            @if (puedeFiltrar('codigo')) {
+              <mat-form-field appearance="outline">
+                <mat-label>{{ 'PAZ_SALVOS_GRADO.filtros.codigo' | translate }}</mat-label>
+                <input matInput type="text" maxlength="50" [(ngModel)]="filtroCodigo" (keyup.enter)="aplicarFiltros()"
+                  [disabled]="cargando" [placeholder]="'PAZ_SALVOS_GRADO.filtros.codigo_placeholder' | translate">
+              </mat-form-field>
+            }
+            @if (puedeFiltrar('periodo')) {
+              <mat-form-field appearance="outline">
+                <mat-label>{{ 'PAZ_SALVOS_GRADO.filtros.periodo' | translate }}</mat-label>
+                <mat-select [(ngModel)]="filtroPeriodo" [disabled]="cargando || cargandoFiltros">
+                  <mat-option [value]="0">{{ 'PAZ_SALVOS_GRADO.filtros.todos_periodos' | translate }}</mat-option>
+                  @for (periodo of catalogos.Periodos; track periodo.Id) { <mat-option [value]="periodo.Id">{{ periodo.Nombre }}</mat-option> }
+                </mat-select>
+              </mat-form-field>
+            }
+            @if (puedeFiltrar('facultad')) {
+              <mat-form-field appearance="outline">
+                <mat-label>{{ 'PAZ_SALVOS_GRADO.filtros.facultad' | translate }}</mat-label>
+                <mat-select [(ngModel)]="filtroFacultad" (selectionChange)="cambiarFacultad()" [disabled]="cargando || cargandoFiltros">
+                  <mat-option [value]="0">{{ 'PAZ_SALVOS_GRADO.filtros.todas_facultades' | translate }}</mat-option>
+                  @for (facultad of catalogos.Facultades; track facultad.Id) { <mat-option [value]="facultad.Id">{{ facultad.Nombre }}</mat-option> }
+                </mat-select>
+              </mat-form-field>
+            }
+            @if (puedeFiltrar('proyecto')) {
+              <mat-form-field appearance="outline">
+                <mat-label>{{ 'PAZ_SALVOS_GRADO.filtros.programa' | translate }}</mat-label>
+                <mat-select [(ngModel)]="filtroPrograma" [disabled]="cargando || cargandoFiltros || (puedeFiltrar('facultad') && !filtroFacultad)">
+                  <mat-option [value]="0">{{ 'PAZ_SALVOS_GRADO.filtros.todos_programas' | translate }}</mat-option>
+                  @for (programa of programasFiltro; track programa.Id) { <mat-option [value]="programa.Id">{{ programa.Nombre }}</mat-option> }
+                </mat-select>
+                @if (puedeFiltrar('facultad') && !filtroFacultad) { <mat-hint>{{ 'PAZ_SALVOS_GRADO.filtros.facultad_primero' | translate }}</mat-hint> }
+              </mat-form-field>
+            }
+          </div>
+          <div class="acciones-filtros">
+            <button mat-stroked-button type="button" (click)="limpiarFiltros()" [disabled]="cargando || !permisos.permite('paz_salvos_limpiar_filtros', 'Botón', perfil)"><mat-icon>clear</mat-icon>{{ 'PAZ_SALVOS_GRADO.filtros.limpiar' | translate }}</button>
+            <button mat-flat-button color="primary" type="button" (click)="aplicarFiltros()" [disabled]="cargando || cargandoFiltros || !permisos.permite('paz_salvos_buscar', 'Botón', perfil)"><mat-icon>search</mat-icon>{{ 'PAZ_SALVOS_GRADO.filtros.buscar' | translate }}</button>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
+    <mat-card class="bandeja">
+      <div class="barra-bandeja"><h2>{{ 'PAZ_SALVOS_GRADO.bandeja' | translate }}</h2>
+        <button mat-stroked-button color="primary" type="button" (click)="cargar()" [disabled]="cargando"><mat-icon>refresh</mat-icon>{{ 'GLOBAL.actualizar' | translate }}</button>
+      </div>
+      @if (solicitudes.length) { <app-paz-salvos-grado-grid [rowData]="solicitudes" [tipo]="tipo"
+        (decidir)="abrirDecision($event)" (abrirExpediente)="abrir($event)"></app-paz-salvos-grado-grid> }
+      @if (consultaRealizada && !solicitudes.length) { <div class="vacio"><mat-icon>task_alt</mat-icon><h2>{{ 'PAZ_SALVOS_GRADO.vacio.titulo' | translate }}</h2><p>{{ 'PAZ_SALVOS_GRADO.vacio.texto' | translate }}</p></div> }
+      <mat-paginator [length]="pagina?.Total || 0" [pageIndex]="pageIndex" [pageSize]="pageSize" [pageSizeOptions]="[10, 25, 50]"
+        (page)="cambiarPagina($event)" showFirstLastButtons [attr.aria-label]="'PAZ_SALVOS_GRADO.paginacion.aria' | translate"></mat-paginator>
+    </mat-card>
+
+  @if (seleccionada) {
+    <div class="dialogo-fondo">
+      <section class="dialogo-detalle" role="dialog" aria-modal="true" aria-labelledby="titulo-dialogo-detalle">
+        <header class="encabezado-dialogo">
+          <div><p>{{ 'PAZ_SALVOS_GRADO.expediente' | translate }} #{{ seleccionada.Solicitud.Id }}</p>
+            <h2 id="titulo-dialogo-detalle">{{ 'PAZ_SALVOS_GRADO.detalle_titulo' | translate }}</h2></div>
+          <button mat-icon-button type="button" (click)="volver()" [disabled]="guardando" [attr.aria-label]="'GLOBAL.cerrar' | translate"><mat-icon>close</mat-icon></button>
+        </header>
+        <div class="contenido-detalle">
+          <mat-card class="solicitud-hero"><div><p>{{ 'PAZ_SALVOS_GRADO.estudiante.codigo' | translate }}</p><h2>{{ seleccionada.Solicitud.CodigoEstudiante }}</h2><span>{{ 'PAZ_SALVOS_GRADO.programa_periodo' | translate:{ programa: seleccionada.Programa, periodo: seleccionada.Periodo } }}</span></div>
+          </mat-card>
+          <mat-card class="datos-estudiante"><h2>{{ 'PAZ_SALVOS_GRADO.estudiante.titulo' | translate }}</h2>
+            <dl class="datos-grid">
+              <div><dt>{{ 'PAZ_SALVOS_GRADO.estudiante.nombre' | translate }}</dt><dd>{{ seleccionada.Estudiante?.NombreCompleto || ('PAZ_SALVOS_GRADO.valores.sin_dato' | translate) }}</dd></div>
+              <div><dt>{{ 'PAZ_SALVOS_GRADO.estudiante.identificacion' | translate }}</dt><dd>{{ seleccionada.Estudiante?.TipoIdentificacion }} {{ seleccionada.Estudiante?.NumeroIdentificacion || ('PAZ_SALVOS_GRADO.valores.sin_dato' | translate) }}</dd></div>
+              <div><dt>{{ 'PAZ_SALVOS_GRADO.estudiante.correo' | translate }}</dt><dd>{{ seleccionada.Estudiante?.Correo || ('PAZ_SALVOS_GRADO.valores.sin_dato' | translate) }}</dd></div>
+              <div><dt>{{ 'PAZ_SALVOS_GRADO.estudiante.telefono' | translate }}</dt><dd>{{ seleccionada.Estudiante?.Telefono || ('PAZ_SALVOS_GRADO.valores.sin_dato' | translate) }}</dd></div>
+              <div><dt>{{ 'PAZ_SALVOS_GRADO.estudiante.telefono_alterno' | translate }}</dt><dd>{{ seleccionada.Estudiante?.TelefonoAlterno || ('PAZ_SALVOS_GRADO.valores.sin_dato' | translate) }}</dd></div>
+              <div><dt>{{ 'PAZ_SALVOS_GRADO.estudiante.direccion' | translate }}</dt><dd>{{ seleccionada.Estudiante?.Direccion || ('PAZ_SALVOS_GRADO.valores.sin_dato' | translate) }}</dd></div>
+            </dl>
+          </mat-card>
+          <mat-card class="trazabilidad"><h2>{{ 'PAZ_SALVOS_GRADO.trazabilidad.titulo' | translate }}</h2>
+            <p>{{ 'PAZ_SALVOS_GRADO.trazabilidad.ayuda' | translate }}</p>
+            <div class="trazabilidad-grid">
+              @for (check of seleccionada.Checks; track check.PazSalvo.Id) {
+                <details class="traza-dependencia">
+                  <summary>
+                    <span class="resumen-traza"><strong>{{ ('PAZ_SALVOS_GRADO.tipos.' + check.PazSalvo.TipoCodigo) | translate }}</strong><small>{{ check.Historial.length }} {{ 'PAZ_SALVOS_GRADO.trazabilidad.registros' | translate }}</small></span>
+                    <span class="estado" [attr.data-estado]="check.EstadoActual.EstadoCodigo">{{ ('PAZ_SALVOS_GRADO.estados.' + check.EstadoActual.EstadoCodigo) | translate }}</span>
+                    <mat-icon aria-hidden="true">expand_more</mat-icon>
+                  </summary>
+                  <ol class="linea-tiempo">
+                    @for (movimiento of check.Historial; track movimiento.Id) {
+                      <li [attr.data-estado]="movimiento.EstadoCodigo">
+                        <div class="cabecera-movimiento"><strong>{{ ('PAZ_SALVOS_GRADO.estados.' + movimiento.EstadoCodigo) | translate }}</strong><time [attr.datetime]="movimiento.FechaCreacion">{{ movimiento.FechaCreacion | date:'dd/MM/yyyy, HH:mm' }}</time></div>
+                        <p><span>{{ 'PAZ_SALVOS_GRADO.trazabilidad.justificacion' | translate }}:</span> {{ movimiento.Justificacion || ('PAZ_SALVOS_GRADO.trazabilidad.sin_justificacion' | translate) }}</p>
+                      </li>
+                    }
+                  </ol>
+                </details>
+              }
+            </div>
+          </mat-card>
+          <mat-card class="soportes"><h2>{{ 'PAZ_SALVOS_GRADO.soportes.titulo' | translate }}</h2><p>{{ 'PAZ_SALVOS_GRADO.soportes.ayuda' | translate }}</p><div class="soportes-grid">
+            @for (soporte of seleccionada.Soportes; track soporte.Id) { <article><mat-icon>picture_as_pdf</mat-icon><div><strong>{{ soporte.Nombre }}</strong><small>{{ soporte.TipoSoporte }}</small></div><button mat-stroked-button color="primary" type="button" (click)="verSoporte(soporte.TipoSoporte)" [disabled]="cargando"><mat-icon>visibility</mat-icon>{{ 'PAZ_SALVOS_GRADO.acciones.ver' | translate }}</button></article> }
+          </div></mat-card>
+        </div>
+      </section>
+    </div>
+  }
+
+  @if (solicitudDecision) {
+    <div class="dialogo-fondo">
+      <section class="dialogo-decision" role="dialog" aria-modal="true" aria-labelledby="titulo-dialogo-decision">
+        <header><div><p>{{ 'PAZ_SALVOS_GRADO.decision.paso' | translate }}</p>
+          <h2 id="titulo-dialogo-decision">{{ 'PAZ_SALVOS_GRADO.decision.dialogo_titulo' | translate }}</h2></div>
+          <button mat-icon-button type="button" (click)="cancelarDecision()" [disabled]="guardando" [attr.aria-label]="'GLOBAL.cerrar' | translate"><mat-icon>close</mat-icon></button>
+        </header>
+        <p>{{ 'PAZ_SALVOS_GRADO.decision.solicitud' | translate:{ codigo: solicitudDecision.Solicitud.CodigoEstudiante } }}</p>
+        @if (errorDecision) { <div class="mensaje-error" role="alert"><mat-icon>error_outline</mat-icon><span>{{ errorDecision }}</span></div> }
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'PAZ_SALVOS_GRADO.decision.estado' | translate }}</mat-label>
+          <mat-select [(ngModel)]="estadoDecision" [disabled]="guardando">
+            <mat-option value="PS_PENDIENTE" [disabled]="!puedeDecidir('PS_PENDIENTE', solicitudDecision)">{{ 'PAZ_SALVOS_GRADO.estados.PS_PENDIENTE' | translate }}</mat-option>
+            <mat-option value="PS_APROBADO" [disabled]="!puedeDecidir('PS_APROBADO', solicitudDecision)">{{ 'PAZ_SALVOS_GRADO.estados.PS_APROBADO' | translate }}</mat-option>
+            <mat-option value="PS_DESAPROBADO" [disabled]="!puedeDecidir('PS_DESAPROBADO', solicitudDecision)">{{ 'PAZ_SALVOS_GRADO.estados.PS_DESAPROBADO' | translate }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'PAZ_SALVOS_GRADO.decision.justificacion' | translate }}</mat-label>
+          <textarea matInput rows="4" maxlength="500" [(ngModel)]="justificacion" [disabled]="guardando"></textarea>
+          <mat-hint align="end">{{ justificacion.length }}/500</mat-hint>
+        </mat-form-field>
+        <div class="acciones-dialogo">
+          <button mat-stroked-button type="button" (click)="cancelarDecision()" [disabled]="guardando">{{ 'GLOBAL.cancelar' | translate }}</button>
+          <button mat-flat-button color="primary" type="button" (click)="guardarDecision()" [disabled]="guardando || !puedeGuardarDecision()"><mat-icon>save</mat-icon>{{ 'PAZ_SALVOS_GRADO.acciones.guardar' | translate }}</button>
+        </div>
+      </section>
+    </div>
+  }
+</main>
+}

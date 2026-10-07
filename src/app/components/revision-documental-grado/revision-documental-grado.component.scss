@@ -1,4 +1,4 @@
-:host { display: block; }
+:host { display: block; width: 100%; }
 .revision {
   --estado-exito: #24613b;
   --estado-exito-borde: #74a787;
@@ -11,7 +11,9 @@
   --estado-error-fondo: #f9eded;
   --estado-neutro: #47525a;
   --estado-neutro-fondo: #eee;
-  max-width: 1100px;
+  box-sizing: border-box;
+  width: min(90vw, 100%);
+  max-width: none;
   margin: 0 auto;
   padding: 24px;
 }

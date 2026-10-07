@@ -68,7 +68,15 @@ export class UserService {
             const valores = Array.isArray(valor) ? valor : typeof valor === 'string' ? valor.split(',') : [];
             return valores.filter((r): r is string => typeof r === 'string').map(r => r.trim()).filter(Boolean);
         };
-        return [...new Set([...lista(user.role), ...lista(userService.role)])];
+        let rolesToken: string[] = [];
+        try {
+            const segmento = localStorage.getItem('id_token')?.split('.')[1];
+            if (segmento) {
+                const base64 = segmento.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(segmento.length / 4) * 4, '=');
+                rolesToken = lista(JSON.parse(atob(base64)).role);
+            }
+        } catch { rolesToken = []; }
+        return [...new Set([...lista(user.role), ...lista(userService.role), ...rolesToken])];
     }
 
     /**

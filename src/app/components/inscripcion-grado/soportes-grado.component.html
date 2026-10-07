@@ -7,7 +7,14 @@
   <div *ngIf="errorConsulta" role="alert"><p>{{ errorConsulta }}</p></div>
   <div class="soportes" *appOpcion="'grado_consultar_soportes'">
     <mat-card *ngFor="let doc of documentos">
-      <mat-card-header><mat-card-title>{{ doc.tituloKey | translate }}</mat-card-title></mat-card-header>
+      <mat-card-header>
+        <mat-card-title>
+          <span>{{ doc.tituloKey | translate }}</span>
+          <span class="requisito" [class.requisito-obligatorio]="doc.obligatorio" [class.requisito-opcional]="!doc.obligatorio">
+            {{ (doc.obligatorio ? 'INSCRIPCION_GRADO.soportes.obligatorio' : 'INSCRIPCION_GRADO.soportes.opcional') | translate }}
+          </span>
+        </mat-card-title>
+      </mat-card-header>
       <mat-card-content>
         <p>{{ doc.descripcionKey | translate }}</p>
         <p *ngIf="doc.soporte" class="archivo">{{ doc.soporte.Nombre }} <span>· {{ (borrador?.Formulario?.FechaRadicacion ? 'INSCRIPCION_GRADO.soportes.radicado' : 'INSCRIPCION_GRADO.soportes.provisional') | translate }}</span></p>

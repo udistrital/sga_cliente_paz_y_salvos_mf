@@ -1,6 +1,5 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { SemaforoComponent } from './components/semaforo/semaforo.component';
 import { APP_BASE_HREF } from '@angular/common';
 import { getSingleSpaExtraProviders } from 'single-spa-angular';
 import { provideHttpClient, withFetch } from '@angular/common/http';
@@ -22,11 +21,16 @@ const routes: Routes = [
     loadComponent: () => import('./components/revision-documental-grado/revision-documental-grado.component').then(m => m.RevisionDocumentalGradoComponent)
   },
   {
+	path: 'paz-salvos-grado',
+	canActivate: [opcionGuard],
+	data: { opcion: 'semaforo_paz_salvos' },
+	loadComponent: () => import('./components/paz-salvos-grado/paz-salvos-grado.component').then(m => m.PazSalvosGradoComponent)
+  },
+  {
     path: 'semaforo',
-    canActivate: [opcionGuard],
-    data: { opcion: 'semaforo_paz_salvos' },
-    component: SemaforoComponent
-},
+    redirectTo: 'paz-salvos-grado',
+    pathMatch: 'full'
+  },
   { path: 'sin-acceso', loadComponent: () => import('./components/permisos/sin-acceso.component').then(m => m.SinAccesoComponent) },
 ];
 

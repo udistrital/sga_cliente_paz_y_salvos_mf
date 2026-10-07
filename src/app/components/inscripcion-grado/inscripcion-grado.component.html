@@ -274,7 +274,7 @@
       <mat-step [completed]="pasoSoportesCompleto">
         <ng-template matStepLabel>{{ 'INSCRIPCION_GRADO.pasos.soportes' | translate }}</ng-template>
         <app-soportes-grado *ngIf="borrador; else guardarPrimero" [borrador]="borrador"
-          [habilitado]="puedeModificarSoportes" (ocupado)="guardandoSoporte = $event"
+          [habilitado]="puedeModificarSoportes" [categoriaNivel]="categoriaNivelSeleccionada" (ocupado)="guardandoSoporte = $event"
           (progreso)="actualizarProgresoSoportes($event)"></app-soportes-grado>
         <ng-template #guardarPrimero>
           <p class="mensaje info">{{ 'INSCRIPCION_GRADO.soportes.guardar_primero' | translate }}</p>
@@ -295,7 +295,7 @@
               <div><dt>{{ 'INSCRIPCION_GRADO.vista.programa_academico' | translate }}</dt><dd>{{ programaSeleccionadoNombre }}</dd></div>
               <div><dt>{{ 'INSCRIPCION_GRADO.vista.trabajo_grado' | translate }}</dt><dd>{{ trabajoGrado }}</dd></div>
               <div><dt>{{ 'INSCRIPCION_GRADO.vista.lugar_expedicion' | translate }}</dt><dd>{{ lugarExpedicionResumen }}</dd></div>
-              <div><dt>{{ 'INSCRIPCION_GRADO.vista.soportes_completos' | translate }}</dt><dd>{{ soportesCargados }} / 3</dd></div>
+              <div><dt>{{ 'INSCRIPCION_GRADO.vista.soportes_completos' | translate }}</dt><dd>{{ soportesCargados }} / {{ tiposSoporteRequeridos.length }}</dd></div>
             </dl>
             <p class="mensaje info">{{ (esRadicada ? 'INSCRIPCION_GRADO.vista.radicada_ayuda' : 'INSCRIPCION_GRADO.vista.resumen_ayuda') | translate }}</p>
           </mat-card-content>

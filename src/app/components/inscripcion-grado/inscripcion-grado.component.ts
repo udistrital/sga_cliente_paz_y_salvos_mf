@@ -19,7 +19,7 @@ import { SoportesGradoComponent } from './soportes-grado.component';
 import { PermisosService } from '../../services/permisos.service';
 import { OpcionDirective } from '../../directives/opcion.directive';
 import { AlertService } from '../../services/alert.service';
-import { BorradorGrado, DatosBasicosGrado, DepartamentoExpedicionGrado, DirectorGrado, DisponibilidadGrado, EventoGrado, InscripcionGradoService, LugarExpedicionGrado, LugarExpedicionIdentificacionGrado, ModalidadGrado, PaisExpedicionGrado, PeriodoGrado, ProgramaGrado, TipoSoporteGrado, fechaGradoPersistida, mensajeErrorBorrador } from '../../services/inscripcion-grado.service';
+import { BorradorGrado, CategoriaNivelGrado, DatosBasicosGrado, DepartamentoExpedicionGrado, DirectorGrado, DisponibilidadGrado, EventoGrado, InscripcionGradoService, LugarExpedicionGrado, LugarExpedicionIdentificacionGrado, ModalidadGrado, PaisExpedicionGrado, PeriodoGrado, ProgramaGrado, TipoSoporteGrado, categoriaProgramaGrado, fechaGradoPersistida, mensajeErrorBorrador } from '../../services/inscripcion-grado.service';
 
 @Component({
   selector: 'app-inscripcion-grado',
@@ -226,6 +226,16 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
 
   get programaSeleccionadoNombre(): string {
     return this.programas.find(p => p.Id === this.programaId)?.Nombre || this.tr('vista.programa_no_disponible');
+  }
+
+  get categoriaNivelSeleccionada(): CategoriaNivelGrado | null {
+    return categoriaProgramaGrado(this.programas.find(p => p.Id === this.programaId));
+  }
+
+  get tiposSoporteRequeridos(): TipoSoporteGrado[] {
+    const comunes: TipoSoporteGrado[] = ['TSG_ACTA_SUST', 'TSG_PAGO_DERECHOS', 'TSG_TITULO_PREVIO'];
+    return this.categoriaNivelSeleccionada === 'PRE' ? [comunes[0], 'TSG_RESULTADO_SABER', ...comunes.slice(1)]
+      : this.categoriaNivelSeleccionada === 'POS' ? comunes : [];
   }
 
   get periodoSeleccionadoNombre(): string {
@@ -856,7 +866,7 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   }
 
   get pasoSoportesCompleto(): boolean {
-    return this.esRadicada || this.soportesCargados === 3;
+    return this.esRadicada || (this.tiposSoporteRequeridos.length > 0 && this.soportesCargados === this.tiposSoporteRequeridos.length);
   }
 
   get pasosCompletos(): number {
@@ -869,7 +879,7 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   }
 
   actualizarProgresoSoportes(cantidad: number): void {
-    this.soportesCargados = Math.max(0, Math.min(3, cantidad));
+    this.soportesCargados = Math.max(0, Math.min(this.tiposSoporteRequeridos.length, cantidad));
   }
 
   private camposRadicacionCompletos(): boolean {
@@ -904,7 +914,11 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
     try {
 	  const soportes = await firstValueFrom(this.servicio.soportes(contexto.solicitudId, this.terceroId, contexto.formularioId));
 	  const tiposSoporte = new Set(soportes.map(soporte => soporte.TipoSoporte));
-	  const obligatorios: TipoSoporteGrado[] = ['TSG_ACTA_SUST', 'TSG_PAGO_DERECHOS', 'TSG_TITULO_PREVIO'];
+	  const obligatorios = this.tiposSoporteRequeridos;
+	  if (!obligatorios.length) {
+		this.errorBorrador = this.tr('errores.soportes_radicacion');
+		return;
+	  }
 	  this.actualizarProgresoSoportes(obligatorios.filter(tipo => tiposSoporte.has(tipo)).length);
 	  if (!obligatorios.every(tipo => tiposSoporte.has(tipo))) {
         this.errorBorrador = this.tr('errores.soportes_radicacion');

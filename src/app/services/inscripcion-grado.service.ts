@@ -4,7 +4,8 @@ import { catchError, map, retry, switchMap } from 'rxjs/operators';
 import { RequestManager } from '../managers/requestManager';
 
 export interface PeriodoGrado { Id: number; Nombre: string; }
-interface Nivel { Id: number; NivelFormacionPadreId?: Nivel | null; }
+export type CategoriaNivelGrado = 'PRE' | 'POS';
+export interface Nivel { Id: number; CodigoAbreviacion?: string; NivelFormacionPadreId?: Nivel | null; }
 export interface ProgramaGrado {
   Id: number;
   Nombre: string;
@@ -162,6 +163,26 @@ export function vinculacionVigente(v: Vinculacion, ahora = Date.now()): boolean 
   const invalida = (s?: string | null) => !!s && !s.startsWith('0001-') && fechaGrado(s) === null;
   if (invalida(v.FechaInicioVinculacion) || invalida(v.FechaFinVinculacion)) return false;
   return (inicio === null || ahora >= inicio) && (fin === null || ahora <= fin);
+}
+
+function nivelRaizProgramaGrado(programa: ProgramaGrado): Nivel | null {
+  let nivel = programa?.NivelFormacionId;
+  const referencias = new Set<Nivel>();
+  const ids = new Set<number>();
+  while (nivel) {
+    if (!Number.isInteger(nivel.Id) || nivel.Id <= 0 || referencias.has(nivel) || ids.has(nivel.Id)) return null;
+    referencias.add(nivel);
+    ids.add(nivel.Id);
+    if (!nivel.NivelFormacionPadreId) return nivel;
+    nivel = nivel.NivelFormacionPadreId;
+  }
+  return null;
+}
+
+export function categoriaProgramaGrado(programa: ProgramaGrado | null | undefined): CategoriaNivelGrado | null {
+  if (!programa) return null;
+  const codigo = nivelRaizProgramaGrado(programa)?.CodigoAbreviacion?.trim().toUpperCase();
+  return codigo === 'PRE' || codigo === 'POS' ? codigo : null;
 }
 
 export function resolverEventos(datos: CalendarioPrograma[], programaId: number): DisponibilidadGrado | null {
@@ -323,8 +344,7 @@ export class InscripcionGradoService {
   }
 
   disponibilidad(programa: ProgramaGrado, periodoId: number): Observable<DisponibilidadGrado | null> {
-    let nivel = programa.NivelFormacionId;
-    while (nivel?.NivelFormacionPadreId) nivel = nivel.NivelFormacionPadreId;
+	const nivel = nivelRaizProgramaGrado(programa);
     if (!nivel?.Id) throw new Error('El programa no tiene nivel de formación configurado.');
     return this.lista<CalendarioPrograma>('CALENDARIO_MID_SERVICE',
       `calendario-proyecto/calendario/proyecto?id-nivel=${nivel.Id}&id-periodo=${periodoId}`)
