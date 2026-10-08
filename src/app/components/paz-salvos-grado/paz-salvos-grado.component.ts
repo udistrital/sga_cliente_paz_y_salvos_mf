@@ -71,6 +71,8 @@ export class PazSalvosGradoComponent implements OnInit, OnDestroy {
   justificacion = '';
   errorDecision = '';
   error = '';
+  nombreUsuario = '';
+  facultadUsuario = '';
   catalogos: CatalogosPazSalvosGrado = { Periodos: [], Facultades: [], Programas: [] };
   filtroCodigo = '';
   filtroFacultad = 0;
@@ -112,6 +114,19 @@ export class PazSalvosGradoComponent implements OnInit, OnDestroy {
     }
   }
 
+  private async cargarNombreUsuario(perfil: string): Promise<void> {
+    try {
+      const usuario = await firstValueFrom(this.servicio.usuario(perfil));
+      if (this.perfil !== perfil) return;
+      this.nombreUsuario = usuario.NombreCompleto.trim();
+      this.facultadUsuario = usuario.Facultad?.Nombre?.trim() || '';
+    } catch {
+      if (this.perfil !== perfil) return;
+      this.nombreUsuario = '';
+      this.facultadUsuario = '';
+    }
+  }
+
   seleccionarPerfil(perfil: string): void {
     if (!this.perfilesDisponibles.includes(perfil) ||
       !this.permisos.permite('paz_salvos_seleccionar_perfil', 'Botón', perfil) ||
@@ -123,6 +138,8 @@ export class PazSalvosGradoComponent implements OnInit, OnDestroy {
     if (this.guardando || this.perfilesDisponibles.length < 2) return;
     this.usuario.clearSelectedRole();
     this.perfil = '';
+    this.nombreUsuario = '';
+    this.facultadUsuario = '';
     this.tipo = undefined;
     this.sufijo = '';
     this.solicitudes = [];
@@ -155,6 +172,7 @@ export class PazSalvosGradoComponent implements OnInit, OnDestroy {
     this.tipo = configuraciones[0]?.tipo;
     this.sufijo = configuraciones[0]?.sufijo || '';
     this.usuario.setSelectedRole(perfil);
+    void this.cargarNombreUsuario(perfil);
     this.mostrarSelector = false;
     this.error = '';
     this.pageIndex = 0;
@@ -307,17 +325,11 @@ export class PazSalvosGradoComponent implements OnInit, OnDestroy {
     solicitud = this.solicitudDecision || this.seleccionada): boolean {
     const actual = this.checkGestionado(solicitud)?.EstadoActual.EstadoCodigo;
     if (!actual || actual === estado) return false;
-    const cierre = solicitud?.Checks.find(check => check.PazSalvo.TipoCodigo === 'TPS_SECRETARIA');
     if (estado === 'PS_PENDIENTE') {
-      if (!this.puede(actual === 'PS_APROBADO' ? 'aprobar' : 'desaprobar')) return false;
-      return this.tipo === 'TPS_SECRETARIA' || cierre?.EstadoActual.EstadoCodigo !== 'PS_APROBADO';
+      return this.puede(actual === 'PS_APROBADO' ? 'aprobar' : 'desaprobar');
     }
     if (!this.puede(estado === 'PS_APROBADO' ? 'aprobar' : 'desaprobar')) return false;
-    if (this.tipo !== 'TPS_SECRETARIA') return cierre?.EstadoActual.EstadoCodigo !== 'PS_APROBADO';
-    if (estado === 'PS_DESAPROBADO') return actual === 'PS_APROBADO';
-    return !!solicitud?.Checks
-      .filter(check => check.PazSalvo.TipoCodigo !== 'TPS_SECRETARIA')
-      .every(check => check.EstadoActual.EstadoCodigo === 'PS_APROBADO');
+    return true;
   }
 
   puedeGuardarDecision(): boolean {

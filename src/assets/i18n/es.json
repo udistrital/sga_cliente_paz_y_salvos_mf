@@ -21,6 +21,8 @@
   "PAZ_SALVOS_GRADO": {
     "sobrelinea": "Grados",
     "titulo": "Gestión de Paz y Salvos de grado",
+    "usuario": "Usuario",
+    "facultad_usuario": "Facultad",
     "subtitulo": "Consulta las solicitudes de tu ámbito y registra decisiones trazables para la dependencia que representas.",
     "ir_gestion": "Gestionar checks de grado",
     "alcance": "Los resultados están restringidos al perfil y ámbito institucional verificados para tu sesión.",

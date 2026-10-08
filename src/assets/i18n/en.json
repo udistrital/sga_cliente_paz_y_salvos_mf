@@ -21,6 +21,8 @@
   "PAZ_SALVOS_GRADO": {
     "sobrelinea": "Graduation",
     "titulo": "Graduation clearance management",
+    "usuario": "User",
+    "facultad_usuario": "Faculty",
     "subtitulo": "Review requests in your authorized scope and record traceable decisions for your office.",
     "ir_gestion": "Manage graduation checks",
     "alcance": "Results are restricted to the verified profile and institutional scope of your session.",

@@ -4,7 +4,14 @@
 <main class="gestion" aria-labelledby="titulo-paz-salvos-grado">
   <header class="encabezado-pagina">
     <div><p>{{ 'PAZ_SALVOS_GRADO.sobrelinea' | translate }}</p><h1 id="titulo-paz-salvos-grado">{{ 'PAZ_SALVOS_GRADO.titulo' | translate }}</h1></div>
-    <div class="perfil-acciones"><span class="perfil"><mat-icon>verified_user</mat-icon>{{ perfil.replace('_', ' ') }}</span>
+    <div class="perfil-acciones">
+      @if (nombreUsuario) {
+        <div class="usuario-contexto">
+          <span class="usuario"><span>{{ 'PAZ_SALVOS_GRADO.usuario' | translate }}:</span><strong>{{ nombreUsuario }}</strong></span>
+          @if (facultadUsuario) { <span class="facultad-usuario"><span>{{ 'PAZ_SALVOS_GRADO.facultad_usuario' | translate }}:</span><strong>{{ facultadUsuario }}</strong></span> }
+        </div>
+      }
+      <span class="perfil"><mat-icon>verified_user</mat-icon>{{ perfil.replace('_', ' ') }}</span>
       @if (perfilesDisponibles.length > 1) { <button mat-stroked-button color="primary" type="button" (click)="cambiarPerfil()">{{ 'ROLE_SELECTOR.cambiar' | translate }}</button> }
     </div>
   </header>

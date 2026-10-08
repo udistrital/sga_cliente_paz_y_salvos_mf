@@ -65,6 +65,11 @@ export interface CatalogosPazSalvosGrado {
   Programas: { Id: number; Nombre: string; DependenciaId: number; FacultadId: number }[];
 }
 
+export interface UsuarioPazSalvosGrado {
+  NombreCompleto: string;
+  Facultad?: { Id: number; Nombre: string };
+}
+
 function reintentarPazSalvos<T>() {
   return retry<T>({
     count: 1,
@@ -106,6 +111,10 @@ export class PazSalvosGradoService {
     const query = new URLSearchParams({ perfil });
     if (tipo) query.set('tipo', tipo);
     return this.mid('get', `solicitud-grado/paz-salvos/filtros?${query}`);
+  }
+
+  usuario(perfil: string): Observable<UsuarioPazSalvosGrado> {
+    return this.mid('get', `solicitud-grado/paz-salvos/usuario?perfil=${encodeURIComponent(perfil)}`);
   }
 
   consultar(id: number, perfil: string): Observable<SolicitudPazSalvosGrado> {
