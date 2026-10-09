@@ -152,6 +152,7 @@ export class PazSalvosGradoComponent implements OnInit, OnDestroy {
   }
 
   private configuracionesPerfil(perfil: string): typeof CONFIGURACIONES_CHECK {
+    if (perfil === 'ADMISIONES_REG') return [];
     return CONFIGURACIONES_CHECK.filter(item =>
       this.permisos.permite(`paz_salvos_aprobar_${item.sufijo}`, 'Botón', perfil) ||
       this.permisos.permite(`paz_salvos_desaprobar_${item.sufijo}`, 'Botón', perfil) ||
@@ -290,7 +291,7 @@ export class PazSalvosGradoComponent implements OnInit, OnDestroy {
   }
 
   abrirDecision(solicitud: SolicitudPazSalvosGrado): void {
-    if (this.guardando) return;
+    if (this.guardando || !this.tipo || this.perfil === 'ADMISIONES_REG') return;
     this.solicitudDecision = solicitud;
     this.estadoDecision = '';
     this.justificacion = '';
@@ -316,6 +317,7 @@ export class PazSalvosGradoComponent implements OnInit, OnDestroy {
   }
 
   puede(accion: 'aprobar' | 'desaprobar'): boolean {
+    if (this.perfil === 'ADMISIONES_REG') return false;
     const nombre = accion === 'desaprobar' && this.tipo === 'TPS_SECRETARIA' ?
       'paz_salvos_corregir_secretaria' : `paz_salvos_${accion}_${this.sufijo}`;
     return !!this.perfil && this.permisos.permite(nombre, 'Botón', this.perfil);

@@ -982,7 +982,8 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   }
 
   get puedeIniciarSubsanacion(): boolean {
-	return !!this.borrador && !!this.terceroId && this.esObservada && !this.subsanando && !!this.disponibilidad &&
+	return this.permisos.permite('grado_subsanar_inscripcion') && !!this.borrador && !!this.terceroId &&
+	  this.esObservada && !this.subsanando && !!this.disponibilidad &&
 	  this.eventoEstaAbierto(this.disponibilidad.aprobacion);
   }
 

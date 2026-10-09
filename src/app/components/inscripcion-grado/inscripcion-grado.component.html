@@ -27,7 +27,7 @@
     </dl>
     <p>{{ (esObservada ? 'INSCRIPCION_GRADO.vista.subsanacion_ayuda' : 'INSCRIPCION_GRADO.vista.radicada_ayuda') | translate }}</p>
     <div *ngIf="esObservada" class="acciones-principales">
-      <button mat-flat-button color="primary" type="button" (click)="iniciarSubsanacion()" [disabled]="!puedeIniciarSubsanacion">
+      <button *appOpcion="'grado_subsanar_inscripcion'" mat-flat-button color="primary" type="button" (click)="iniciarSubsanacion()" [disabled]="!puedeIniciarSubsanacion">
         {{ 'INSCRIPCION_GRADO.vista.iniciar_subsanacion' | translate }}
       </button>
     </div>

@@ -127,9 +127,11 @@
               }
             </div>
           </mat-card>
-          <mat-card class="soportes"><h2>{{ 'PAZ_SALVOS_GRADO.soportes.titulo' | translate }}</h2><p>{{ 'PAZ_SALVOS_GRADO.soportes.ayuda' | translate }}</p><div class="soportes-grid">
-            @for (soporte of seleccionada.Soportes; track soporte.Id) { <article><mat-icon>picture_as_pdf</mat-icon><div><strong>{{ soporte.Nombre }}</strong><small>{{ soporte.TipoSoporte }}</small></div><button mat-stroked-button color="primary" type="button" (click)="verSoporte(soporte.TipoSoporte)" [disabled]="cargando"><mat-icon>visibility</mat-icon>{{ 'PAZ_SALVOS_GRADO.acciones.ver' | translate }}</button></article> }
-          </div></mat-card>
+          @if (perfil !== 'ADMISIONES_REG') {
+            <mat-card class="soportes"><h2>{{ 'PAZ_SALVOS_GRADO.soportes.titulo' | translate }}</h2><p>{{ 'PAZ_SALVOS_GRADO.soportes.ayuda' | translate }}</p><div class="soportes-grid">
+              @for (soporte of seleccionada.Soportes; track soporte.Id) { <article><mat-icon>picture_as_pdf</mat-icon><div><strong>{{ soporte.Nombre }}</strong><small>{{ soporte.TipoSoporte }}</small></div><button mat-stroked-button color="primary" type="button" (click)="verSoporte(soporte.TipoSoporte)" [disabled]="cargando"><mat-icon>visibility</mat-icon>{{ 'PAZ_SALVOS_GRADO.acciones.ver' | translate }}</button></article> }
+            </div></mat-card>
+          }
         </div>
       </section>
     </div>
