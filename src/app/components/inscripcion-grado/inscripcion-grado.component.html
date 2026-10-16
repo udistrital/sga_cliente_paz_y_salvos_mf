@@ -12,11 +12,11 @@
     </button>
   </div>
   <p *ngIf="errorBorrador" class="mensaje error" role="alert">{{ errorBorrador }}</p>
-  <p *ngIf="mensajeBorrador" class="mensaje exito" role="status">{{ mensajeBorrador }}</p>
-	<div *ngIf="borrador?.Comentario" class="mensaje advertencia" role="status">
+  <p *ngIf="mensajeBorrador && !viendoEntregaHistorica" class="mensaje exito" role="status">{{ mensajeBorrador }}</p>
+	<div *ngIf="borrador?.Comentario && !viendoEntregaHistorica" class="mensaje advertencia" role="status">
 	  <strong>{{ 'INSCRIPCION_GRADO.vista.comentario_revision' | translate }}:</strong> {{ borrador?.Comentario }}
 	</div>
-  <section *ngIf="borrador && esRadicada" class="estado-solicitud" [class.estado-solicitud-radicada]="!esObservada">
+  <section *ngIf="borrador && esRadicada && !viendoEntregaHistorica" class="estado-solicitud" [class.estado-solicitud-radicada]="!esObservada">
     <div class="estado-solicitud-encabezado">
       <strong>{{ 'INSCRIPCION_GRADO.vista.estado' | translate }}:</strong>
       <span class="estado-solicitud-etiqueta">{{ estadoSolicitud }}</span>
@@ -32,9 +32,12 @@
       </button>
     </div>
   </section>
+  <app-versiones-grado *ngIf="borrador" [solicitudId]="borrador.Solicitud.Id" [versionActual]="borrador.Formulario.Version" vista="estudiante"
+    [claveEstado]="borrador.Formulario.Version + '-' + borrador.Estado + '-' + borrador.Formulario.FechaRadicacion"
+    (seleccionHistorica)="viendoEntregaHistorica = $event"></app-versiones-grado>
   <p *ngIf="cargandoBorrador" class="mensaje info" role="status">{{ 'INSCRIPCION_GRADO.vista.consultando_borrador' | translate }}</p>
 
-  <ng-container *ngIf="!error">
+  <ng-container *ngIf="!error && !viendoEntregaHistorica">
     <section class="resumen-progreso" aria-labelledby="progreso-inscripcion">
       <div class="progreso-encabezado">
         <h2 id="progreso-inscripcion">{{ 'INSCRIPCION_GRADO.progreso.titulo' | translate }}</h2>

@@ -130,11 +130,11 @@
       </mat-card>
     }
   } @else {
-    <button mat-button color="primary" type="button" class="volver" (click)="volver()" [disabled]="guardando">
+    <button mat-stroked-button color="primary" type="button" class="volver" (click)="volver()" [disabled]="guardando">
       <mat-icon>arrow_back</mat-icon>{{ 'REVISION_GRADO.acciones.volver' | translate }}
     </button>
 
-    <mat-card class="expediente-hero">
+    <mat-card *ngIf="!viendoEntregaHistorica" class="expediente-hero">
       <div>
         <p>{{ seleccionada.Estudiante.NombreCompleto }}</p>
         <h2>{{ seleccionada.Formulario.TrabajoGrado }}</h2>
@@ -143,6 +143,11 @@
       <span class="estado" [attr.data-estado]="seleccionada.Estado">{{ ('REVISION_GRADO.estados.' + seleccionada.Estado) | translate }}</span>
     </mat-card>
 
+    <app-versiones-grado [solicitudId]="seleccionada.Solicitud.Id" [versionActual]="seleccionada.Version" vista="secretaria"
+      [claveEstado]="seleccionada.Version + '-' + seleccionada.Estado"
+      (seleccionHistorica)="viendoEntregaHistorica = $event"></app-versiones-grado>
+
+    <ng-container *ngIf="!viendoEntregaHistorica">
     <mat-card class="resumen" aria-labelledby="titulo-estudiante">
       <mat-card-header><mat-card-title id="titulo-estudiante">{{ 'REVISION_GRADO.estudiante.titulo' | translate }}</mat-card-title></mat-card-header>
       <mat-card-content>
@@ -195,7 +200,7 @@
 
     <mat-card class="documentos" aria-labelledby="titulo-documentos">
       <div class="seccion-titulo">
-        <div><p>{{ 'REVISION_GRADO.documentos.paso' | translate }}</p><h2 id="titulo-documentos">{{ 'REVISION_GRADO.documentos.titulo' | translate }}</h2></div>
+        <div><h2 id="titulo-documentos">{{ 'REVISION_GRADO.documentos.titulo' | translate }}</h2></div>
         <span>{{ 'REVISION_GRADO.documentos.conteo' | translate:{ total: seleccionada.Soportes.length } }}</span>
       </div>
       <div class="documentos-grid">
@@ -236,7 +241,6 @@
     @if (puedeDecidir) {
       <mat-card class="cierre" aria-labelledby="titulo-decision">
         <div>
-          <p>{{ 'REVISION_GRADO.decision.paso' | translate }}</p>
           <h2 id="titulo-decision">{{ 'REVISION_GRADO.decision.titulo' | translate }}</h2>
           <span>{{ hayObservadas ? ('REVISION_GRADO.decision.ayuda_devolver' | translate) : ('REVISION_GRADO.decision.ayuda_aprobar' | translate) }}</span>
         </div>
@@ -266,5 +270,19 @@
         </div>
       </mat-card>
     }
+    </ng-container>
   }
 </main>
+<ng-template #visorPDF let-data>
+  <h2 mat-dialog-title>{{ data.nombre }}</h2>
+  <mat-dialog-content class="contenido-visor-pdf">
+    <iframe [src]="data.url" [title]="'REVISION_GRADO.visor.vista_previa' | translate"></iframe>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <a *ngIf="permisos.permite('grado_descargar_soporte') && permisos.permite('grado_ver_soporte')"
+      mat-stroked-button color="primary" [href]="data.enlace" [download]="data.nombre">
+      {{ 'REVISION_GRADO.visor.descargar_pdf' | translate }}
+    </a>
+    <button mat-flat-button color="primary" mat-dialog-close type="button">{{ 'GLOBAL.cerrar' | translate }}</button>
+  </mat-dialog-actions>
+</ng-template>

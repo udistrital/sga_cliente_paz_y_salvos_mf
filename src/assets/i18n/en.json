@@ -18,6 +18,53 @@
     "si": "Yes",
     "no": "No"
   },
+  "VERSIONES_GRADO": {
+    "titulo": "Previous submissions",
+    "ayuda": "Review earlier versions of this application.",
+    "seleccionar": "Select a submitted version",
+    "entrega": "Submission {{numero}}",
+    "buscar": "Search by submission number",
+    "limpiar_busqueda": "Clear submission search",
+    "sin_resultados": "No submissions match that number.",
+    "cargando_detalle": "Loading submission...",
+    "ver_entrega": "View submission",
+    "ver_entrega_label": "View submission {{numero}}, submitted {{fecha}}, status {{estado}}",
+    "cerrar_entrega": "Close submission",
+    "cerrar_entrega_label": "Close submission {{numero}} and return to the current application",
+    "vigente": "Return to the current application",
+    "solo_lectura": "Read only",
+    "fecha": "Submitted on",
+    "estado": "Status of this submission",
+    "formulario": "Form",
+    "actuaciones": "Submission history",
+    "soportes": "Documents",
+    "ver_pdf": "View PDF",
+    "vista_previa": "PDF preview for this submission",
+    "descargar_pdf": "Download PDF",
+    "ver_pdf_tipo": "View PDF: {{tipo}}",
+    "movimientos": "History",
+    "historial_soporte_label": "History for {{tipo}}",
+    "paginacion": {
+      "etiqueta": "Submission history pages",
+      "siguiente": "Next page",
+      "anterior": "Previous page",
+      "primera": "First page",
+      "ultima": "Last page",
+      "rango": "{{inicio}}–{{fin}} of {{total}}"
+    },
+    "si": "Yes",
+    "no": "No",
+    "sin_dato": "Not recorded",
+    "referencia_no_disponible": "Historical name unavailable in the current catalogue",
+    "error_listar": "Previous submissions could not be loaded.",
+    "error_detalle": "This submission could not be loaded.",
+    "error_pdf": "The PDF for this submission could not be opened.",
+    "estados_soporte": {
+      "SD_PEND_REV": "Pending review",
+      "SD_OBSERVADO": "Changes requested",
+      "SD_APROBADO": "Approved"
+    }
+  },
   "PAZ_SALVOS_GRADO": {
     "sobrelinea": "Graduation",
     "titulo": "Graduation clearance management",
@@ -69,6 +116,7 @@
       "revisar": "Open file", "volver": "Back to inbox", "ver_pdf": "View PDF", "aprobar_soporte": "Approve document",
       "observar": "Flag issue", "devolver": "Return documents", "aprobar_expediente": "Approve documents"
     },
+    "visor": { "vista_previa": "Supporting document PDF preview", "descargar_pdf": "Download PDF" },
     "vacio": { "titulo": "No applications to display", "texto": "Adjust the filters or refresh the inbox." },
     "estudiante": {
       "titulo": "Student details", "nombre": "Full name", "identificacion": "Identification", "fecha_nacimiento": "Date of birth",
@@ -81,13 +129,13 @@
       "acta": "Defense record", "snp": "SNP registration", "trabaja": "Currently employed", "comentario": "Review comment"
     },
     "laboral": { "titulo": "Employment details", "empresa": "Employer", "direccion": "Address", "telefono": "Phone" },
-    "documentos": { "paso": "Step 1 of 2", "titulo": "Supporting document verification", "conteo": "{{total}} documents", "decision": "Supporting document decision", "observacion": "Required note for this document" },
+    "documentos": { "titulo": "Supporting document verification", "conteo": "{{total}} documents", "decision": "Supporting document decision", "observacion": "Required note for this document" },
     "soportes": {
       "TSG_ACTA_SUST": "Defense record", "TSG_RESULTADO_SABER": "Saber T&T / Saber Pro results",
       "TSG_PAGO_DERECHOS": "Graduation fee payment", "TSG_TITULO_PREVIO": "Previous academic degree"
     },
     "decision": {
-      "paso": "Step 2 of 2", "titulo": "Document decision", "ayuda_aprobar": "Approve all submitted documents to enable file approval.",
+      "titulo": "Document decision", "ayuda_aprobar": "Approve all submitted documents to enable file approval.",
       "ayuda_devolver": "Returning the file requires a general comment and a note for every flagged document.",
       "comentario": "General comment", "obligatorio": "Required when returning", "opcional": "Optional when approving", "progreso": "{{revisados}} of {{total}} documents reviewed"
     },

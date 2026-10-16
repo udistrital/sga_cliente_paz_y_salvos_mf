@@ -1,5 +1,5 @@
 import { Injectable } from "@angular/core";
-// @ts-ignore
+// @ts-ignore: este submódulo de distribución no expone declaraciones de tipos.
 import Swal from "sweetalert2/dist/sweetalert2";
 import type { SweetAlertResult } from 'sweetalert2';
 import { TranslateService } from '@ngx-translate/core';

@@ -1,9 +1,7 @@
-// In single-spa, the assets need to be loaded from a dynamic location,
-// instead of hard coded to `/assets`. We use webpack public path for this.
-// See https://webpack.js.org/guides/public-path/#root
+// Construye la URL de assets sobre la ruta pública de webpack en single-spa.
 
 export function assetUrl(url: string): string {
-  // @ts-ignore
+  // @ts-ignore: webpack inyecta la ruta pública en tiempo de ejecución.
   const publicPath = __webpack_public_path__;
   const publicPathSuffix = publicPath.endsWith('/') ? '' : '/';
   const urlPrefix = url.startsWith('/') ? '' : '/';

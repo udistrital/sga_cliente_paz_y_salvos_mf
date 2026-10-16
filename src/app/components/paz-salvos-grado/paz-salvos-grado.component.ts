@@ -334,16 +334,20 @@ export class PazSalvosGradoComponent implements OnInit, OnDestroy {
     return true;
   }
 
+  private requiereJustificacion(estado: CodigoEstadoPazSalvo): boolean {
+    return estado === 'PS_PENDIENTE' || estado === 'PS_DESAPROBADO' || this.tipo === 'TPS_SECRETARIA';
+  }
+
   puedeGuardarDecision(): boolean {
     return !!this.estadoDecision && this.puedeDecidir(this.estadoDecision) &&
-      (!['PS_PENDIENTE', 'PS_DESAPROBADO'].includes(this.estadoDecision) || !!this.justificacion.trim());
+      (!this.requiereJustificacion(this.estadoDecision) || !!this.justificacion.trim());
   }
 
   async guardarDecision(): Promise<void> {
     const solicitud = this.solicitudDecision;
     const estado = this.estadoDecision;
     if (!solicitud || !this.tipo || !estado || this.guardando || !this.puedeDecidir(estado, solicitud)) return;
-    if ((estado === 'PS_PENDIENTE' || estado === 'PS_DESAPROBADO') && !this.justificacion.trim()) {
+    if (this.requiereJustificacion(estado) && !this.justificacion.trim()) {
       this.errorDecision = this.tr('errores.justificacion');
       return;
     }

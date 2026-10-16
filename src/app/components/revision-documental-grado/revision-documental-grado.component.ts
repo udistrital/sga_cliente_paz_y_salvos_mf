@@ -1,8 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, Optional } from '@angular/core';
+import { Component, OnDestroy, OnInit, Optional, TemplateRef, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer } from '@angular/platform-browser';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -13,6 +15,7 @@ import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { Subscription, firstValueFrom } from 'rxjs';
 import { AlertService } from '../../services/alert.service';
+import { VersionesGradoComponent } from '../versiones-grado/versiones-grado.component';
 import { mensajeErrorBorrador, TipoSoporteGrado } from '../../services/inscripcion-grado.service';
 import { PermisosService } from '../../services/permisos.service';
 import { DecisionSoporteRevision, RevisionDocumentalEntrada, RevisionDocumentalGradoService, SolicitudRevisionResumen, SoporteRevisionGrado } from '../../services/revision-documental-grado.service';
@@ -28,13 +31,14 @@ interface DecisionVista {
 @Component({
   selector: 'app-revision-documental-grado',
   standalone: true,
-  imports: [CommonModule, FormsModule, TranslateModule, MatButtonModule, MatCardModule, MatFormFieldModule,
-    MatIconModule, MatInputModule, MatProgressBarModule, MatSelectModule, MatTableModule, MatPaginatorModule],
+  imports: [CommonModule, FormsModule, TranslateModule, MatButtonModule, MatCardModule, MatDialogModule, MatFormFieldModule,
+    MatIconModule, MatInputModule, MatProgressBarModule, MatSelectModule, MatTableModule, MatPaginatorModule, VersionesGradoComponent],
   providers: [MatPaginatorIntl],
   templateUrl: './revision-documental-grado.component.html',
   styleUrls: ['./revision-documental-grado.component.scss']
 })
 export class RevisionDocumentalGradoComponent implements OnInit, OnDestroy {
+  @ViewChild('visorPDF', { static: true }) visorPDF!: TemplateRef<unknown>;
   solicitudes: SolicitudRevisionResumen[] = [];
   readonly tabla = new MatTableDataSource<SolicitudRevisionResumen>([]);
   readonly columnas = ['codigo', 'trabajo', 'programa', 'radicacion', 'estado', 'acciones'];
@@ -44,6 +48,7 @@ export class RevisionDocumentalGradoComponent implements OnInit, OnDestroy {
 	pageIndex = 0;
 	totalSolicitudes = 0;
   seleccionada: SolicitudRevisionResumen | null = null;
+  viendoEntregaHistorica = false;
   decisiones: DecisionVista[] = [];
   comentarioGeneral = '';
   filtro = '';
@@ -61,12 +66,15 @@ export class RevisionDocumentalGradoComponent implements OnInit, OnDestroy {
   error = '';
   private suscripciones = new Subscription();
   private urlPDF = '';
+  private dialogo?: MatDialogRef<unknown>;
 
   constructor(
     private servicio: RevisionDocumentalGradoService,
     public permisos: PermisosService,
     private alertas: AlertService,
     private translate: TranslateService,
+    private dialog: MatDialog,
+    private sanitizer: DomSanitizer,
     @Optional() private paginadorIntl?: MatPaginatorIntl
   ) {}
 
@@ -77,6 +85,10 @@ export class RevisionDocumentalGradoComponent implements OnInit, OnDestroy {
 		this.traducirPaginador();
 	  }));
     }
+    if (this.permisos.cambios$) this.suscripciones.add(this.permisos.cambios$.subscribe(() => {
+      if (!this.permisos.permite('grado_ver_soporte')) this.liberarPDF();
+    }));
+    if (this.permisos.sesionCambiada$) this.suscripciones.add(this.permisos.sesionCambiada$.subscribe(() => this.liberarPDF()));
     this.cargarFiltros();
   }
 
@@ -194,6 +206,8 @@ export class RevisionDocumentalGradoComponent implements OnInit, OnDestroy {
     this.error = '';
     try {
       const detalle = await firstValueFrom(this.servicio.consultar(solicitud.Solicitud.Id));
+      this.liberarPDF();
+      this.viendoEntregaHistorica = false;
       this.seleccionada = detalle;
       this.comentarioGeneral = '';
       this.decisiones = detalle.Soportes.map(soporte => ({ soporte, estado: 'pendiente', observacion: '' }));
@@ -206,6 +220,8 @@ export class RevisionDocumentalGradoComponent implements OnInit, OnDestroy {
 
   volver(): void {
     if (this.guardando) return;
+    this.liberarPDF();
+    this.viendoEntregaHistorica = false;
     this.seleccionada = null;
     this.decisiones = [];
 	    this.comentarioGeneral = '';
@@ -222,14 +238,24 @@ export class RevisionDocumentalGradoComponent implements OnInit, OnDestroy {
 
   async ver(soporte: SoporteRevisionGrado): Promise<void> {
     if (!this.seleccionada || !this.permisos.permite('grado_ver_soporte') || this.descargando) return;
+    const solicitudId = this.seleccionada.Solicitud.Id;
     this.descargando = soporte.TipoSoporte;
     this.error = '';
     try {
-      const archivo = await firstValueFrom(this.servicio.archivo(this.seleccionada.Solicitud.Id, soporte.TipoSoporte));
+      const archivo = await firstValueFrom(this.servicio.archivo(solicitudId, soporte.TipoSoporte));
+      if (this.seleccionada?.Solicitud.Id !== solicitudId || !this.seleccionada.Soportes.some(item => item.Id === soporte.Id) ||
+        !this.permisos.permite('grado_ver_soporte')) return;
       this.liberarPDF();
-      this.urlPDF = URL.createObjectURL(archivo.blob);
-      window.open(this.urlPDF, '_blank', 'noopener,noreferrer');
+      const url = URL.createObjectURL(archivo.blob);
+      this.urlPDF = url;
+      this.dialogo = this.dialog.open(this.visorPDF, { width: '95vw', maxWidth: '1100px', maxHeight: '95vh',
+        ariaLabel: this.tr('visor.vista_previa'),
+        data: { nombre: archivo.nombre, url: this.sanitizer.bypassSecurityTrustResourceUrl(url), enlace: url } });
+      this.dialogo.afterClosed().subscribe(() => {
+        if (this.urlPDF === url) { URL.revokeObjectURL(url); this.urlPDF = ''; this.dialogo = undefined; }
+      });
     } catch (error) {
+      this.liberarPDF();
       this.error = mensajeErrorBorrador(error, this.tr('errores.soporte'));
     } finally {
       this.descargando = '';
@@ -272,6 +298,7 @@ export class RevisionDocumentalGradoComponent implements OnInit, OnDestroy {
     this.alertas.showLoading(this.tr('mensajes.guardando'));
     try {
       const actualizada = await firstValueFrom(this.servicio.revisar(this.seleccionada.Solicitud.Id, entrada));
+      this.liberarPDF();
       this.seleccionada = actualizada;
       this.solicitudes = this.solicitudes.map(item => item.Solicitud.Id === actualizada.Solicitud.Id ? actualizada : item);
       this.tabla.data = this.solicitudes;
@@ -289,7 +316,7 @@ export class RevisionDocumentalGradoComponent implements OnInit, OnDestroy {
 
   get puedeDecidir(): boolean { return this.seleccionada?.Estado === 'SG_RADICADA'; }
   get decisionesCompletas(): boolean {
-    return this.decisiones.length >= 3 && this.decisiones.length <= 4 && this.decisiones.every(d => d.estado !== 'pendiente');
+    return this.decisiones.length > 0 && this.decisiones.every(d => d.estado !== 'pendiente');
   }
   get hayObservadas(): boolean { return this.decisiones.some(d => d.estado === 'observado'); }
   get soportesRevisados(): number { return this.decisiones.filter(d => d.estado !== 'pendiente').length; }
@@ -313,6 +340,8 @@ export class RevisionDocumentalGradoComponent implements OnInit, OnDestroy {
   private tr(clave: string): string { return this.translate.instant(`REVISION_GRADO.${clave}`); }
 
   private liberarPDF(): void {
+    this.dialogo?.close();
+    this.dialogo = undefined;
     if (this.urlPDF) URL.revokeObjectURL(this.urlPDF);
     this.urlPDF = '';
   }

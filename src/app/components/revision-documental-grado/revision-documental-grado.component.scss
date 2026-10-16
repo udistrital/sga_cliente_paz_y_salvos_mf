@@ -51,7 +51,7 @@
 .vacio mat-icon { width: 52px; height: 52px; color: var(--color300, #81b3c7); font-size: 52px; }
 .vacio h2 { margin: 14px 0 6px; }
 .vacio p { margin: 0; }
-.volver { margin: 0 0 12px -8px; }
+.volver { margin: 0 0 12px; min-height: 44px; }
 .expediente-hero { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 16px 18px; border: 1px solid var(--color300, #81b3c7); border-radius: 12px; background: var(--color100, #e1edf2); box-shadow: none; }
 .expediente-hero p { margin: 0 0 4px; color: var(--color700, #024a72); font-weight: 600; }
 .expediente-hero h2 { margin: 0 0 8px; font-size: 1.2rem; }
@@ -68,7 +68,6 @@
 .comentario-previo { margin-top: 20px; padding: 16px 18px; border: 1px solid var(--estado-alerta-borde); border-radius: 12px; color: var(--estado-alerta); background: var(--estado-alerta-fondo); }
 .comentario-previo p { margin: 5px 0 0; }
 .seccion-titulo { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
-.seccion-titulo p, .cierre > div > p { margin: 0 0 5px; color: var(--color700, #024a72); font-weight: 600; }
 .seccion-titulo > span { color: rgba(0, 0, 0, .6); }
 .documentos-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .documento { padding: 16px; border: 1px solid rgba(0,0,0,.12); border-radius: 12px; background: #fff; box-shadow: none; }
@@ -81,6 +80,10 @@
 .decision { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
 .decision-boton { width: 100%; min-height: 42px; }
 .decision-boton mat-icon { width: 19px; height: 19px; font-size: 19px; }
+.documento-encabezado button { min-height: 44px; }
+.contenido-visor-pdf iframe { display: block; width: 100%; height: 62vh; border: 0; }
+mat-dialog-actions { gap: .5rem; }
+mat-dialog-actions a, mat-dialog-actions button { min-height: 44px; }
 .decision-boton.aprobar.activo { background: var(--estado-exito-fondo); }
 .decision-boton.observar.activo { background: var(--estado-error-fondo); }
 .campo-completo { width: 100%; margin-top: 16px; }
@@ -108,6 +111,7 @@
   .filtros, .tabla-solicitudes tr.mat-mdc-row, .resumen dl, .datos-laborales dl { grid-template-columns: 1fr; }
   .documento-encabezado { grid-template-columns: auto minmax(0, 1fr); }
   .documento-encabezado button { grid-column: 1 / -1; }
+  .contenido-visor-pdf iframe { height: 58vh; }
   .decision { grid-template-columns: 1fr; }
   .acciones-finales { align-items: stretch; flex-direction: column; }
   .acciones-finales button { width: 100%; }

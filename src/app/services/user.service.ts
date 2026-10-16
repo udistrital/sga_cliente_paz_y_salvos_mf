@@ -23,7 +23,7 @@ export class UserService {
         });
     }
 
-    // Nueva función para obtener el código del estudiante
+    // Obtiene el código del estudiante de la identidad almacenada en la sesión.
     public getCodigoEstudiante(): Promise<string> {
         return new Promise((resolve, reject) => {
             try {
