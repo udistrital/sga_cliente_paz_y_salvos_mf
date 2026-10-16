@@ -103,6 +103,25 @@ export interface DepartamentoExpedicionGrado {
   PaisNombre: string;
 }
 export type TipoSoporteGrado = 'TSG_ACTA_SUST' | 'TSG_RESULTADO_SABER' | 'TSG_PAGO_DERECHOS' | 'TSG_TITULO_PREVIO';
+// El cliente define los documentos requeridos por nivel; MID y CRUD verifican
+// los soportes enviados y su integridad sin fijar una cantidad por programa.
+export const SOPORTES_GRADO: ReadonlyArray<{
+  codigo: TipoSoporteGrado;
+  titulo: string;
+  descripcion: string;
+  sufijo: string;
+  categorias: ReadonlyArray<CategoriaNivelGrado>;
+}> = [
+  { codigo: 'TSG_ACTA_SUST', titulo: 'acta_titulo', descripcion: 'acta_descripcion', sufijo: 'acta', categorias: ['PRE', 'POS'] },
+  { codigo: 'TSG_RESULTADO_SABER', titulo: 'saber_titulo', descripcion: 'saber_descripcion', sufijo: 'snp', categorias: ['PRE'] },
+  { codigo: 'TSG_PAGO_DERECHOS', titulo: 'pago_titulo', descripcion: 'pago_descripcion', sufijo: 'pago_derechos', categorias: ['PRE', 'POS'] },
+  { codigo: 'TSG_TITULO_PREVIO', titulo: 'titulo_previo_titulo', descripcion: 'titulo_previo_descripcion', sufijo: 'titulo_previo', categorias: ['PRE', 'POS'] }
+];
+
+export function soportesRequeridosGrado(categoria: CategoriaNivelGrado | null) {
+  return SOPORTES_GRADO.filter(soporte => !!categoria && soporte.categorias.includes(categoria));
+}
+
 export interface SoporteGrado {
   Id: number;
   FormularioId: number;
@@ -394,9 +413,9 @@ export class InscripcionGradoService {
 
   soportes(id: number, terceroId: number, formularioId: number): Observable<SoporteGrado[]> {
 	return this.mid<SoporteGrado[]>('get', `solicitud-grado/borrador/${id}/soportes?tercero_id=${terceroId}`).pipe(map(datos => {
-      if (!Array.isArray(datos) || datos.length > 4 || new Set(datos.map(s => s?.TipoSoporte)).size !== datos.length ||
+      if (!Array.isArray(datos) || datos.length > SOPORTES_GRADO.length || new Set(datos.map(s => s?.TipoSoporte)).size !== datos.length ||
         datos.some(s => !s || s.FormularioId !== formularioId || !s.Nombre || !s.Id || !s.DocumentoId ||
-          !['TSG_ACTA_SUST', 'TSG_RESULTADO_SABER', 'TSG_PAGO_DERECHOS', 'TSG_TITULO_PREVIO'].includes(s.TipoSoporte))) {
+          !SOPORTES_GRADO.some(definicion => definicion.codigo === s.TipoSoporte))) {
         throw new Error('No fue posible verificar los soportes de esta versión.');
       }
       return datos;

@@ -16,15 +16,16 @@ import { Observable, Subscription, firstValueFrom, forkJoin, defer, of } from 'r
 import { catchError, map, switchMap } from 'rxjs/operators';
 import { UserService } from '../../services/user.service';
 import { SoportesGradoComponent } from './soportes-grado.component';
+import { VersionesGradoComponent } from '../versiones-grado/versiones-grado.component';
 import { PermisosService } from '../../services/permisos.service';
 import { OpcionDirective } from '../../directives/opcion.directive';
 import { AlertService } from '../../services/alert.service';
-import { BorradorGrado, CategoriaNivelGrado, DatosBasicosGrado, DepartamentoExpedicionGrado, DirectorGrado, DisponibilidadGrado, EventoGrado, InscripcionGradoService, LugarExpedicionGrado, LugarExpedicionIdentificacionGrado, ModalidadGrado, PaisExpedicionGrado, PeriodoGrado, ProgramaGrado, TipoSoporteGrado, categoriaProgramaGrado, fechaGradoPersistida, mensajeErrorBorrador } from '../../services/inscripcion-grado.service';
+import { BorradorGrado, CategoriaNivelGrado, DatosBasicosGrado, DepartamentoExpedicionGrado, DirectorGrado, DisponibilidadGrado, EventoGrado, InscripcionGradoService, LugarExpedicionGrado, LugarExpedicionIdentificacionGrado, ModalidadGrado, PaisExpedicionGrado, PeriodoGrado, ProgramaGrado, TipoSoporteGrado, categoriaProgramaGrado, fechaGradoPersistida, mensajeErrorBorrador, soportesRequeridosGrado } from '../../services/inscripcion-grado.service';
 
 @Component({
   selector: 'app-inscripcion-grado',
   standalone: true,
-  imports: [CommonModule, FormsModule, TranslateModule, MatButtonModule, MatCardModule, MatFormFieldModule, MatSelectModule, MatProgressBarModule, MatInputModule, MatAutocompleteModule, MatStepperModule, SoportesGradoComponent, OpcionDirective],
+  imports: [CommonModule, FormsModule, TranslateModule, MatButtonModule, MatCardModule, MatFormFieldModule, MatSelectModule, MatProgressBarModule, MatInputModule, MatAutocompleteModule, MatStepperModule, SoportesGradoComponent, VersionesGradoComponent, OpcionDirective],
   templateUrl: './inscripcion-grado.component.html',
   styleUrls: ['./inscripcion-grado.component.scss']
 })
@@ -37,6 +38,7 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   periodoId: number | null = null;
   disponibilidad: DisponibilidadGrado | null = null;
   borrador: BorradorGrado | null = null;
+  viendoEntregaHistorica = false;
   datosBasicos: DatosBasicosGrado | null = null;
   cargandoDatosBasicos = false;
   errorDatosBasicos = '';
@@ -233,9 +235,7 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   }
 
   get tiposSoporteRequeridos(): TipoSoporteGrado[] {
-    const comunes: TipoSoporteGrado[] = ['TSG_ACTA_SUST', 'TSG_PAGO_DERECHOS', 'TSG_TITULO_PREVIO'];
-    return this.categoriaNivelSeleccionada === 'PRE' ? [comunes[0], 'TSG_RESULTADO_SABER', ...comunes.slice(1)]
-      : this.categoriaNivelSeleccionada === 'POS' ? comunes : [];
+    return soportesRequeridosGrado(this.categoriaNivelSeleccionada).map(soporte => soporte.codigo);
   }
 
   get periodoSeleccionadoNombre(): string {
@@ -676,6 +676,7 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
 
   cambiarPeriodo(): void {
     if (this.guardandoBorrador || this.guardandoSoporte || this.radicando || this.subsanando) return;
+    this.viendoEntregaHistorica = false;
     this.consulta?.unsubscribe();
     this.consultaBorrador?.unsubscribe();
     this.consultaFechasBorrador?.unsubscribe();
@@ -736,6 +737,7 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
 
   cambiarPrograma(): void {
     if (this.guardandoBorrador || this.guardandoSoporte || this.radicando || this.subsanando) return;
+    this.viendoEntregaHistorica = false;
     this.consultaBorrador?.unsubscribe();
     this.consultaFechasBorrador?.unsubscribe();
     this.guardarActual?.unsubscribe();
@@ -941,8 +943,8 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
         contexto.solicitudId === this.borrador.Solicitud.Id && contexto.formularioId === this.borrador.Formulario.Id &&
         contexto.contenido === JSON.stringify(this.contenidoFormulario()) && this.camposRadicacionCompletos() &&
         this.permisos.permite('inscripciones_grado', 'Menú') && this.permisos.permite('grado_radicar_inscripcion') &&
-		!!this.disponibilidad && ((this.borrador.Formulario.Version || 1) > 1 || this.eventoEstaAbierto(this.disponibilidad.inscripcion)) &&
-		this.eventoEstaAbierto(this.disponibilidad.aprobacion);
+		!!this.disponibilidad && this.eventoEstaAbierto(this.esSubsanacion
+		  ? this.disponibilidad.aprobacion : this.disponibilidad.inscripcion);
       if (resultado.isConfirmed !== true || !vigente) return;
       this.alertas.showLoading(this.tr('progreso.radicando'));
       enviando = true;
@@ -967,8 +969,8 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
     if (!this.permisos.permite('inscripciones_grado', 'Menú') || !this.permisos.permite(this.borrador ? 'grado_actualizar_borrador' : 'grado_crear_borrador')) return false;
     if (!this.borradorConsultado || this.cargandoBorrador || this.confirmandoBorrador || this.guardandoBorrador || this.guardandoSoporte || this.radicando || !this.disponibilidad) return false;
     if (this.borrador?.Formulario.FechaRadicacion || this.esSubsanacion) return false;
-    return this.eventoEstaAbierto(this.disponibilidad.aprobacion) &&
-      (!!this.borrador || this.eventoEstaAbierto(this.disponibilidad.inscripcion));
+		return this.eventoEstaAbierto((this.borrador?.Formulario.Version || 1) > 1
+		  ? this.disponibilidad.aprobacion : this.disponibilidad.inscripcion);
   }
 
   get esRadicada(): boolean {
@@ -1031,24 +1033,20 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   }
 
   get puedeEditarFormulario(): boolean {
-    return this.permisos.permite(this.borrador ? 'grado_actualizar_borrador' : 'grado_crear_borrador') &&
-      !!this.programaId && !!this.periodoId && this.borradorConsultado && !this.cargandoBorrador &&
-      !this.guardandoBorrador && !this.guardandoSoporte && !this.radicando && !this.borrador?.Formulario.FechaRadicacion &&
-      !this.esSubsanacion;
+    return !!this.programaId && !!this.periodoId && this.puedeGuardarBorrador;
   }
 
   get puedeModificarSoportes(): boolean {
-    return this.permisos.permite('inscripciones_grado', 'Menú') && !!this.borrador && !this.borrador.Formulario.FechaRadicacion &&
-      !this.cargandoBorrador && !this.guardandoBorrador && !this.radicando && !!this.disponibilidad &&
-      this.eventoEstaAbierto(this.disponibilidad.aprobacion);
+	return this.permisos.permite('inscripciones_grado', 'Menú') && !!this.borrador && !this.borrador.Formulario.FechaRadicacion &&
+	  !this.cargandoBorrador && !this.guardandoBorrador && !this.radicando && !!this.disponibilidad &&
+	  this.eventoEstaAbierto(this.esSubsanacion ? this.disponibilidad.aprobacion : this.disponibilidad.inscripcion);
   }
 
   get puedeRadicar(): boolean {
     return this.permisos.permite('inscripciones_grado', 'Menú') && this.permisos.permite('grado_radicar_inscripcion') &&
       !!this.borrador && !this.borrador.Formulario.FechaRadicacion && !this.cargandoBorrador && !this.guardandoBorrador &&
 	  !this.guardandoSoporte && !this.radicando && !!this.disponibilidad &&
-	  ((this.borrador.Formulario.Version || 1) > 1 || this.eventoEstaAbierto(this.disponibilidad.inscripcion)) &&
-      this.eventoEstaAbierto(this.disponibilidad.aprobacion);
+		  this.eventoEstaAbierto(this.esSubsanacion ? this.disponibilidad.aprobacion : this.disponibilidad.inscripcion);
   }
 
   estadoInscripcionPrograma(programaId: number): string {

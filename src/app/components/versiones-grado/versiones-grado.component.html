@@ -1,0 +1,143 @@
+<mat-card *ngIf="solicitudId && permisos.permite('grado_consultar_expediente') && (cargando || error || versiones.length)" class="versiones" [attr.aria-busy]="cargando">
+  <mat-card-header><mat-card-title>{{ 'VERSIONES_GRADO.titulo' | translate }}</mat-card-title></mat-card-header>
+  <mat-card-content>
+    <p>{{ 'VERSIONES_GRADO.ayuda' | translate }}</p>
+    <mat-progress-bar *ngIf="cargando && !versionSeleccionada" mode="indeterminate" [attr.aria-label]="'GLOBAL.cargando' | translate"></mat-progress-bar>
+    <p *ngIf="error" role="alert">{{ error }}</p>
+    <mat-form-field *ngIf="versiones.length > tamanoPagina" class="filtro-entrega" appearance="outline">
+      <mat-label>{{ 'VERSIONES_GRADO.buscar' | translate }}</mat-label>
+      <mat-icon matPrefix aria-hidden="true">search</mat-icon>
+      <input matInput type="number" min="1" step="1" [ngModel]="filtroVersion" (ngModelChange)="cambiarFiltroVersion($event)" [disabled]="cargando">
+      <button *ngIf="filtroVersion" mat-icon-button matSuffix type="button" (click)="cambiarFiltroVersion('')"
+        [attr.aria-label]="'VERSIONES_GRADO.limpiar_busqueda' | translate">
+        <mat-icon aria-hidden="true">close</mat-icon>
+      </button>
+    </mat-form-field>
+    <p *ngIf="versiones.length && !versionesFiltradas.length" role="status">{{ 'VERSIONES_GRADO.sin_resultados' | translate }}</p>
+    <mat-paginator *ngIf="versiones.length > tamanoPagina && versionesFiltradas.length" [length]="versionesFiltradas.length"
+      [pageIndex]="pagina" [pageSize]="tamanoPagina" [hidePageSize]="true" [showFirstLastButtons]="true"
+      [attr.aria-label]="'VERSIONES_GRADO.paginacion.etiqueta' | translate" (page)="cambiarPagina($event)">
+    </mat-paginator>
+
+    <mat-accordion *ngIf="versionesFiltradas.length" class="lista-entregas" [multi]="false">
+      <mat-expansion-panel *ngFor="let version of versionesPagina" class="entrega-panel"
+        [expanded]="versionSeleccionada === version.Version" (opened)="abrirVersion(version.Version)"
+        (closed)="cerrarVersion(version.Version)">
+        <mat-expansion-panel-header
+          [attr.aria-label]="(versionSeleccionada === version.Version ? 'VERSIONES_GRADO.cerrar_entrega_label' : 'VERSIONES_GRADO.ver_entrega_label') | translate:{ numero: version.Version, fecha: fecha(version.FechaRadicacion), estado: (('REVISION_GRADO.estados.' + version.EstadoCodigo) | translate) }">
+          <mat-panel-title class="entrega-titulo">
+            <span>{{ 'VERSIONES_GRADO.entrega' | translate:{ numero: version.Version } }}</span>
+            <small>{{ fecha(version.FechaRadicacion) }}</small>
+          </mat-panel-title>
+          <mat-panel-description>
+            <span class="estado-entrega" [attr.data-estado]="version.EstadoCodigo">
+              {{ ('REVISION_GRADO.estados.' + version.EstadoCodigo) | translate }}
+            </span>
+          </mat-panel-description>
+        </mat-expansion-panel-header>
+        <div *ngIf="cargandoDetalle && versionSeleccionada === version.Version" class="carga-entrega" role="status">
+          <mat-spinner [diameter]="26" [attr.aria-label]="'VERSIONES_GRADO.cargando_detalle' | translate"></mat-spinner>
+          <span>{{ 'VERSIONES_GRADO.cargando_detalle' | translate }}</span>
+        </div>
+        <ng-container *ngIf="seleccionada as detalle">
+    <section *ngIf="detalle.Formulario.Version === version.Version" class="detalle-historico"
+      [attr.aria-label]="'VERSIONES_GRADO.entrega' | translate:{ numero: detalle.Formulario.Version }">
+      <div class="detalle-encabezado">
+        <p class="solo-lectura" role="status">{{ 'VERSIONES_GRADO.solo_lectura' | translate }}</p>
+        <button mat-stroked-button color="primary" type="button" (click)="abrirVersion(null)" [disabled]="cargando">
+          <mat-icon aria-hidden="true">arrow_back</mat-icon>{{ 'VERSIONES_GRADO.vigente' | translate }}
+        </button>
+      </div>
+      <section class="bloque-historico" aria-labelledby="titulo-formulario-historico">
+        <h4 id="titulo-formulario-historico">{{ 'VERSIONES_GRADO.formulario' | translate }}</h4>
+        <dl class="campos-historicos">
+          <div *ngFor="let campo of campos" [class.campo-destacado]="campo.clave === 'trabajoGrado'"
+            [hidden]="campo.clave === 'director2' && !tieneSegundoDirector">
+            <dt>{{ ('INSCRIPCION_GRADO.vista.' + campo.etiqueta) | translate }}</dt>
+            <dd>{{ valor(campo.clave) }}</dd>
+          </div>
+          <div>
+            <dt>{{ 'INSCRIPCION_GRADO.vista.trabaja_actualmente' | translate }}</dt>
+            <dd>{{ valor('trabajaActualmente') }}</dd>
+          </div>
+        </dl>
+        <dl *ngIf="trabajaActualmente" class="campos-historicos campos-laborales">
+          <div *ngFor="let campo of camposLaborales">
+            <dt>{{ ('INSCRIPCION_GRADO.vista.' + campo.etiqueta) | translate }}</dt>
+            <dd>{{ valor(campo.clave) }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="bloque-historico" aria-labelledby="titulo-soportes-historicos">
+        <h4 id="titulo-soportes-historicos">{{ 'VERSIONES_GRADO.soportes' | translate }}</h4>
+        <div class="soportes-historicos">
+          <mat-card *ngFor="let item of detalle.Soportes" class="soporte-historico">
+            <mat-card-content>
+              <div class="soporte-encabezado">
+                <mat-icon aria-hidden="true">picture_as_pdf</mat-icon>
+                <div>
+                  <h5>{{ ('REVISION_GRADO.soportes.' + item.TipoSoporte) | translate }}</h5>
+                  <span class="estado-soporte" [attr.data-estado]="item.EstadoActual.EstadoCodigo">
+                    {{ ('VERSIONES_GRADO.estados_soporte.' + item.EstadoActual.EstadoCodigo) | translate }}
+                  </span>
+                </div>
+              </div>
+              <p *ngIf="item.EstadoActual.Observacion" class="observacion-soporte">{{ item.EstadoActual.Observacion }}</p>
+            </mat-card-content>
+            <mat-card-actions *ngIf="permisos.permite('grado_ver_soporte')">
+              <button mat-stroked-button color="primary" type="button" (click)="abrirPDF(item.TipoSoporte)" [disabled]="cargando"
+                [attr.aria-label]="'VERSIONES_GRADO.ver_pdf_tipo' | translate:{ tipo: (('REVISION_GRADO.soportes.' + item.TipoSoporte) | translate) }">
+                <mat-icon aria-hidden="true">visibility</mat-icon>{{ 'VERSIONES_GRADO.ver_pdf' | translate }}
+              </button>
+            </mat-card-actions>
+            <mat-expansion-panel *ngIf="item.Historial.length" class="historial-panel historial-soporte">
+              <mat-expansion-panel-header [attr.aria-label]="'VERSIONES_GRADO.historial_soporte_label' | translate:{ tipo: (('REVISION_GRADO.soportes.' + item.TipoSoporte) | translate) }">
+                <mat-panel-title>{{ 'VERSIONES_GRADO.movimientos' | translate }}</mat-panel-title>
+                <mat-panel-description>{{ item.Historial.length }}</mat-panel-description>
+              </mat-expansion-panel-header>
+              <ol class="lista-actuaciones">
+                <li *ngFor="let actuacion of item.Historial">
+                  <strong>{{ ('VERSIONES_GRADO.estados_soporte.' + actuacion.EstadoCodigo) | translate }}</strong>
+                  <time [attr.datetime]="actuacion.FechaCreacion">{{ fecha(actuacion.FechaCreacion) }}</time>
+                  <p *ngIf="actuacion.Observacion">{{ actuacion.Observacion }}</p>
+                </li>
+              </ol>
+            </mat-expansion-panel>
+          </mat-card>
+        </div>
+      </section>
+
+      <mat-expansion-panel *ngIf="detalle.Historial.length" class="historial-panel historial-solicitud">
+        <mat-expansion-panel-header>
+          <mat-panel-title>{{ 'VERSIONES_GRADO.actuaciones' | translate }}</mat-panel-title>
+          <mat-panel-description>{{ detalle.Historial.length }}</mat-panel-description>
+        </mat-expansion-panel-header>
+        <ol class="lista-actuaciones">
+          <li *ngFor="let actuacion of detalle.Historial">
+            <strong>{{ ('REVISION_GRADO.estados.' + actuacion.EstadoCodigo) | translate }}</strong>
+            <time [attr.datetime]="actuacion.FechaCreacion">{{ fecha(actuacion.FechaCreacion) }}</time>
+            <p *ngIf="actuacion.Justificacion">{{ actuacion.Justificacion }}</p>
+          </li>
+        </ol>
+      </mat-expansion-panel>
+    </section>
+        </ng-container>
+      </mat-expansion-panel>
+    </mat-accordion>
+  </mat-card-content>
+</mat-card>
+
+<ng-template #visorPDF let-data>
+  <h2 mat-dialog-title>{{ data.nombre }}</h2>
+  <mat-dialog-content class="contenido-visor-pdf">
+    <iframe [src]="data.url" [title]="'VERSIONES_GRADO.vista_previa' | translate"></iframe>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <a *ngIf="permisos.permite('grado_descargar_soporte') && permisos.permite('grado_ver_soporte')"
+      mat-stroked-button color="primary" [href]="data.enlace" [download]="data.nombre">
+      {{ 'VERSIONES_GRADO.descargar_pdf' | translate }}
+    </a>
+    <button mat-flat-button color="primary" mat-dialog-close type="button">{{ 'GLOBAL.cerrar' | translate }}</button>
+  </mat-dialog-actions>
+</ng-template>

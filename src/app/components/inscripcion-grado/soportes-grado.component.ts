@@ -8,7 +8,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { Subscription } from 'rxjs';
 import { finalize } from 'rxjs/operators';
-import { BorradorGrado, CategoriaNivelGrado, InscripcionGradoService, SoporteGrado, TipoSoporteGrado, mensajeErrorBorrador, validarPDFGrado } from '../../services/inscripcion-grado.service';
+import { BorradorGrado, CategoriaNivelGrado, InscripcionGradoService, SOPORTES_GRADO, SoporteGrado, TipoSoporteGrado, mensajeErrorBorrador, soportesRequeridosGrado, validarPDFGrado } from '../../services/inscripcion-grado.service';
 import { PermisosService } from '../../services/permisos.service';
 import { OpcionDirective } from '../../directives/opcion.directive';
 import { AlertService } from '../../services/alert.service';
@@ -73,14 +73,7 @@ export class SoportesGradoComponent implements OnChanges, OnDestroy {
     this.eliminacion?.unsubscribe();
     this.descarga?.unsubscribe();
     this.cerrarVisor();
-    const definiciones: Array<[TipoSoporteGrado, string, string]> = [
-      ['TSG_ACTA_SUST', 'acta_titulo', 'acta_descripcion'],
-      ['TSG_RESULTADO_SABER', 'saber_titulo', 'saber_descripcion'],
-      ['TSG_PAGO_DERECHOS', 'pago_titulo', 'pago_descripcion'],
-      ['TSG_TITULO_PREVIO', 'titulo_previo_titulo', 'titulo_previo_descripcion']
-    ];
-    this.documentos = definiciones.filter(([codigo]) => this.categoriaNivel === 'PRE' ||
-      (this.categoriaNivel === 'POS' && codigo !== 'TSG_RESULTADO_SABER')).map(([codigo, titulo, descripcion]) => ({
+    this.documentos = soportesRequeridosGrado(this.categoriaNivel).map(({ codigo, titulo, descripcion }) => ({
       codigo, tituloKey: `INSCRIPCION_GRADO.soportes.${titulo}`, descripcionKey: `INSCRIPCION_GRADO.soportes.${descripcion}`,
       obligatorio: true, soporte: null, error: '', mensaje: '', observacion: ''
     }));
@@ -104,13 +97,8 @@ export class SoportesGradoComponent implements OnChanges, OnDestroy {
   }
 
   opcionCarga(doc: DocumentoFormulario): string {
-    const sufijo: Record<TipoSoporteGrado, string> = {
-      TSG_ACTA_SUST: 'acta',
-      TSG_RESULTADO_SABER: 'snp',
-      TSG_PAGO_DERECHOS: 'pago_derechos',
-      TSG_TITULO_PREVIO: 'titulo_previo'
-    };
-    return `grado_${doc.soporte ? 'reemplazar' : 'cargar'}_${sufijo[doc.codigo]}`;
+    const sufijo = SOPORTES_GRADO.find(soporte => soporte.codigo === doc.codigo)?.sufijo;
+    return sufijo ? `grado_${doc.soporte ? 'reemplazar' : 'cargar'}_${sufijo}` : '';
   }
 
   puedeCargarDocumento(doc: DocumentoFormulario): boolean { return this.puedeCargar && this.permisos.permite(this.opcionCarga(doc)); }

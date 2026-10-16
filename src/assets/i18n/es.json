@@ -18,6 +18,53 @@
     "si": "Sí",
     "no": "No"
   },
+  "VERSIONES_GRADO": {
+    "titulo": "Entregas anteriores",
+    "ayuda": "Consulta las versiones previas de esta solicitud.",
+    "seleccionar": "Seleccionar una entrega radicada",
+    "entrega": "Entrega {{numero}}",
+    "buscar": "Buscar número de entrega",
+    "limpiar_busqueda": "Limpiar búsqueda de entregas",
+    "sin_resultados": "No hay entregas con ese número.",
+    "cargando_detalle": "Cargando entrega...",
+    "ver_entrega": "Ver entrega",
+    "ver_entrega_label": "Ver entrega {{numero}}, radicada el {{fecha}}, estado {{estado}}",
+    "cerrar_entrega": "Cerrar entrega",
+    "cerrar_entrega_label": "Cerrar entrega {{numero}} y volver a la solicitud vigente",
+    "vigente": "Volver a la solicitud vigente",
+    "solo_lectura": "Solo lectura",
+    "fecha": "Fecha de radicación",
+    "estado": "Estado de esta entrega",
+    "formulario": "Formulario",
+    "actuaciones": "Historial de la entrega",
+    "soportes": "Documentos",
+    "ver_pdf": "Ver PDF",
+    "vista_previa": "Vista previa del PDF de esta entrega",
+    "descargar_pdf": "Descargar PDF",
+    "ver_pdf_tipo": "Ver PDF de {{tipo}}",
+    "movimientos": "Historial",
+    "historial_soporte_label": "Historial de {{tipo}}",
+    "paginacion": {
+      "etiqueta": "Páginas del historial de entregas",
+      "siguiente": "Página siguiente",
+      "anterior": "Página anterior",
+      "primera": "Primera página",
+      "ultima": "Última página",
+      "rango": "{{inicio}}–{{fin}} de {{total}}"
+    },
+    "si": "Sí",
+    "no": "No",
+    "sin_dato": "No registrado",
+    "referencia_no_disponible": "Nombre histórico no disponible en el catálogo actual",
+    "error_listar": "No se pudieron consultar las entregas anteriores.",
+    "error_detalle": "No se pudo consultar esta entrega.",
+    "error_pdf": "No se pudo abrir el PDF de esta entrega.",
+    "estados_soporte": {
+      "SD_PEND_REV": "Pendiente de revisión",
+      "SD_OBSERVADO": "Observado",
+      "SD_APROBADO": "Aprobado"
+    }
+  },
   "PAZ_SALVOS_GRADO": {
     "sobrelinea": "Grados",
     "titulo": "Gestión de Paz y Salvos de grado",
@@ -78,6 +125,7 @@
       "revisar": "Abrir expediente", "volver": "Volver a la bandeja", "ver_pdf": "Ver PDF", "aprobar_soporte": "Aprobar soporte",
       "observar": "Observar", "devolver": "Devolver documentación", "aprobar_expediente": "Aprobar documentación"
     },
+    "visor": { "vista_previa": "Vista previa del soporte PDF", "descargar_pdf": "Descargar PDF" },
     "vacio": { "titulo": "No hay solicitudes para mostrar", "texto": "Ajusta los filtros o actualiza la bandeja." },
     "estudiante": {
       "titulo": "Datos del estudiante", "nombre": "Nombre completo", "identificacion": "Identificación", "fecha_nacimiento": "Fecha de nacimiento",
@@ -91,7 +139,7 @@
     },
     "laboral": { "titulo": "Información laboral", "empresa": "Empresa", "direccion": "Dirección", "telefono": "Teléfono" },
     "documentos": {
-      "paso": "Paso 1 de 2", "titulo": "Verificación de soportes", "conteo": "{{total}} documentos", "decision": "Decisión sobre el soporte",
+      "titulo": "Verificación de soportes", "conteo": "{{total}} documentos", "decision": "Decisión sobre el soporte",
       "observacion": "Observación obligatoria para este soporte"
     },
     "soportes": {
@@ -99,7 +147,7 @@
       "TSG_PAGO_DERECHOS": "Pago de derechos de grado", "TSG_TITULO_PREVIO": "Título académico previo"
     },
     "decision": {
-      "paso": "Paso 2 de 2", "titulo": "Decisión documental", "ayuda_aprobar": "Aprueba los soportes presentados para habilitar la aprobación del expediente.",
+      "titulo": "Decisión documental", "ayuda_aprobar": "Aprueba los soportes presentados para habilitar la aprobación del expediente.",
       "ayuda_devolver": "La devolución requiere un comentario general y una observación por cada soporte observado.",
       "comentario": "Comentario general", "obligatorio": "Obligatorio al devolver", "opcional": "Opcional al aprobar", "progreso": "{{revisados}} de {{total}} soportes revisados"
     },

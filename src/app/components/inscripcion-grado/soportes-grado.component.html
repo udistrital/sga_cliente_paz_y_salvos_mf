@@ -29,18 +29,18 @@
       <mat-card-actions>
         <ng-container *ngIf="!borrador?.Formulario?.FechaRadicacion">
           <input #archivo type="file" accept="application/pdf,.pdf" hidden [disabled]="!puedeCargarDocumento(doc)" (change)="subir(doc, archivo)">
-          <button *appOpcion="opcionCarga(doc)" mat-stroked-button type="button" (click)="archivo.click()" [disabled]="!puedeCargarDocumento(doc)"
+          <button *appOpcion="opcionCarga(doc)" mat-stroked-button color="primary" type="button" (click)="archivo.click()" [disabled]="!puedeCargarDocumento(doc)"
             [attr.aria-label]="(doc.soporte ? 'INSCRIPCION_GRADO.soportes.aria_reemplazar' : 'INSCRIPCION_GRADO.soportes.aria_cargar') | translate:{ soporte: (doc.tituloKey | translate) }">
             {{ (doc.soporte ? 'INSCRIPCION_GRADO.soportes.reemplazar_pdf' : 'INSCRIPCION_GRADO.soportes.cargar_pdf') | translate }}
           </button>
           <ng-container *ngIf="doc.soporte">
-            <button *appOpcion="opcionCarga(doc)" mat-stroked-button type="button" (click)="eliminar(doc)" [disabled]="!puedeCargarDocumento(doc)"
+            <button *appOpcion="opcionCarga(doc)" mat-stroked-button color="warn" type="button" (click)="eliminar(doc)" [disabled]="!puedeCargarDocumento(doc)"
               [attr.aria-label]="'INSCRIPCION_GRADO.soportes.aria_eliminar' | translate:{ soporte: (doc.tituloKey | translate) }">
               {{ 'INSCRIPCION_GRADO.soportes.eliminar_pdf' | translate }}
             </button>
           </ng-container>
         </ng-container>
-        <ng-container *ngIf="doc.soporte"><button *appOpcion="'grado_ver_soporte'" mat-button type="button" (click)="ver(doc)" [disabled]="!!descargando || !!subiendo || !!eliminando"
+        <ng-container *ngIf="doc.soporte"><button *appOpcion="'grado_ver_soporte'" mat-stroked-button color="primary" type="button" (click)="ver(doc)" [disabled]="!!descargando || !!subiendo || !!eliminando"
           [attr.aria-label]="'INSCRIPCION_GRADO.soportes.aria_ver' | translate:{ soporte: (doc.tituloKey | translate) }">{{ 'INSCRIPCION_GRADO.soportes.ver_pdf' | translate }}</button></ng-container>
       </mat-card-actions>
     </mat-card>
@@ -50,7 +50,7 @@
   <h2 mat-dialog-title>{{ data.nombre }}</h2>
   <mat-dialog-content><iframe [src]="data.url" [title]="'INSCRIPCION_GRADO.soportes.vista_previa' | translate"></iframe></mat-dialog-content>
   <mat-dialog-actions align="end">
-    <a *appOpcion="'grado_descargar_soporte'" mat-button [href]="data.enlace" [download]="data.nombre" (click)="descargar($event)">{{ 'INSCRIPCION_GRADO.soportes.descargar_pdf' | translate }}</a>
-    <button mat-button mat-dialog-close type="button">{{ 'GLOBAL.cerrar' | translate }}</button>
+    <a *appOpcion="'grado_descargar_soporte'" mat-stroked-button color="primary" [href]="data.enlace" [download]="data.nombre" (click)="descargar($event)">{{ 'INSCRIPCION_GRADO.soportes.descargar_pdf' | translate }}</a>
+    <button mat-flat-button color="primary" mat-dialog-close type="button">{{ 'GLOBAL.cerrar' | translate }}</button>
   </mat-dialog-actions>
 </ng-template>
