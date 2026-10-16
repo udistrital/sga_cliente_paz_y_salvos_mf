@@ -13,7 +13,7 @@ import { environment } from '../environments/environment';
 import { OpcionDirective } from './directives/opcion.directive';
 import { EstadoPermisosComponent } from './components/permisos/estado-permisos.component';
 
-// Función para crear el loader de traducciones
+// Resuelve los JSON de traducción desde el host local o la URL de assets configurada.
 export function createTranslateLoader(http: HttpClient) {
   const local = ['localhost', '127.0.0.1'].includes(window.location.hostname);
   const baseUrl = local ? `${window.location.origin}/` : environment.apiUrl;

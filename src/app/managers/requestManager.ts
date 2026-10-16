@@ -5,13 +5,7 @@ import { catchError, map } from 'rxjs/operators';
 import { Observable } from 'rxjs';
 import { HttpErrorManager } from './errorManager';
 
-/**
- * This class manage the http connections with internal REST services. Use the response format {
- *  Code: 'xxxxx',
- *  Body: 'Some Data' (this element is returned if the request is success)
- *  ...
- * }
- */
+/** Gestiona las peticiones HTTP a los servicios configurados en environment. */
 @Injectable({
   providedIn: 'root',
 })
@@ -19,7 +13,7 @@ export class RequestManager {
   private path!: any;
   constructor(private http: HttpClient, private errManager: HttpErrorManager) {}
 
-  // La sesión puede renovarse después de crear este servicio singleton.
+  // Obtiene el token vigente en cada petición para acompañar la sesión actual.
   public get httpOptions(): { headers: HttpHeaders } {
     const token = window.localStorage.getItem('access_token');
     return { headers: token ? new HttpHeaders({ Authorization: `Bearer ${token}` }) : new HttpHeaders() };
@@ -30,10 +24,7 @@ export class RequestManager {
   }
 
 
-  /**
-   * Use for set the source path of the service (service's name must be present at src/environment/environment.ts)
-   * @param service: string
-   */
+  /** Selecciona la URL base de un servicio definido en environment. */
   public setPath(service: string) {
     const value = environment[service as keyof typeof environment];
     if (typeof value === 'string') {
@@ -44,12 +35,7 @@ export class RequestManager {
   }
 
 
-  /**
-   * Perform a GET http request
-   * @param endpoint service's end-point
-   * @param params (an Key, Value object with que query params for the request)
-   * @returns Observable<any>
-   */
+  /** Consulta un endpoint GET y entrega el cuerpo de su respuesta. */
   get(endpoint: string) {
     return this.http.get<any>(`${this.path}${endpoint}`, this.httpOptions).pipe(
       map(
@@ -86,12 +72,7 @@ export class RequestManager {
     );
   }
 
-  /**
-   * Perform a POST http request
-   * @param endpoint service's end-point
-   * @param element data to send as JSON
-   * @returns Observable<any>
-   */
+  /** Envía el contenido por POST al endpoint seleccionado. */
   post(endpoint: string, element: any) {
     return this.http.post<any>(`${this.path}${endpoint}`, element, this.httpOptions).pipe(
       map(
@@ -108,12 +89,7 @@ export class RequestManager {
   }
 
 
-  /**
-   * Perform a POST http request
-   * @param endpoint service's end-point
-   * @param element data to send as JSON
-   * @returns Observable<any>
-   */
+  /** Envía por POST una carga con cabecera multipart/form-data. */
   post_file(endpoint: string, element: any) {
     return this.http.post<any>(`${this.path}${endpoint}`, element, {
       headers: new HttpHeaders({
@@ -133,12 +109,7 @@ export class RequestManager {
     );
   }
 
-  /**
-   * Perform a PUT http request
-   * @param endpoint service's end-point
-   * @param element data to send as JSON, With the id to UPDATE
-   * @returns Observable<any>
-   */
+  /** Actualiza por PUT el recurso indicado por el endpoint. */
   put(endpoint: string, element: any): Observable<any> {
     const path = `${this.path}${endpoint}`;
     return this.http.put<any>(path, element, this.httpOptions).pipe(
@@ -153,12 +124,7 @@ export class RequestManager {
     );
   }
 
-  /**
-   * Perform a DELETE http request
-   * @param endpoint service's end-point
-   * @param id optional element identifier appended to the endpoint
-   * @returns Observable<any>
-   */
+  /** Elimina el recurso del endpoint y agrega el ID cuando se proporciona. */
   delete(endpoint: string, id?: number | string) {
 	const suffix = id === undefined ? '' : `/${id}`;
 	return this.http.delete<any>(`${this.path}${endpoint}${suffix}`, this.httpOptions).pipe(
@@ -175,9 +141,7 @@ export class RequestManager {
     );
   }
 
-  /**
- * Perform a PATCH http request
- */
+  /** Aplica una actualización parcial al recurso indicado. */
   public patch(endpoint: string, body: any): Observable<any> {
     return this.http
       .patch<any>(`${this.path}${endpoint}`, body, this.httpOptions)

@@ -4,7 +4,7 @@ import { fromEvent } from 'rxjs';
 import es from '../assets/i18n/es.json';
 import en from '../assets/i18n/en.json';
 
-// Función para obtener cookies
+// Obtiene el valor de una cookie para resolver el idioma del microfrontend.
 function getCookie(name: string): string | null {
   const value = `; ${document.cookie}`;
   const parts = value.split(`; ${name}=`);
@@ -28,8 +28,8 @@ export class AppComponent implements OnInit {
   }
 
   validateLang() {
-    // El catálogo debe corresponder al mismo build del MF, aunque el host de
-    // assets todavía sirva un JSON de una versión anterior.
+	// Registra los catálogos incluidos en el bundle para que la pantalla use
+	// las traducciones propias de este microfrontend.
     this.translate.setTranslation('es', es, true);
     this.translate.setTranslation('en', en, true);
     this.translate.setDefaultLang('es');
