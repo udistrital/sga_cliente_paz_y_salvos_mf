@@ -1,0 +1,23 @@
+<section class="selector" aria-labelledby="titulo-selector-perfil">
+  <header>
+    <mat-icon>account_circle</mat-icon>
+    <div>
+      <h2 id="titulo-selector-perfil">{{ 'ROLE_SELECTOR.titulo' | translate }}</h2>
+      <p>{{ 'ROLE_SELECTOR.subtitulo' | translate }}</p>
+    </div>
+  </header>
+  <div class="perfiles">
+    @for (opcion of perfiles; track opcion) {
+      <button type="button" class="perfil" [class.seleccionado]="perfil === opcion"
+        [disabled]="!puedeSeleccionar(opcion)" (click)="seleccionar(opcion)"
+        [attr.aria-label]="'Seleccionar perfil ' + nombre(opcion)">
+        <mat-icon>verified_user</mat-icon>
+        <span>{{ nombre(opcion) }}</span>
+        @if (perfil === opcion) { <mat-icon>check_circle</mat-icon> }
+      </button>
+    }
+  </div>
+  <button mat-flat-button color="primary" type="button" [disabled]="!puedeConfirmar()" (click)="confirmar()">
+    {{ 'ROLE_SELECTOR.continuar' | translate }}<mat-icon>arrow_forward</mat-icon>
+  </button>
+</section>

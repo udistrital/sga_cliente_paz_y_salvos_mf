@@ -8,7 +8,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { Subscription } from 'rxjs';
 import { finalize } from 'rxjs/operators';
-import { BorradorGrado, InscripcionGradoService, SoporteGrado, TipoSoporteGrado, mensajeErrorBorrador, validarPDFGrado } from '../../services/inscripcion-grado.service';
+import { BorradorGrado, CategoriaNivelGrado, InscripcionGradoService, SOPORTES_GRADO, SoporteGrado, TipoSoporteGrado, mensajeErrorBorrador, soportesRequeridosGrado, validarPDFGrado } from '../../services/inscripcion-grado.service';
 import { PermisosService } from '../../services/permisos.service';
 import { OpcionDirective } from '../../directives/opcion.directive';
 import { AlertService } from '../../services/alert.service';
@@ -17,6 +17,7 @@ interface DocumentoFormulario {
   codigo: TipoSoporteGrado;
   tituloKey: string;
   descripcionKey: string;
+  obligatorio: boolean;
   soporte: SoporteGrado | null;
   error: string;
   mensaje: string;
@@ -31,15 +32,11 @@ interface DocumentoFormulario {
 export class SoportesGradoComponent implements OnChanges, OnDestroy {
   @Input() borrador: BorradorGrado | null = null;
   @Input() habilitado = false;
+  @Input() categoriaNivel: CategoriaNivelGrado | null = null;
   @Output() ocupado = new EventEmitter<boolean>();
   @Output() progreso = new EventEmitter<number>();
   @ViewChild('visorPDF', { static: true }) visorPDF!: TemplateRef<unknown>;
-  documentos: DocumentoFormulario[] = [
-    { codigo: 'TSG_ACTA_SUST', tituloKey: 'INSCRIPCION_GRADO.soportes.acta_titulo', descripcionKey: 'INSCRIPCION_GRADO.soportes.acta_descripcion', soporte: null, error: '', mensaje: '', observacion: '' },
-    { codigo: 'TSG_RESULTADO_SABER', tituloKey: 'INSCRIPCION_GRADO.soportes.saber_titulo', descripcionKey: 'INSCRIPCION_GRADO.soportes.saber_descripcion', soporte: null, error: '', mensaje: '', observacion: '' },
-    { codigo: 'TSG_PAGO_DERECHOS', tituloKey: 'INSCRIPCION_GRADO.soportes.pago_titulo', descripcionKey: 'INSCRIPCION_GRADO.soportes.pago_descripcion', soporte: null, error: '', mensaje: '', observacion: '' },
-    { codigo: 'TSG_TITULO_PREVIO', tituloKey: 'INSCRIPCION_GRADO.soportes.titulo_previo_titulo', descripcionKey: 'INSCRIPCION_GRADO.soportes.titulo_previo_descripcion', soporte: null, error: '', mensaje: '', observacion: '' }
-  ];
+  documentos: DocumentoFormulario[] = [];
   cargando = false;
   consultaCorrecta = false;
   errorConsulta = '';
@@ -67,7 +64,7 @@ export class SoportesGradoComponent implements OnChanges, OnDestroy {
   }
 
   ngOnChanges(): void {
-    const clave = this.borrador ? `${this.borrador.Solicitud.Id}/${this.borrador.Formulario.Id}` : '';
+    const clave = this.borrador ? `${this.borrador.Solicitud.Id}/${this.borrador.Formulario.Id}/${this.categoriaNivel || ''}` : '';
     if (clave === this.clave) return;
     this.clave = clave;
     if (this.subiendo || this.eliminando) this.alertas.closeLoading();
@@ -76,7 +73,10 @@ export class SoportesGradoComponent implements OnChanges, OnDestroy {
     this.eliminacion?.unsubscribe();
     this.descarga?.unsubscribe();
     this.cerrarVisor();
-    this.documentos.forEach(d => { d.soporte = null; d.error = d.mensaje = d.observacion = ''; });
+    this.documentos = soportesRequeridosGrado(this.categoriaNivel).map(({ codigo, titulo, descripcion }) => ({
+      codigo, tituloKey: `INSCRIPCION_GRADO.soportes.${titulo}`, descripcionKey: `INSCRIPCION_GRADO.soportes.${descripcion}`,
+      obligatorio: true, soporte: null, error: '', mensaje: '', observacion: ''
+    }));
     this.emitirProgreso();
     this.recargar();
   }
@@ -97,13 +97,8 @@ export class SoportesGradoComponent implements OnChanges, OnDestroy {
   }
 
   opcionCarga(doc: DocumentoFormulario): string {
-    const sufijo: Record<TipoSoporteGrado, string> = {
-      TSG_ACTA_SUST: 'acta',
-      TSG_RESULTADO_SABER: 'snp',
-      TSG_PAGO_DERECHOS: 'pago_derechos',
-      TSG_TITULO_PREVIO: 'titulo_previo'
-    };
-    return `grado_${doc.soporte ? 'reemplazar' : 'cargar'}_${sufijo[doc.codigo]}`;
+    const sufijo = SOPORTES_GRADO.find(soporte => soporte.codigo === doc.codigo)?.sufijo;
+    return sufijo ? `grado_${doc.soporte ? 'reemplazar' : 'cargar'}_${sufijo}` : '';
   }
 
   puedeCargarDocumento(doc: DocumentoFormulario): boolean { return this.puedeCargar && this.permisos.permite(this.opcionCarga(doc)); }
@@ -304,8 +299,7 @@ export class SoportesGradoComponent implements OnChanges, OnDestroy {
   }
 
   private emitirProgreso(): void {
-    this.progreso.emit(this.documentos.filter(documento =>
-      documento.codigo !== 'TSG_RESULTADO_SABER' && !!documento.soporte).length);
+    this.progreso.emit(this.documentos.filter(documento => !!documento.soporte).length);
   }
 
   private cerrarVisor(): void {

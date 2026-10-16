@@ -4,7 +4,8 @@ import { catchError, map, retry, switchMap } from 'rxjs/operators';
 import { RequestManager } from '../managers/requestManager';
 
 export interface PeriodoGrado { Id: number; Nombre: string; }
-interface Nivel { Id: number; NivelFormacionPadreId?: Nivel | null; }
+export type CategoriaNivelGrado = 'PRE' | 'POS';
+export interface Nivel { Id: number; CodigoAbreviacion?: string; NivelFormacionPadreId?: Nivel | null; }
 export interface ProgramaGrado {
   Id: number;
   Nombre: string;
@@ -102,6 +103,25 @@ export interface DepartamentoExpedicionGrado {
   PaisNombre: string;
 }
 export type TipoSoporteGrado = 'TSG_ACTA_SUST' | 'TSG_RESULTADO_SABER' | 'TSG_PAGO_DERECHOS' | 'TSG_TITULO_PREVIO';
+// El cliente define los documentos requeridos por nivel; MID y CRUD verifican
+// los soportes enviados y su integridad sin fijar una cantidad por programa.
+export const SOPORTES_GRADO: ReadonlyArray<{
+  codigo: TipoSoporteGrado;
+  titulo: string;
+  descripcion: string;
+  sufijo: string;
+  categorias: ReadonlyArray<CategoriaNivelGrado>;
+}> = [
+  { codigo: 'TSG_ACTA_SUST', titulo: 'acta_titulo', descripcion: 'acta_descripcion', sufijo: 'acta', categorias: ['PRE', 'POS'] },
+  { codigo: 'TSG_RESULTADO_SABER', titulo: 'saber_titulo', descripcion: 'saber_descripcion', sufijo: 'snp', categorias: ['PRE'] },
+  { codigo: 'TSG_PAGO_DERECHOS', titulo: 'pago_titulo', descripcion: 'pago_descripcion', sufijo: 'pago_derechos', categorias: ['PRE', 'POS'] },
+  { codigo: 'TSG_TITULO_PREVIO', titulo: 'titulo_previo_titulo', descripcion: 'titulo_previo_descripcion', sufijo: 'titulo_previo', categorias: ['PRE', 'POS'] }
+];
+
+export function soportesRequeridosGrado(categoria: CategoriaNivelGrado | null) {
+  return SOPORTES_GRADO.filter(soporte => !!categoria && soporte.categorias.includes(categoria));
+}
+
 export interface SoporteGrado {
   Id: number;
   FormularioId: number;
@@ -162,6 +182,26 @@ export function vinculacionVigente(v: Vinculacion, ahora = Date.now()): boolean 
   const invalida = (s?: string | null) => !!s && !s.startsWith('0001-') && fechaGrado(s) === null;
   if (invalida(v.FechaInicioVinculacion) || invalida(v.FechaFinVinculacion)) return false;
   return (inicio === null || ahora >= inicio) && (fin === null || ahora <= fin);
+}
+
+function nivelRaizProgramaGrado(programa: ProgramaGrado): Nivel | null {
+  let nivel = programa?.NivelFormacionId;
+  const referencias = new Set<Nivel>();
+  const ids = new Set<number>();
+  while (nivel) {
+    if (!Number.isInteger(nivel.Id) || nivel.Id <= 0 || referencias.has(nivel) || ids.has(nivel.Id)) return null;
+    referencias.add(nivel);
+    ids.add(nivel.Id);
+    if (!nivel.NivelFormacionPadreId) return nivel;
+    nivel = nivel.NivelFormacionPadreId;
+  }
+  return null;
+}
+
+export function categoriaProgramaGrado(programa: ProgramaGrado | null | undefined): CategoriaNivelGrado | null {
+  if (!programa) return null;
+  const codigo = nivelRaizProgramaGrado(programa)?.CodigoAbreviacion?.trim().toUpperCase();
+  return codigo === 'PRE' || codigo === 'POS' ? codigo : null;
 }
 
 export function resolverEventos(datos: CalendarioPrograma[], programaId: number): DisponibilidadGrado | null {
@@ -323,8 +363,7 @@ export class InscripcionGradoService {
   }
 
   disponibilidad(programa: ProgramaGrado, periodoId: number): Observable<DisponibilidadGrado | null> {
-    let nivel = programa.NivelFormacionId;
-    while (nivel?.NivelFormacionPadreId) nivel = nivel.NivelFormacionPadreId;
+	const nivel = nivelRaizProgramaGrado(programa);
     if (!nivel?.Id) throw new Error('El programa no tiene nivel de formación configurado.');
     return this.lista<CalendarioPrograma>('CALENDARIO_MID_SERVICE',
       `calendario-proyecto/calendario/proyecto?id-nivel=${nivel.Id}&id-periodo=${periodoId}`)
@@ -374,9 +413,9 @@ export class InscripcionGradoService {
 
   soportes(id: number, terceroId: number, formularioId: number): Observable<SoporteGrado[]> {
 	return this.mid<SoporteGrado[]>('get', `solicitud-grado/borrador/${id}/soportes?tercero_id=${terceroId}`).pipe(map(datos => {
-      if (!Array.isArray(datos) || datos.length > 4 || new Set(datos.map(s => s?.TipoSoporte)).size !== datos.length ||
+      if (!Array.isArray(datos) || datos.length > SOPORTES_GRADO.length || new Set(datos.map(s => s?.TipoSoporte)).size !== datos.length ||
         datos.some(s => !s || s.FormularioId !== formularioId || !s.Nombre || !s.Id || !s.DocumentoId ||
-          !['TSG_ACTA_SUST', 'TSG_RESULTADO_SABER', 'TSG_PAGO_DERECHOS', 'TSG_TITULO_PREVIO'].includes(s.TipoSoporte))) {
+          !SOPORTES_GRADO.some(definicion => definicion.codigo === s.TipoSoporte))) {
         throw new Error('No fue posible verificar los soportes de esta versión.');
       }
       return datos;

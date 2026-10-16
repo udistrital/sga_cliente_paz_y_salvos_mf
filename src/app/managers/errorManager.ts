@@ -10,25 +10,20 @@ export class HttpErrorManager {
 
   public handleError(error: HttpErrorResponse) {
     if (error.error instanceof ErrorEvent) {
-      // A client-side or network error occurred. Handle it accordingly.
+      // Registra el error originado en el cliente o en la red.
       console.error('An error occurred:', error.error.message);
     } else {
-      // The backend returned an unsuccessful response code.
-      // The response body may contain clues as to what went wrong,
+      // Registra el código HTTP y la respuesta devuelta por el backend.
 
       console.error(
         `Backend returned code ${error.status}, ` +
         `body was: `, error.error);
     }
-    // return an observable with a user-facing error message
+    // Propaga el cuerpo del error al consumidor salvo la respuesta HTTP 200.
     if(error.status === 200){
       return []
     }else {
-      return throwError(error.error/* {
-        status: error.status,
-        System: error.error.System,
-        message: 'Something bad happened; please try again later.',
-      } */);
+      return throwError(error.error);
     }
   };
 }

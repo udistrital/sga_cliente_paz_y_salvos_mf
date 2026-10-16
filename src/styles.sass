@@ -1,4 +1,25 @@
-/* You can add global styles to this file, and also import other style files */
-
-/* ng-select styles */
+/* Aplica el tema compartido de los selectores ng-select. */
 @import "~@ng-select/ng-select/themes/default.theme.css"
+
+/* Paleta del módulo, alineada con el azul del menú del shell SGA. */
+:root
+  --pys-primary: var(--primary, #03678f)
+  --pys-primary-dark: #024a72
+  --pys-primary-soft: #e1edf2
+  --pys-border: #81b3c7
+  --pys-focus: var(--pys-primary)
+  --pys-hover: rgba(3, 103, 143, .08)
+  --pys-success: #24613b
+  --pys-success-soft: #edf7f0
+  --pys-warning: #6b4f00
+  --pys-warning-soft: #fff3cd
+  --pys-danger: #8a2f2c
+  --pys-danger-soft: #f9eded
+
+paz-y-salvos-mf .mat-mdc-unelevated-button.mat-primary:not(:disabled)
+  --mdc-filled-button-container-color: var(--pys-primary)
+  --mdc-filled-button-label-text-color: #fff
+
+paz-y-salvos-mf .mat-mdc-outlined-button.mat-primary:not(:disabled)
+  --mdc-outlined-button-outline-color: var(--pys-border)
+  --mdc-outlined-button-label-text-color: var(--pys-primary-dark)

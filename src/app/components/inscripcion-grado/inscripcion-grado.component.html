@@ -12,11 +12,11 @@
     </button>
   </div>
   <p *ngIf="errorBorrador" class="mensaje error" role="alert">{{ errorBorrador }}</p>
-  <p *ngIf="mensajeBorrador" class="mensaje exito" role="status">{{ mensajeBorrador }}</p>
-	<div *ngIf="borrador?.Comentario" class="mensaje advertencia" role="status">
+  <p *ngIf="mensajeBorrador && !viendoEntregaHistorica" class="mensaje exito" role="status">{{ mensajeBorrador }}</p>
+	<div *ngIf="borrador?.Comentario && !viendoEntregaHistorica" class="mensaje advertencia" role="status">
 	  <strong>{{ 'INSCRIPCION_GRADO.vista.comentario_revision' | translate }}:</strong> {{ borrador?.Comentario }}
 	</div>
-  <section *ngIf="borrador && esRadicada" class="estado-solicitud" [class.estado-solicitud-radicada]="!esObservada">
+  <section *ngIf="borrador && esRadicada && !viendoEntregaHistorica" class="estado-solicitud" [class.estado-solicitud-radicada]="!esObservada">
     <div class="estado-solicitud-encabezado">
       <strong>{{ 'INSCRIPCION_GRADO.vista.estado' | translate }}:</strong>
       <span class="estado-solicitud-etiqueta">{{ estadoSolicitud }}</span>
@@ -27,14 +27,17 @@
     </dl>
     <p>{{ (esObservada ? 'INSCRIPCION_GRADO.vista.subsanacion_ayuda' : 'INSCRIPCION_GRADO.vista.radicada_ayuda') | translate }}</p>
     <div *ngIf="esObservada" class="acciones-principales">
-      <button mat-flat-button color="primary" type="button" (click)="iniciarSubsanacion()" [disabled]="!puedeIniciarSubsanacion">
+      <button *appOpcion="'grado_subsanar_inscripcion'" mat-flat-button color="primary" type="button" (click)="iniciarSubsanacion()" [disabled]="!puedeIniciarSubsanacion">
         {{ 'INSCRIPCION_GRADO.vista.iniciar_subsanacion' | translate }}
       </button>
     </div>
   </section>
+  <app-versiones-grado *ngIf="borrador" [solicitudId]="borrador.Solicitud.Id" [versionActual]="borrador.Formulario.Version" vista="estudiante"
+    [claveEstado]="borrador.Formulario.Version + '-' + borrador.Estado + '-' + borrador.Formulario.FechaRadicacion"
+    (seleccionHistorica)="viendoEntregaHistorica = $event"></app-versiones-grado>
   <p *ngIf="cargandoBorrador" class="mensaje info" role="status">{{ 'INSCRIPCION_GRADO.vista.consultando_borrador' | translate }}</p>
 
-  <ng-container *ngIf="!error">
+  <ng-container *ngIf="!error && !viendoEntregaHistorica">
     <section class="resumen-progreso" aria-labelledby="progreso-inscripcion">
       <div class="progreso-encabezado">
         <h2 id="progreso-inscripcion">{{ 'INSCRIPCION_GRADO.progreso.titulo' | translate }}</h2>
@@ -274,7 +277,7 @@
       <mat-step [completed]="pasoSoportesCompleto">
         <ng-template matStepLabel>{{ 'INSCRIPCION_GRADO.pasos.soportes' | translate }}</ng-template>
         <app-soportes-grado *ngIf="borrador; else guardarPrimero" [borrador]="borrador"
-          [habilitado]="puedeModificarSoportes" (ocupado)="guardandoSoporte = $event"
+          [habilitado]="puedeModificarSoportes" [categoriaNivel]="categoriaNivelSeleccionada" (ocupado)="guardandoSoporte = $event"
           (progreso)="actualizarProgresoSoportes($event)"></app-soportes-grado>
         <ng-template #guardarPrimero>
           <p class="mensaje info">{{ 'INSCRIPCION_GRADO.soportes.guardar_primero' | translate }}</p>
@@ -295,7 +298,7 @@
               <div><dt>{{ 'INSCRIPCION_GRADO.vista.programa_academico' | translate }}</dt><dd>{{ programaSeleccionadoNombre }}</dd></div>
               <div><dt>{{ 'INSCRIPCION_GRADO.vista.trabajo_grado' | translate }}</dt><dd>{{ trabajoGrado }}</dd></div>
               <div><dt>{{ 'INSCRIPCION_GRADO.vista.lugar_expedicion' | translate }}</dt><dd>{{ lugarExpedicionResumen }}</dd></div>
-              <div><dt>{{ 'INSCRIPCION_GRADO.vista.soportes_completos' | translate }}</dt><dd>{{ soportesCargados }} / 3</dd></div>
+              <div><dt>{{ 'INSCRIPCION_GRADO.vista.soportes_completos' | translate }}</dt><dd>{{ soportesCargados }} / {{ tiposSoporteRequeridos.length }}</dd></div>
             </dl>
             <p class="mensaje info">{{ (esRadicada ? 'INSCRIPCION_GRADO.vista.radicada_ayuda' : 'INSCRIPCION_GRADO.vista.resumen_ayuda') | translate }}</p>
           </mat-card-content>
