@@ -23,6 +23,7 @@ import { VersionGradoDetalle, VersionGradoResumen, VersionesGradoService, VistaV
   standalone: true,
   imports: [CommonModule, FormsModule, TranslateModule, MatButtonModule, MatCardModule, MatDialogModule, MatExpansionModule,
     MatFormFieldModule, MatIconModule, MatInputModule, MatPaginatorModule, MatProgressBarModule, MatProgressSpinnerModule],
+  providers: [MatPaginatorIntl],
   templateUrl: './versiones-grado.component.html',
   styleUrls: ['./versiones-grado.component.scss']
 })
@@ -49,6 +50,7 @@ export class VersionesGradoComponent implements OnChanges, OnDestroy {
   private cambioSesion?: Subscription;
   private cambioPermisos?: Subscription;
   private cambioIdioma?: Subscription;
+  private puedeConsultarExpediente: boolean;
 
   get versionesFiltradas(): VersionGradoResumen[] {
     const filtro = this.filtroVersion.trim();
@@ -90,9 +92,14 @@ export class VersionesGradoComponent implements OnChanges, OnDestroy {
   constructor(private servicio: VersionesGradoService, public permisos: PermisosService, private translate: TranslateService,
     private dialog: MatDialog, private sanitizer: DomSanitizer,
     @Optional() private paginadorIntl?: MatPaginatorIntl) {
+    this.puedeConsultarExpediente = permisos.permite('grado_consultar_expediente');
     this.cambioSesion = permisos.sesionCambiada$?.subscribe(() => this.ngOnChanges());
     this.cambioPermisos = permisos.cambios$?.subscribe(() => {
-      if (!permisos.permite('grado_ver_soporte') || !permisos.permite('grado_consultar_expediente')) this.liberarPDF();
+      const puedeConsultar = permisos.permite('grado_consultar_expediente');
+      if (puedeConsultar !== this.puedeConsultarExpediente) {
+        this.puedeConsultarExpediente = puedeConsultar;
+        this.ngOnChanges();
+      } else if (!puedeConsultar || !permisos.permite('grado_ver_soporte')) this.liberarPDF();
     });
     this.cambioIdioma = translate.onLangChange?.subscribe(() => this.traducirPaginador());
     this.traducirPaginador();
