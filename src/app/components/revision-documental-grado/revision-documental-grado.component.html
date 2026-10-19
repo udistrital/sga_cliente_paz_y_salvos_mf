@@ -199,43 +199,45 @@
     </mat-card>
 
     <mat-card class="documentos" aria-labelledby="titulo-documentos">
-      <div class="seccion-titulo">
-        <div><h2 id="titulo-documentos">{{ 'REVISION_GRADO.documentos.titulo' | translate }}</h2></div>
-        <span>{{ 'REVISION_GRADO.documentos.conteo' | translate:{ total: seleccionada.Soportes.length } }}</span>
-      </div>
-      <div class="documentos-grid">
-        @for (decision of decisiones; track decision.soporte.Id) {
-          <mat-card class="documento" [class.documento-aprobado]="decision.estado === 'aprobado'" [class.documento-observado]="decision.estado === 'observado'">
-            <div class="documento-encabezado">
-              <div class="icono-documento"><mat-icon>picture_as_pdf</mat-icon></div>
-              <div><h3>{{ ('REVISION_GRADO.' + soporteKey(decision.soporte.TipoSoporte)) | translate }}</h3><p>{{ decision.soporte.Nombre }}</p></div>
-              <button mat-stroked-button color="primary" type="button" (click)="ver(decision.soporte)"
-                [disabled]="!!descargando || !permisos.permite('grado_ver_soporte')">
-                <mat-icon>visibility</mat-icon>{{ 'REVISION_GRADO.acciones.ver_pdf' | translate }}
-              </button>
-            </div>
-            @if (puedeDecidir) {
-              <div class="decision" role="group" [attr.aria-label]="('REVISION_GRADO.documentos.decision' | translate)">
-                <button mat-stroked-button color="primary" type="button" class="decision-boton aprobar" [class.activo]="decision.estado === 'aprobado'"
-                  (click)="marcar(decision, 'aprobado')" [disabled]="guardando || !permisos.permite('grado_aprobar_soporte')">
-                  <mat-icon>check_circle</mat-icon>{{ 'REVISION_GRADO.acciones.aprobar_soporte' | translate }}
-                </button>
-                <button mat-stroked-button color="warn" type="button" class="decision-boton observar" [class.activo]="decision.estado === 'observado'"
-                  (click)="marcar(decision, 'observado')" [disabled]="guardando || !permisos.permite('grado_observar_soporte')">
-                  <mat-icon>rate_review</mat-icon>{{ 'REVISION_GRADO.acciones.observar' | translate }}
+      <mat-card-header class="documentos-encabezado">
+        <mat-card-title id="titulo-documentos">{{ 'REVISION_GRADO.documentos.titulo' | translate }}</mat-card-title>
+        <span class="documentos-conteo">{{ 'REVISION_GRADO.documentos.conteo' | translate:{ total: seleccionada.Soportes.length } }}</span>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="documentos-grid">
+          @for (decision of decisiones; track decision.soporte.Id) {
+            <mat-card class="documento" [class.documento-aprobado]="decision.estado === 'aprobado'" [class.documento-observado]="decision.estado === 'observado'">
+              <div class="documento-encabezado">
+                <div class="icono-documento"><mat-icon>picture_as_pdf</mat-icon></div>
+                <div><h3>{{ ('REVISION_GRADO.' + soporteKey(decision.soporte.TipoSoporte)) | translate }}</h3><p>{{ decision.soporte.Nombre }}</p></div>
+                <button mat-stroked-button color="primary" type="button" (click)="ver(decision.soporte)"
+                  [disabled]="!!descargando || !permisos.permite('grado_ver_soporte')">
+                  <mat-icon>visibility</mat-icon>{{ 'REVISION_GRADO.acciones.ver_pdf' | translate }}
                 </button>
               </div>
-              @if (decision.estado === 'observado') {
-                <mat-form-field appearance="outline" class="campo-completo">
-                  <mat-label>{{ 'REVISION_GRADO.documentos.observacion' | translate }}</mat-label>
-                  <textarea matInput rows="3" maxlength="500" [(ngModel)]="decision.observacion"></textarea>
-                  <mat-hint align="end">{{ decision.observacion.length }}/500</mat-hint>
-                </mat-form-field>
+              @if (puedeDecidir) {
+                <div class="decision" role="group" [attr.aria-label]="('REVISION_GRADO.documentos.decision' | translate)">
+                  <button mat-stroked-button color="primary" type="button" class="decision-boton aprobar" [class.activo]="decision.estado === 'aprobado'"
+                    (click)="marcar(decision, 'aprobado')" [disabled]="guardando || !permisos.permite('grado_aprobar_soporte')">
+                    <mat-icon>check_circle</mat-icon>{{ 'REVISION_GRADO.acciones.aprobar_soporte' | translate }}
+                  </button>
+                  <button mat-stroked-button color="warn" type="button" class="decision-boton observar" [class.activo]="decision.estado === 'observado'"
+                    (click)="marcar(decision, 'observado')" [disabled]="guardando || !permisos.permite('grado_observar_soporte')">
+                    <mat-icon>rate_review</mat-icon>{{ 'REVISION_GRADO.acciones.observar' | translate }}
+                  </button>
+                </div>
+                @if (decision.estado === 'observado') {
+                  <mat-form-field appearance="outline" class="campo-completo">
+                    <mat-label>{{ 'REVISION_GRADO.documentos.observacion' | translate }}</mat-label>
+                    <textarea matInput rows="3" maxlength="500" [(ngModel)]="decision.observacion"></textarea>
+                    <mat-hint align="end">{{ decision.observacion.length }}/500</mat-hint>
+                  </mat-form-field>
+                }
               }
-            }
-          </mat-card>
-        }
-      </div>
+            </mat-card>
+          }
+        </div>
+      </mat-card-content>
     </mat-card>
 
     @if (puedeDecidir) {
