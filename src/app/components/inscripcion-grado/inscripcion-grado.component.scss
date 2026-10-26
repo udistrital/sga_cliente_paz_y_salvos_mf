@@ -69,6 +69,10 @@ dd { margin: 6px 0 0; line-height: 1.5; }
 .progreso-encabezado { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-bottom: 12px; }
 .progreso-encabezado h2 { margin: 0; font-size: 1rem; }
 .progreso-encabezado span { color: var(--pys-primary-dark); font-size: .9rem; }
+.resumen-progreso mat-progress-bar {
+  --mdc-linear-progress-track-color: var(--pys-primary-soft);
+  --mdc-linear-progress-active-indicator-color: var(--pys-primary);
+}
 .barra-borrador {
   display: flex;
   align-items: center;
@@ -82,6 +86,8 @@ dd { margin: 6px 0 0; line-height: 1.5; }
 }
 .barra-borrador h2 { margin: 0; color: var(--pys-primary-dark); font-size: 1rem; }
 .barra-borrador p { margin: 4px 0 0; }
+.barra-borrador .estado-autoguardado { color: var(--pys-primary-dark); font-weight: 600; }
+.barra-borrador .estado-autoguardado-error { color: var(--pys-danger); }
 .acciones-borrador { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; }
 .formulario-stepper { border: 1px solid var(--pys-border); border-radius: 12px; background: #fff; overflow: hidden; }
 .formulario-stepper mat-card { margin-top: 20px; box-shadow: none; border: 1px solid rgba(0, 0, 0, .12); border-radius: 12px; }
