@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
+import { Component, DoCheck, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -29,7 +29,7 @@ import { BorradorGrado, CategoriaNivelGrado, DatosBasicosGrado, DepartamentoExpe
   templateUrl: './inscripcion-grado.component.html',
   styleUrls: ['./inscripcion-grado.component.scss']
 })
-export class InscripcionGradoComponent implements OnInit, OnDestroy {
+export class InscripcionGradoComponent implements OnInit, DoCheck, OnDestroy {
   programas: ProgramaGrado[] = [];
   programasHabilitados: ProgramaGrado[] = [];
   private disponibilidades = new Map<number, DisponibilidadGrado>();
@@ -78,6 +78,8 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   errorUbicaciones = '';
   cargandoBorrador = false;
   guardandoBorrador = false;
+  autoguardando = false;
+  errorAutoguardado = '';
   guardandoSoporte = false;
   radicando = false;
 	subsanando = false;
@@ -86,7 +88,7 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   mensajeBorrador = '';
   pasoActivo = 0;
   soportesCargados = 0;
-  readonly totalPasos = 5;
+  readonly totalEtapasPreparacion = 4;
   readonly orientacionStepper: Observable<StepperOrientation>;
   cargando = false;
   consultando = false;
@@ -109,6 +111,8 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   private confirmandoBorrador = false;
   confirmandoDescarte = false;
   private contenidoPersistido = '';
+  private temporizadorAutoguardado?: ReturnType<typeof setTimeout>;
+  private contenidoPendienteAutoguardado = '';
   constructor(private servicio: InscripcionGradoService, private usuario: UserService, public permisos: PermisosService,
     private alertas: AlertService, private translate: TranslateService, breakpointObserver?: BreakpointObserver) {
     this.orientacionStepper = breakpointObserver
@@ -119,17 +123,24 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   private tr(key: string, params?: Record<string, string | number>): string {
     return this.translate.instant(`INSCRIPCION_GRADO.${key}`, params);
   }
+
+  private contenidoComparable(valor: unknown): string {
+    return JSON.stringify(valor, (_, item) => item && typeof item === 'object' && !Array.isArray(item)
+      ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a.localeCompare(b))) : item);
+  }
   ngOnInit(): void {
     this.cambioSesion = this.permisos.sesionCambiada$.subscribe(() => {
+	  this.cancelarAutoguardado();
 	  if (this.guardandoBorrador || this.guardandoSoporte || this.radicando || this.subsanando) this.alertas.closeLoading();
       this.guardarActual?.unsubscribe();
-      this.guardandoBorrador = this.guardandoSoporte = false;
+      this.guardandoBorrador = this.guardandoSoporte = this.autoguardando = false;
       void this.cargar();
     });
     void this.cargar();
   }
   ngOnDestroy(): void {
     this.destruido = true;
+	this.cancelarAutoguardado();
 	if (this.guardandoBorrador || this.guardandoSoporte || this.radicando || this.subsanando) this.alertas.closeLoading();
     this.cambioSesion?.unsubscribe();
     this.inicial?.unsubscribe();
@@ -143,8 +154,17 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
     this.consultaLugares?.unsubscribe();
   }
 
+  ngDoCheck(): void {
+    this.programarAutoguardado();
+  }
+
   async cargar(): Promise<void> {
     const turno = ++this.cargaVersion;
+    this.cancelarAutoguardado();
+    if (this.autoguardando) {
+      this.guardarActual?.unsubscribe();
+      this.autoguardando = false;
+    }
     this.inicial?.unsubscribe();
     this.error = '';
     this.programas = [];
@@ -623,10 +643,78 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
     return !!this.programaId && this.borradorConsultado && this.contenidoPersistido !== JSON.stringify(this.contenidoFormulario());
   }
 
+  private cancelarAutoguardado(): void {
+    if (this.temporizadorAutoguardado) clearTimeout(this.temporizadorAutoguardado);
+    this.temporizadorAutoguardado = undefined;
+    this.contenidoPendienteAutoguardado = '';
+  }
+
+  private programarAutoguardado(): void {
+    if (!this.borrador || !this.borradorConsultado || this.esRadicada || this.destruido || this.errorAutoguardado ||
+      this.confirmandoBorrador || this.confirmandoDescarte || this.radicando || this.subsanando || this.guardandoSoporte) {
+      this.cancelarAutoguardado();
+      return;
+    }
+    const contenido = JSON.stringify(this.contenidoFormulario());
+    if (contenido === this.contenidoPersistido) {
+      this.cancelarAutoguardado();
+      return;
+    }
+    if (contenido === this.contenidoPendienteAutoguardado) return;
+    this.cancelarAutoguardado();
+    this.contenidoPendienteAutoguardado = contenido;
+    if (this.autoguardando || this.guardandoBorrador || !this.puedeGuardarBorrador) return;
+    this.temporizadorAutoguardado = setTimeout(() => {
+      this.temporizadorAutoguardado = undefined;
+      if (contenido !== JSON.stringify(this.contenidoFormulario())) {
+        this.contenidoPendienteAutoguardado = '';
+        this.programarAutoguardado();
+        return;
+      }
+      this.ejecutarAutoguardado(contenido);
+    }, 1000);
+  }
+
+  private ejecutarAutoguardado(contenido: string): void {
+    if (!this.borrador || !this.terceroId || !this.puedeGuardarBorrador ||
+      contenido !== JSON.stringify(this.contenidoFormulario())) {
+      this.contenidoPendienteAutoguardado = '';
+      return;
+    }
+    const solicitudId = this.borrador.Solicitud.Id;
+    const formularioId = this.borrador.Formulario.Id;
+    const turno = this.cargaVersion;
+    this.autoguardando = true;
+    this.guardarActual = this.servicio.guardarBorrador(solicitudId, this.terceroId, JSON.parse(contenido)).subscribe({
+      next: borrador => {
+        if (this.destruido || turno !== this.cargaVersion || this.borrador?.Solicitud.Id !== solicitudId ||
+          this.borrador.Formulario.Id !== formularioId) return;
+        this.autoguardando = false;
+        this.contenidoPendienteAutoguardado = '';
+        if (borrador.Solicitud.Id !== solicitudId || borrador.Formulario.Id !== formularioId) {
+          this.errorAutoguardado = this.tr('errores.autoguardado');
+          return;
+        }
+        this.borrador = { ...borrador, Formulario: { ...borrador.Formulario, Contenido: JSON.parse(contenido) } };
+        this.contenidoPersistido = contenido;
+        this.programarAutoguardado();
+      },
+      error: error => {
+        if (this.destruido || turno !== this.cargaVersion || this.borrador?.Solicitud.Id !== solicitudId ||
+          this.borrador.Formulario.Id !== formularioId) return;
+        this.autoguardando = false;
+        this.contenidoPendienteAutoguardado = '';
+        this.errorAutoguardado = mensajeErrorBorrador(error, this.tr('errores.autoguardado'));
+        if (Number(error?.error?.Status ?? error?.Status ?? error?.status) === 409) this.borradorConsultado = false;
+      }
+    });
+  }
+
   private async confirmarDescarte(textKey: string, textParams: Record<string, string | number> = {}): Promise<boolean> {
     if (!this.tieneCambiosSinGuardar) return true;
     if (this.confirmandoDescarte) return false;
     this.confirmandoDescarte = true;
+    this.cancelarAutoguardado();
     try {
       const resultado = await this.alertas.showConfirmAlert(textKey, {
         titleKey: 'INSCRIPCION_GRADO.confirmaciones.descartar_titulo',
@@ -640,7 +728,7 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   }
 
   async seleccionarPeriodo(periodoId: number): Promise<void> {
-    if (periodoId === this.periodoId || this.guardandoBorrador || this.guardandoSoporte || this.radicando || this.subsanando) return;
+    if (periodoId === this.periodoId || this.guardandoBorrador || this.autoguardando || this.guardandoSoporte || this.radicando || this.subsanando) return;
     const anterior = this.periodos.find(p => p.Id === this.periodoId)?.Nombre || '';
     const siguiente = this.periodos.find(p => p.Id === periodoId)?.Nombre || String(periodoId);
     if (!await this.confirmarDescarte('INSCRIPCION_GRADO.confirmaciones.descartar_periodo_texto', { anterior, siguiente })) return;
@@ -649,7 +737,7 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   }
 
   async seleccionarPrograma(programaId: number): Promise<void> {
-    if (programaId === this.programaId || this.guardandoBorrador || this.guardandoSoporte || this.radicando || this.subsanando) return;
+    if (programaId === this.programaId || this.guardandoBorrador || this.autoguardando || this.guardandoSoporte || this.radicando || this.subsanando) return;
     const anterior = this.programaSeleccionadoNombre;
     const siguiente = this.programas.find(p => p.Id === programaId)?.Nombre || String(programaId);
     if (!await this.confirmarDescarte('INSCRIPCION_GRADO.confirmaciones.descartar_programa_texto', { anterior, siguiente })) return;
@@ -675,7 +763,9 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   }
 
   cambiarPeriodo(): void {
-    if (this.guardandoBorrador || this.guardandoSoporte || this.radicando || this.subsanando) return;
+    if (this.guardandoBorrador || this.autoguardando || this.guardandoSoporte || this.radicando || this.subsanando) return;
+    this.cancelarAutoguardado();
+    this.errorAutoguardado = '';
     this.viendoEntregaHistorica = false;
     this.consulta?.unsubscribe();
     this.consultaBorrador?.unsubscribe();
@@ -736,7 +826,9 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   }
 
   cambiarPrograma(): void {
-    if (this.guardandoBorrador || this.guardandoSoporte || this.radicando || this.subsanando) return;
+    if (this.guardandoBorrador || this.autoguardando || this.guardandoSoporte || this.radicando || this.subsanando) return;
+    this.cancelarAutoguardado();
+    this.errorAutoguardado = '';
     this.viendoEntregaHistorica = false;
     this.consultaBorrador?.unsubscribe();
     this.consultaFechasBorrador?.unsubscribe();
@@ -788,7 +880,8 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
   }
 
   async guardarBorrador(): Promise<void> {
-    if (!this.terceroId || !this.programaId || !this.periodoId || !this.puedeGuardarBorrador) return;
+    if (!this.terceroId || !this.programaId || !this.periodoId || !this.puedeGuardarBorrador || this.autoguardando) return;
+    this.cancelarAutoguardado();
     this.errorBorrador = this.mensajeBorrador = '';
     if (this.directoresRepetidos) {
       this.errorBorrador = this.tr('errores.directores_repetidos');
@@ -827,6 +920,32 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
       contexto.formularioId !== (this.borrador?.Formulario.Id || 0) || !this.puedeGuardarBorrador) return;
     const contenidoVigente = this.contenidoFormulario();
     if (contexto.contenido !== JSON.stringify(contenidoVigente)) return;
+    if (this.borrador && this.errorAutoguardado) {
+      try {
+        const vigente = await firstValueFrom(this.servicio.consultarBorrador(this.terceroId, this.periodoId, this.programaId));
+        if (this.destruido || contexto.cargaVersion !== this.cargaVersion ||
+          contexto.solicitudId !== this.borrador?.Solicitud.Id || contexto.formularioId !== this.borrador.Formulario.Id ||
+          contexto.contenido !== JSON.stringify(this.contenidoFormulario())) return;
+        if (!vigente || vigente.Solicitud.Id !== contexto.solicitudId || vigente.Formulario.Id !== contexto.formularioId) {
+          this.errorAutoguardado = this.tr('errores.autoguardado_conflicto');
+          return;
+        }
+        const remoto = this.contenidoComparable(vigente.Formulario.Contenido);
+        if (remoto === this.contenidoComparable(contenidoVigente)) {
+          this.borrador = { ...vigente, Formulario: { ...vigente.Formulario, Contenido: contenidoVigente } };
+          this.contenidoPersistido = contexto.contenido;
+          this.errorAutoguardado = '';
+          return;
+        }
+        if (remoto !== this.contenidoComparable(this.borrador.Formulario.Contenido)) {
+          this.errorAutoguardado = this.tr('errores.autoguardado_conflicto');
+          return;
+        }
+      } catch {
+        this.errorAutoguardado = this.tr('errores.autoguardado_verificacion');
+        return;
+      }
+    }
     this.guardandoBorrador = true;
     this.alertas.showLoading(this.tr('progreso.guardando_borrador'));
     const guardar = this.borrador
@@ -836,6 +955,7 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
       next: borrador => {
         this.borrador = borrador;
         this.restaurarContenido(borrador.Formulario.Contenido || {});
+        this.errorAutoguardado = '';
         this.guardandoBorrador = false;
         this.mensajeBorrador = this.tr('mensajes.borrador_guardado');
         this.alertas.showSuccessAlert(this.mensajeBorrador);
@@ -871,13 +991,13 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
     return this.esRadicada || (this.tiposSoporteRequeridos.length > 0 && this.soportesCargados === this.tiposSoporteRequeridos.length);
   }
 
-  get pasosCompletos(): number {
+  get etapasPreparacionCompletas(): number {
     return [this.pasoConvocatoriaCompleto, this.pasoDatosCompleto, this.pasoTrabajoCompleto,
-      this.pasoSoportesCompleto, this.esRadicada].filter(Boolean).length;
+      this.pasoSoportesCompleto].filter(Boolean).length;
   }
 
   get progresoFormulario(): number {
-    return this.pasosCompletos * 100 / this.totalPasos;
+    return this.esRadicada ? 100 : this.etapasPreparacionCompletas * 100 / this.totalEtapasPreparacion;
   }
 
   actualizarProgresoSoportes(cantidad: number): void {
@@ -1038,14 +1158,14 @@ export class InscripcionGradoComponent implements OnInit, OnDestroy {
 
   get puedeModificarSoportes(): boolean {
 	return this.permisos.permite('inscripciones_grado', 'Menú') && !!this.borrador && !this.borrador.Formulario.FechaRadicacion &&
-	  !this.cargandoBorrador && !this.guardandoBorrador && !this.radicando && !!this.disponibilidad &&
+	  !this.cargandoBorrador && !this.guardandoBorrador && !this.autoguardando && !this.radicando && !!this.disponibilidad &&
 	  this.eventoEstaAbierto(this.esSubsanacion ? this.disponibilidad.aprobacion : this.disponibilidad.inscripcion);
   }
 
   get puedeRadicar(): boolean {
     return this.permisos.permite('inscripciones_grado', 'Menú') && this.permisos.permite('grado_radicar_inscripcion') &&
       !!this.borrador && !this.borrador.Formulario.FechaRadicacion && !this.cargandoBorrador && !this.guardandoBorrador &&
-	  !this.guardandoSoporte && !this.radicando && !!this.disponibilidad &&
+	  !this.autoguardando && !this.errorAutoguardado && !this.guardandoSoporte && !this.radicando && !!this.disponibilidad &&
 		  this.eventoEstaAbierto(this.esSubsanacion ? this.disponibilidad.aprobacion : this.disponibilidad.inscripcion);
   }
 

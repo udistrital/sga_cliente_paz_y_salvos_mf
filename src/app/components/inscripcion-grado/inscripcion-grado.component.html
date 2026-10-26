@@ -41,7 +41,7 @@
     <section class="resumen-progreso" aria-labelledby="progreso-inscripcion">
       <div class="progreso-encabezado">
         <h2 id="progreso-inscripcion">{{ 'INSCRIPCION_GRADO.progreso.titulo' | translate }}</h2>
-        <span>{{ 'INSCRIPCION_GRADO.progreso.conteo' | translate:{ completados: pasosCompletos, total: totalPasos } }}</span>
+        <span>{{ 'INSCRIPCION_GRADO.progreso.conteo' | translate:{ porcentaje: progresoFormulario } }}</span>
       </div>
       <mat-progress-bar mode="determinate" [value]="progresoFormulario"
         [attr.aria-label]="'INSCRIPCION_GRADO.progreso.aria' | translate:{ porcentaje: progresoFormulario }"></mat-progress-bar>
@@ -50,19 +50,26 @@
     <section *ngIf="!esRadicada" class="barra-borrador" aria-labelledby="titulo-guardado-borrador">
       <div>
         <h2 id="titulo-guardado-borrador">{{ 'INSCRIPCION_GRADO.vista.borrador_titulo' | translate }}</h2>
-        <p>{{ 'INSCRIPCION_GRADO.vista.borrador_descripcion' | translate }}</p>
+        <p>{{ (borrador ? 'INSCRIPCION_GRADO.vista.borrador_autoguardado_descripcion' : 'INSCRIPCION_GRADO.vista.borrador_descripcion') | translate }}</p>
+        <p *ngIf="borrador" class="estado-autoguardado" [class.estado-autoguardado-error]="!!errorAutoguardado"
+          [attr.role]="errorAutoguardado ? 'alert' : 'status'">
+          <ng-container *ngIf="errorAutoguardado; else estadoGuardado">{{ errorAutoguardado }}</ng-container>
+          <ng-template #estadoGuardado>{{ (autoguardando || guardandoBorrador ? 'INSCRIPCION_GRADO.vista.guardando' : tieneCambiosSinGuardar ? 'INSCRIPCION_GRADO.vista.cambios_pendientes' : 'INSCRIPCION_GRADO.vista.cambios_guardados') | translate }}</ng-template>
+        </p>
       </div>
       <div class="acciones-borrador">
         <ng-container *ngIf="borrador">
           <button *appOpcion="'grado_consultar_borrador'" mat-button type="button" (click)="recargarBorrador()"
-            [disabled]="cargandoBorrador || guardandoBorrador || guardandoSoporte || radicando">
+            [disabled]="cargandoBorrador || guardandoBorrador || autoguardando || guardandoSoporte || radicando">
             {{ 'INSCRIPCION_GRADO.vista.recargar_borrador' | translate }}
           </button>
         </ng-container>
-        <button *appOpcion="borrador ? 'grado_actualizar_borrador' : 'grado_crear_borrador'" mat-stroked-button color="primary"
-          type="button" (click)="guardarBorrador()" [disabled]="!puedeGuardarBorrador">
-          {{ (guardandoBorrador ? 'INSCRIPCION_GRADO.vista.guardando' : 'INSCRIPCION_GRADO.vista.guardar_borrador') | translate }}
-        </button>
+        <ng-container *ngIf="!borrador || errorAutoguardado">
+          <button *appOpcion="borrador ? 'grado_actualizar_borrador' : 'grado_crear_borrador'" mat-stroked-button color="primary"
+            type="button" (click)="guardarBorrador()" [disabled]="!puedeGuardarBorrador || autoguardando">
+            {{ (guardandoBorrador ? 'INSCRIPCION_GRADO.vista.guardando' : borrador ? 'INSCRIPCION_GRADO.vista.reintentar_guardado' : 'INSCRIPCION_GRADO.vista.guardar_borrador') | translate }}
+          </button>
+        </ng-container>
       </div>
     </section>
 
@@ -76,13 +83,13 @@
             <div class="campos seleccion">
               <mat-form-field appearance="outline">
                 <mat-label>{{ 'INSCRIPCION_GRADO.vista.periodo_academico' | translate }}</mat-label>
-                <mat-select [ngModel]="periodoId" (ngModelChange)="seleccionarPeriodo($event)" [disabled]="consultando || guardandoBorrador || guardandoSoporte || radicando || subsanando">
+                <mat-select [ngModel]="periodoId" (ngModelChange)="seleccionarPeriodo($event)" [disabled]="consultando || guardandoBorrador || autoguardando || guardandoSoporte || radicando || subsanando">
                   <mat-option *ngFor="let p of periodos" [value]="p.Id">{{ p.Nombre }}</mat-option>
                 </mat-select>
               </mat-form-field>
               <mat-form-field appearance="outline">
                 <mat-label>{{ 'INSCRIPCION_GRADO.vista.programa_academico' | translate }}</mat-label>
-                <mat-select [ngModel]="programaId" (ngModelChange)="seleccionarPrograma($event)" [disabled]="!periodoId || consultando || guardandoBorrador || guardandoSoporte || radicando || subsanando">
+                <mat-select [ngModel]="programaId" (ngModelChange)="seleccionarPrograma($event)" [disabled]="!periodoId || consultando || guardandoBorrador || autoguardando || guardandoSoporte || radicando || subsanando">
                   <mat-option *ngFor="let p of programasHabilitados" [value]="p.Id">{{ p.Nombre }}</mat-option>
                 </mat-select>
               </mat-form-field>

@@ -218,11 +218,13 @@
               @if (puedeDecidir) {
                 <div class="decision" role="group" [attr.aria-label]="('REVISION_GRADO.documentos.decision' | translate)">
                   <button mat-stroked-button color="primary" type="button" class="decision-boton aprobar" [class.activo]="decision.estado === 'aprobado'"
-                    (click)="marcar(decision, 'aprobado')" [disabled]="guardando || !permisos.permite('grado_aprobar_soporte')">
+                    (click)="marcar(decision, 'aprobado')" [disabled]="guardando || !permisos.permite('grado_aprobar_soporte')"
+                    [attr.aria-label]="'REVISION_GRADO.acciones.aria_aprobar_soporte' | translate:{ soporte: (('REVISION_GRADO.' + soporteKey(decision.soporte.TipoSoporte)) | translate) }">
                     <mat-icon>check_circle</mat-icon>{{ 'REVISION_GRADO.acciones.aprobar_soporte' | translate }}
                   </button>
                   <button mat-stroked-button color="warn" type="button" class="decision-boton observar" [class.activo]="decision.estado === 'observado'"
-                    (click)="marcar(decision, 'observado')" [disabled]="guardando || !permisos.permite('grado_observar_soporte')">
+                    (click)="marcar(decision, 'observado')" [disabled]="guardando || !permisos.permite('grado_observar_soporte')"
+                    [attr.aria-label]="'REVISION_GRADO.acciones.aria_observar_soporte' | translate:{ soporte: (('REVISION_GRADO.' + soporteKey(decision.soporte.TipoSoporte)) | translate) }">
                     <mat-icon>rate_review</mat-icon>{{ 'REVISION_GRADO.acciones.observar' | translate }}
                   </button>
                 </div>
