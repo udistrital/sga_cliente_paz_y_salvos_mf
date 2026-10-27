@@ -650,13 +650,13 @@ export class InscripcionGradoComponent implements OnInit, DoCheck, OnDestroy {
   }
 
   private programarAutoguardado(): void {
-    if (!this.borrador || !this.borradorConsultado || this.esRadicada || this.destruido || this.errorAutoguardado ||
+    if (!this.borradorConsultado || this.esRadicada || this.destruido || this.errorAutoguardado ||
       this.confirmandoBorrador || this.confirmandoDescarte || this.radicando || this.subsanando || this.guardandoSoporte) {
       this.cancelarAutoguardado();
       return;
     }
     const contenido = JSON.stringify(this.contenidoFormulario());
-    if (contenido === this.contenidoPersistido) {
+    if ((this.borrador && contenido === this.contenidoPersistido) || !this.puedeGuardarBorrador) {
       this.cancelarAutoguardado();
       return;
     }
@@ -676,23 +676,31 @@ export class InscripcionGradoComponent implements OnInit, DoCheck, OnDestroy {
   }
 
   private ejecutarAutoguardado(contenido: string): void {
-    if (!this.borrador || !this.terceroId || !this.puedeGuardarBorrador ||
+    if (!this.terceroId || !this.programaId || !this.periodoId || !this.puedeGuardarBorrador ||
       contenido !== JSON.stringify(this.contenidoFormulario())) {
       this.contenidoPendienteAutoguardado = '';
       return;
     }
-    const solicitudId = this.borrador.Solicitud.Id;
-    const formularioId = this.borrador.Formulario.Id;
+    const solicitudId = this.borrador?.Solicitud.Id || 0;
+    const formularioId = this.borrador?.Formulario.Id || 0;
+    const terceroId = this.terceroId;
+    const programaId = this.programaId;
+    const periodoId = this.periodoId;
     const turno = this.cargaVersion;
     this.autoguardando = true;
-    this.guardarActual = this.servicio.guardarBorrador(solicitudId, this.terceroId, JSON.parse(contenido)).subscribe({
+    const guardar = solicitudId
+      ? this.servicio.guardarBorrador(solicitudId, terceroId, JSON.parse(contenido))
+      : this.servicio.crearBorrador(terceroId, periodoId, programaId, JSON.parse(contenido));
+    this.guardarActual = guardar.subscribe({
       next: borrador => {
-        if (this.destruido || turno !== this.cargaVersion || this.borrador?.Solicitud.Id !== solicitudId ||
-          this.borrador.Formulario.Id !== formularioId) return;
+        if (this.destruido || turno !== this.cargaVersion || this.periodoId !== periodoId || this.programaId !== programaId ||
+          (this.borrador?.Solicitud.Id || 0) !== solicitudId || (this.borrador?.Formulario.Id || 0) !== formularioId) return;
         this.autoguardando = false;
         this.contenidoPendienteAutoguardado = '';
-        if (borrador.Solicitud.Id !== solicitudId || borrador.Formulario.Id !== formularioId) {
-          this.errorAutoguardado = this.tr('errores.autoguardado');
+        if (borrador.Solicitud.Id <= 0 || borrador.Formulario.Id <= 0 ||
+          (solicitudId && (borrador.Solicitud.Id !== solicitudId || borrador.Formulario.Id !== formularioId)) ||
+          borrador.Solicitud.PeriodoId !== periodoId || borrador.Solicitud.ProgramaAcademicoId !== programaId) {
+          this.errorAutoguardado = this.tr(solicitudId ? 'errores.autoguardado' : 'errores.guardar_borrador');
           return;
         }
         this.borrador = { ...borrador, Formulario: { ...borrador.Formulario, Contenido: JSON.parse(contenido) } };
@@ -700,12 +708,12 @@ export class InscripcionGradoComponent implements OnInit, DoCheck, OnDestroy {
         this.programarAutoguardado();
       },
       error: error => {
-        if (this.destruido || turno !== this.cargaVersion || this.borrador?.Solicitud.Id !== solicitudId ||
-          this.borrador.Formulario.Id !== formularioId) return;
+        if (this.destruido || turno !== this.cargaVersion || this.periodoId !== periodoId || this.programaId !== programaId ||
+          (this.borrador?.Solicitud.Id || 0) !== solicitudId || (this.borrador?.Formulario.Id || 0) !== formularioId) return;
         this.autoguardando = false;
         this.contenidoPendienteAutoguardado = '';
-        this.errorAutoguardado = mensajeErrorBorrador(error, this.tr('errores.autoguardado'));
-        if (Number(error?.error?.Status ?? error?.Status ?? error?.status) === 409) this.borradorConsultado = false;
+        this.errorAutoguardado = mensajeErrorBorrador(error, this.tr(solicitudId ? 'errores.autoguardado' : 'errores.guardar_borrador'));
+        if (solicitudId && Number(error?.error?.Status ?? error?.Status ?? error?.status) === 409) this.borradorConsultado = false;
       }
     });
   }
@@ -902,8 +910,8 @@ export class InscripcionGradoComponent implements OnInit, DoCheck, OnDestroy {
       const resultado = await this.alertas.showConfirmAlert(
         this.borrador ? 'INSCRIPCION_GRADO.confirmaciones.actualizar_borrador_texto' : 'INSCRIPCION_GRADO.confirmaciones.crear_borrador_texto',
         {
-          titleKey: 'INSCRIPCION_GRADO.confirmaciones.guardar_borrador_titulo',
-          confirmButtonKey: 'INSCRIPCION_GRADO.confirmaciones.guardar',
+          titleKey: this.borrador ? 'INSCRIPCION_GRADO.confirmaciones.reintentar_guardado_titulo' : 'INSCRIPCION_GRADO.confirmaciones.guardar_borrador_titulo',
+          confirmButtonKey: this.borrador ? 'INSCRIPCION_GRADO.confirmaciones.reintentar_guardado' : 'INSCRIPCION_GRADO.confirmaciones.guardar',
           textParams: {
             programa: this.programaSeleccionadoNombre,
             periodo: this.periodos.find(p => p.Id === this.periodoId)?.Nombre || String(this.periodoId)
@@ -920,25 +928,37 @@ export class InscripcionGradoComponent implements OnInit, DoCheck, OnDestroy {
       contexto.formularioId !== (this.borrador?.Formulario.Id || 0) || !this.puedeGuardarBorrador) return;
     const contenidoVigente = this.contenidoFormulario();
     if (contexto.contenido !== JSON.stringify(contenidoVigente)) return;
-    if (this.borrador && this.errorAutoguardado) {
+    if (this.errorAutoguardado) {
       try {
         const vigente = await firstValueFrom(this.servicio.consultarBorrador(this.terceroId, this.periodoId, this.programaId));
         if (this.destruido || contexto.cargaVersion !== this.cargaVersion ||
-          contexto.solicitudId !== this.borrador?.Solicitud.Id || contexto.formularioId !== this.borrador.Formulario.Id ||
+          contexto.solicitudId !== (this.borrador?.Solicitud.Id || 0) || contexto.formularioId !== (this.borrador?.Formulario.Id || 0) ||
           contexto.contenido !== JSON.stringify(this.contenidoFormulario())) return;
-        if (!vigente || vigente.Solicitud.Id !== contexto.solicitudId || vigente.Formulario.Id !== contexto.formularioId) {
+        if (vigente && (vigente.Solicitud.PeriodoId !== this.periodoId || vigente.Solicitud.ProgramaAcademicoId !== this.programaId ||
+          (this.borrador && (vigente.Solicitud.Id !== contexto.solicitudId || vigente.Formulario.Id !== contexto.formularioId)))) {
           this.errorAutoguardado = this.tr('errores.autoguardado_conflicto');
           return;
         }
-        const remoto = this.contenidoComparable(vigente.Formulario.Contenido);
-        if (remoto === this.contenidoComparable(contenidoVigente)) {
+        if (!vigente && this.borrador) {
+          this.errorAutoguardado = this.tr('errores.autoguardado_conflicto');
+          return;
+        }
+        const remoto = vigente ? this.contenidoComparable(vigente.Formulario.Contenido) : '';
+        if (vigente && remoto === this.contenidoComparable(contenidoVigente)) {
           this.borrador = { ...vigente, Formulario: { ...vigente.Formulario, Contenido: contenidoVigente } };
           this.contenidoPersistido = contexto.contenido;
           this.errorAutoguardado = '';
           return;
         }
-        if (remoto !== this.contenidoComparable(this.borrador.Formulario.Contenido)) {
+        if (vigente && this.borrador && remoto !== this.contenidoComparable(this.borrador.Formulario.Contenido)) {
           this.errorAutoguardado = this.tr('errores.autoguardado_conflicto');
+          return;
+        }
+        if (vigente && !this.borrador) {
+          this.borrador = vigente;
+          this.contenidoPersistido = JSON.stringify(vigente.Formulario.Contenido);
+          this.errorAutoguardado = '';
+          this.programarAutoguardado();
           return;
         }
       } catch {
