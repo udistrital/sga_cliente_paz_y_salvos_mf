@@ -80,6 +80,9 @@ export class PazSalvosGradoComponent implements OnInit, OnDestroy {
   filtroPeriodo = 0;
   cargandoFiltros = false;
   private suscripciones = new Subscription();
+	private consultaListado?: Subscription;
+	private consultaFiltros?: Subscription;
+	private consultaUsuario?: Subscription;
 	private urlPDF = '';
 
   constructor(private servicio: PazSalvosGradoService, public permisos: PermisosService, private usuario: UserService,
@@ -114,17 +117,27 @@ export class PazSalvosGradoComponent implements OnInit, OnDestroy {
     }
   }
 
-  private async cargarNombreUsuario(perfil: string): Promise<void> {
-    try {
-      const usuario = await firstValueFrom(this.servicio.usuario(perfil));
-      if (this.perfil !== perfil) return;
-      this.nombreUsuario = usuario.NombreCompleto.trim();
-      this.facultadUsuario = usuario.Facultad?.Nombre?.trim() || '';
-    } catch {
-      if (this.perfil !== perfil) return;
-      this.nombreUsuario = '';
-      this.facultadUsuario = '';
-    }
+  private cargarNombreUsuario(perfil: string): void {
+	this.consultaUsuario?.unsubscribe();
+	try {
+	  this.consultaUsuario = this.servicio.usuario(perfil).subscribe({
+	  next: usuario => {
+		if (this.perfil !== perfil) return;
+		this.nombreUsuario = usuario.NombreCompleto.trim();
+		this.facultadUsuario = usuario.Facultad?.Nombre?.trim() || '';
+	  },
+	  error: () => {
+		if (this.perfil !== perfil) return;
+		this.nombreUsuario = '';
+		this.facultadUsuario = '';
+	  }
+	  });
+	  this.suscripciones.add(this.consultaUsuario);
+	} catch {
+	  if (this.perfil !== perfil) return;
+	  this.nombreUsuario = '';
+	  this.facultadUsuario = '';
+	}
   }
 
   seleccionarPerfil(perfil: string): void {
@@ -136,6 +149,9 @@ export class PazSalvosGradoComponent implements OnInit, OnDestroy {
 
   cambiarPerfil(): void {
     if (this.guardando || this.perfilesDisponibles.length < 2) return;
+	this.consultaUsuario?.unsubscribe();
+	this.consultaFiltros?.unsubscribe();
+	this.consultaListado?.unsubscribe();
     this.usuario.clearSelectedRole();
     this.perfil = '';
     this.nombreUsuario = '';
@@ -173,7 +189,7 @@ export class PazSalvosGradoComponent implements OnInit, OnDestroy {
     this.tipo = configuraciones[0]?.tipo;
     this.sufijo = configuraciones[0]?.sufijo || '';
     this.usuario.setSelectedRole(perfil);
-    void this.cargarNombreUsuario(perfil);
+    this.cargarNombreUsuario(perfil);
     this.mostrarSelector = false;
     this.error = '';
     this.pageIndex = 0;
@@ -218,6 +234,7 @@ export class PazSalvosGradoComponent implements OnInit, OnDestroy {
   }
 
   private limpiarEstadoFiltros(): void {
+	this.consultaFiltros?.unsubscribe();
     this.catalogos = { Periodos: [], Facultades: [], Programas: [] };
     this.filtroCodigo = '';
     this.filtroFacultad = this.filtroPrograma = this.filtroPeriodo = 0;
@@ -225,11 +242,12 @@ export class PazSalvosGradoComponent implements OnInit, OnDestroy {
   }
 
   private cargarCatalogos(): void {
+	this.consultaFiltros?.unsubscribe();
     const perfil = this.perfil;
     const tipo = this.tipo;
     if (!perfil || (!this.puedeFiltrar('facultad') && !this.puedeFiltrar('proyecto') && !this.puedeFiltrar('periodo'))) return;
     this.cargandoFiltros = true;
-    this.suscripciones.add(this.servicio.filtros(perfil, tipo).subscribe({
+    this.consultaFiltros = this.servicio.filtros(perfil, tipo).subscribe({
       next: catalogos => {
         if (this.perfil !== perfil || this.tipo !== tipo) return;
         this.catalogos = catalogos;
@@ -240,7 +258,8 @@ export class PazSalvosGradoComponent implements OnInit, OnDestroy {
         this.error = mensajeErrorBorrador(error, this.tr('errores.filtros'));
         this.cargandoFiltros = false;
       }
-    }));
+    });
+	this.suscripciones.add(this.consultaFiltros);
   }
 
   private filtrosConsulta(): FiltrosConsultaPazSalvosGrado {
@@ -254,9 +273,10 @@ export class PazSalvosGradoComponent implements OnInit, OnDestroy {
 
   cargar(): void {
     if (!this.perfil) return;
+	this.consultaListado?.unsubscribe();
     this.cargando = true;
     this.error = '';
-    this.suscripciones.add(this.servicio.listar(this.perfil, this.tipo, this.pageSize, this.pageIndex * this.pageSize,
+    this.consultaListado = this.servicio.listar(this.perfil, this.tipo, this.pageSize, this.pageIndex * this.pageSize,
       this.filtrosConsulta()).subscribe({
       next: pagina => {
         this.pagina = pagina;
@@ -268,7 +288,8 @@ export class PazSalvosGradoComponent implements OnInit, OnDestroy {
         this.error = mensajeErrorBorrador(error, this.tr('errores.cargar'));
         this.cargando = false;
       }
-    }));
+    });
+	this.suscripciones.add(this.consultaListado);
   }
 
   cambiarPagina(evento: PageEvent): void {
