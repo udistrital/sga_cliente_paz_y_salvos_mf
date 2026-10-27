@@ -3,6 +3,7 @@ import { firstValueFrom, Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { RequestManager } from '../managers/requestManager';
+import { reintentarConsulta } from '../utils/reintentar-consulta';
 import { UserService } from './user.service';
 
 export interface PerfilPermisos { id: number; nombre: string; }
@@ -132,7 +133,8 @@ export class PermisosService implements OnDestroy {
 
   private async lista(recurso: string, query: string): Promise<any[]> {
     this.request.setPath('CONFIGURACION_SERVICE');
-    const respuesta = await firstValueFrom(this.request.get(`${recurso}?${new URLSearchParams({ query, limit: '-1' })}`).pipe(takeUntil(this.cancelarConsulta$)));
+    const respuesta = await firstValueFrom(this.request.get(`${recurso}?${new URLSearchParams({ query, limit: '-1' })}`).pipe(
+      reintentarConsulta(), takeUntil(this.cancelarConsulta$)));
     if (!Array.isArray(respuesta)) throw new Error('Respuesta de Configuración inválida');
     return respuesta;
   }

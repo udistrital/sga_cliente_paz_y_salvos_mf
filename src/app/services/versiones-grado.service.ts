@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Observable, defer, map } from 'rxjs';
 import { RequestManager } from '../managers/requestManager';
+import { reintentarConsulta } from '../utils/reintentar-consulta';
 import { MAX_PDF_GRADO, TipoSoporteGrado } from './inscripcion-grado.service';
 
 export type VistaVersionGrado = 'estudiante' | 'secretaria';
@@ -51,6 +52,9 @@ export class VersionesGradoService {
       this.request.setPath('SGA_PAZ_Y_SALVOS_MID_SERVICE');
       return this.request.get(ruta);
     }).pipe(map(respuesta => {
+      if (Number(respuesta?.Status) >= 500) throw respuesta;
+      return respuesta;
+    }), reintentarConsulta(), map(respuesta => {
       if (respuesta?.Success !== true || respuesta?.Data === undefined || respuesta?.Data === null) throw respuesta;
       return respuesta.Data as T;
     }));
