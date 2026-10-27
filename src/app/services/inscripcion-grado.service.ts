@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
-import { MonoTypeOperatorFunction, Observable, defer, forkJoin, of, throwError, timer } from 'rxjs';
-import { catchError, map, retry, switchMap } from 'rxjs/operators';
+import { Observable, defer, forkJoin, of, throwError } from 'rxjs';
+import { catchError, map, switchMap } from 'rxjs/operators';
 import { RequestManager } from '../managers/requestManager';
+import { reintentarConsulta } from '../utils/reintentar-consulta';
 
 export interface PeriodoGrado { Id: number; Nombre: string; }
 export type CategoriaNivelGrado = 'PRE' | 'POS';
@@ -14,15 +15,6 @@ export interface ProgramaGrado {
   Activo: boolean;
 }
 
-function reintentarLectura<T>(): MonoTypeOperatorFunction<T> {
-  return retry({
-    count: 1,
-    delay: error => {
-      const status = Number(error?.error?.Status ?? error?.Status ?? error?.status ?? 0);
-      return status === 0 || status >= 500 ? timer(750) : throwError(() => error);
-    }
-  });
-}
 interface Vinculacion {
   DependenciaId: number;
   Activo: boolean;
@@ -233,13 +225,11 @@ export class InscripcionGradoService {
       this.request.setPath(servicio);
       return this.request.get(endpoint);
     }).pipe(map(res => {
-      if (res?.Success === false || (res?.Status && Number(res.Status) >= 400)) {
-        throw new Error('El servicio no pudo completar la consulta. Intenta nuevamente.');
-      }
+      if (res?.Success === false || (res?.Status && Number(res.Status) >= 400)) throw res;
       const datos = Array.isArray(res) ? res : res?.Data;
       if (!Array.isArray(datos)) throw new Error('El servicio devolvió una respuesta inesperada.');
       return datos.filter(item => item && Object.keys(item).length > 0) as T[];
-    }));
+    }), reintentarConsulta());
   }
 
   periodos(): Observable<PeriodoGrado[]> {
@@ -257,10 +247,11 @@ export class InscripcionGradoService {
     }).pipe(map(respuesta => {
       const persona = respuesta?.Data as DatosBasicosGrado | undefined;
       if (respuesta?.Success !== true || Number(respuesta?.Status) !== 200 || !persona || persona.Id !== terceroId) {
+        if (Number(respuesta?.Status) >= 500) throw respuesta;
         throw new Error('No fue posible verificar los datos básicos del estudiante.');
       }
       return persona;
-    }));
+    }), reintentarConsulta());
   }
 
   directores(terceroId: number): Observable<DirectorGrado[]> {
@@ -371,13 +362,18 @@ export class InscripcionGradoService {
   }
 
   private mid<T>(metodo: 'get' | 'post' | 'put' | 'delete', endpoint: string, body?: object): Observable<T> {
-    return defer(() => {
+    const solicitud = defer(() => {
       this.request.setPath('SGA_PAZ_Y_SALVOS_MID_SERVICE');
       const peticion = metodo === 'get' ? this.request.get(endpoint)
         : metodo === 'post' ? this.request.post(endpoint, body)
           : metodo === 'put' ? this.request.put(endpoint, body) : this.request.delete(endpoint);
       return peticion;
-    }).pipe(map(respuesta => {
+    });
+    const respuesta = metodo === 'get' ? solicitud.pipe(map(valor => {
+      if (Number(valor?.Status) >= 500) throw valor;
+      return valor;
+    }), reintentarConsulta()) : solicitud;
+    return respuesta.pipe(map(respuesta => {
       if (respuesta?.Success !== true || !respuesta?.Data) {
         throw respuesta?.Success === false ? respuesta : new Error('No fue posible consultar o guardar el borrador.');
       }
@@ -388,7 +384,6 @@ export class InscripcionGradoService {
   consultarBorrador(terceroId: number, periodoId: number, programaId: number): Observable<BorradorGrado | null> {
 	return this.mid<BorradorGrado>('get',
 	  `solicitud-grado/borrador?tercero_id=${terceroId}&periodo_id=${periodoId}&programa_id=${programaId}`).pipe(
-      reintentarLectura(),
       catchError(error => Number(error?.error?.Status ?? error?.Status ?? error?.status) === 404 ? of(null) : throwError(() => error))
     );
   }
@@ -419,7 +414,7 @@ export class InscripcionGradoService {
         throw new Error('No fue posible verificar los soportes de esta versión.');
       }
       return datos;
-    }), reintentarLectura());
+    }));
   }
 
   subirSoporte(id: number, terceroId: number, formularioId: number, tipo: TipoSoporteGrado, actual: number, archivo: File): Observable<SoporteGrado> {

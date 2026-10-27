@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
-import { Observable, defer, map, retry, throwError, timer } from 'rxjs';
+import { Observable, defer, map, throwError } from 'rxjs';
 import { RequestManager } from '../managers/requestManager';
+import { reintentarConsulta } from '../utils/reintentar-consulta';
 import { TipoSoporteGrado } from './inscripcion-grado.service';
 
 export interface SolicitudRevisionResumen {
@@ -79,25 +80,20 @@ export interface RevisionDocumentalEntrada {
   Soportes: DecisionSoporteRevision[];
 }
 
-function reintentarRevision<T>() {
-  return retry<T>({
-    count: 1,
-    delay: error => {
-      const status = Number(error?.error?.Status ?? error?.Status ?? error?.status ?? 0);
-      return status === 0 || status >= 500 ? timer(750) : throwError(() => error);
-    }
-  });
-}
-
 @Injectable({ providedIn: 'root' })
 export class RevisionDocumentalGradoService {
   constructor(private request: RequestManager) {}
 
   private mid<T>(metodo: 'get' | 'post', endpoint: string, body?: object): Observable<T> {
-    return defer(() => {
+    const solicitud = defer(() => {
       this.request.setPath('SGA_PAZ_Y_SALVOS_MID_SERVICE');
       return metodo === 'get' ? this.request.get(endpoint) : this.request.post(endpoint, body);
-    }).pipe(map(respuesta => {
+    });
+    const respuesta = metodo === 'get' ? solicitud.pipe(map(valor => {
+      if (Number(valor?.Status) >= 500) throw valor;
+      return valor;
+    }), reintentarConsulta()) : solicitud;
+    return respuesta.pipe(map(respuesta => {
       if (respuesta?.Success !== true || respuesta?.Data === undefined || respuesta?.Data === null) {
         throw respuesta?.Success === false ? respuesta : { Status: 502 };
       }
@@ -119,8 +115,7 @@ export class RevisionDocumentalGradoService {
 	      map(pagina => {
 			if (!Array.isArray(pagina?.Solicitudes) || !Number.isSafeInteger(pagina?.Total) || pagina.Total < 0) throw { Status: 502 };
 			return pagina;
-		  }),
-	      reintentarRevision()
+		  })
 	    );
 	  }
 
@@ -128,11 +123,11 @@ export class RevisionDocumentalGradoService {
 	return this.mid<FiltrosRevisionGrado>('get', 'solicitud-grado/revision/filtros').pipe(map(datos => {
 	  if (!Array.isArray(datos?.Periodos) || !Array.isArray(datos?.Programas)) throw { Status: 502 };
 	  return datos;
-	}), reintentarRevision());
+	}));
   }
 
   consultar(id: number): Observable<SolicitudRevisionResumen> {
-    return this.mid<SolicitudRevisionResumen>('get', `solicitud-grado/revision/${id}`).pipe(reintentarRevision());
+    return this.mid<SolicitudRevisionResumen>('get', `solicitud-grado/revision/${id}`);
   }
 
   revisar(id: number, entrada: RevisionDocumentalEntrada): Observable<SolicitudRevisionResumen> {

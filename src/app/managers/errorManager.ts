@@ -19,11 +19,12 @@ export class HttpErrorManager {
         `Backend returned code ${error.status}, ` +
         `body was: `, error.error);
     }
-    // Propaga el cuerpo del error al consumidor salvo la respuesta HTTP 200.
+    // Conserva el código HTTP para que las consultas puedan distinguir fallos
+    // transitorios de errores funcionales.
     if(error.status === 200){
       return []
     }else {
-      return throwError(error.error);
+      return throwError(() => error);
     }
   };
 }

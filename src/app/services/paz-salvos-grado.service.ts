@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
-import { Observable, defer, map, retry, throwError, timer } from 'rxjs';
+import { Observable, defer, map } from 'rxjs';
 import { RequestManager } from '../managers/requestManager';
+import { reintentarConsulta } from '../utils/reintentar-consulta';
 import { TipoSoporteGrado } from './inscripcion-grado.service';
 
 export type CodigoTipoPazSalvo = 'TPS_COORDINACION' | 'TPS_FINANCIERO' | 'TPS_BIBLIOTECA' |
@@ -70,30 +71,25 @@ export interface UsuarioPazSalvosGrado {
   Facultad?: { Id: number; Nombre: string };
 }
 
-function reintentarPazSalvos<T>() {
-  return retry<T>({
-    count: 1,
-    delay: error => {
-      const status = Number(error?.error?.Status ?? error?.Status ?? error?.status ?? 0);
-      return status === 0 || status >= 500 ? timer(750) : throwError(() => error);
-    }
-  });
-}
-
 @Injectable({ providedIn: 'root' })
 export class PazSalvosGradoService {
   constructor(private request: RequestManager) {}
 
   private mid<T>(metodo: 'get' | 'post', endpoint: string, body?: object): Observable<T> {
-    return defer(() => {
+    const solicitud = defer(() => {
       this.request.setPath('SGA_PAZ_Y_SALVOS_MID_SERVICE');
       return metodo === 'get' ? this.request.get(endpoint) : this.request.post(endpoint, body);
-    }).pipe(map(respuesta => {
+    });
+    const respuesta = metodo === 'get' ? solicitud.pipe(map(valor => {
+      if (Number(valor?.Status) >= 500) throw valor;
+      return valor;
+    }), reintentarConsulta()) : solicitud;
+    return respuesta.pipe(map(respuesta => {
       if (respuesta?.Success !== true || respuesta?.Data === undefined || respuesta?.Data === null) {
         throw respuesta;
       }
       return respuesta.Data as T;
-    }), reintentarPazSalvos<T>());
+    }));
   }
 
   listar(perfil: string, tipo: CodigoTipoPazSalvo | undefined, limit: number, offset: number,

@@ -44,6 +44,7 @@ export class RevisionDocumentalGradoComponent implements OnInit, OnDestroy {
   readonly columnas = ['codigo', 'trabajo', 'programa', 'radicacion', 'estado', 'acciones'];
   consultaRealizada = false;
   private consultaListado?: Subscription;
+	private consultaFiltros?: Subscription;
 	pageSize = 10;
 	pageIndex = 0;
 	totalSolicitudes = 0;
@@ -126,10 +127,11 @@ export class RevisionDocumentalGradoComponent implements OnInit, OnDestroy {
   }
 
   cargarFiltros(): void {
+	this.consultaFiltros?.unsubscribe();
 	if (!this.permisos.permite('grado_consultar_solicitudes')) return;
 	this.cargandoFiltros = true;
 	this.errorFiltros = '';
-	this.suscripciones.add(this.servicio.filtros().subscribe({
+	this.consultaFiltros = this.servicio.filtros().subscribe({
 	  next: catalogo => {
 		this.periodosFiltro = catalogo.Periodos.map(p => ({ id: p.Id, nombre: p.Nombre }));
 		this.programasAutorizados = catalogo.Programas.map(p => ({ id: p.Id, nombre: p.Nombre }));
@@ -143,7 +145,8 @@ export class RevisionDocumentalGradoComponent implements OnInit, OnDestroy {
 		this.errorFiltros = mensajeErrorBorrador(error, this.tr('errores.filtros'));
 		this.cargandoFiltros = false;
 	  }
-	}));
+	});
+	this.suscripciones.add(this.consultaFiltros);
   }
 
 	private actualizarProgramasFiltro(): void {
