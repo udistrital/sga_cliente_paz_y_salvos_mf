@@ -50,11 +50,11 @@
     <section *ngIf="!esRadicada" class="barra-borrador" aria-labelledby="titulo-guardado-borrador">
       <div>
         <h2 id="titulo-guardado-borrador">{{ 'INSCRIPCION_GRADO.vista.borrador_titulo' | translate }}</h2>
-        <p>{{ (borrador ? 'INSCRIPCION_GRADO.vista.borrador_autoguardado_descripcion' : 'INSCRIPCION_GRADO.vista.borrador_descripcion') | translate }}</p>
-        <p *ngIf="borrador" class="estado-autoguardado" [class.estado-autoguardado-error]="!!errorAutoguardado"
+        <p *ngIf="!borrador">{{ 'INSCRIPCION_GRADO.vista.borrador_descripcion' | translate }}</p>
+        <p *ngIf="borrador || autoguardando || errorAutoguardado" class="estado-autoguardado" [class.estado-autoguardado-error]="!!errorAutoguardado"
           [attr.role]="errorAutoguardado ? 'alert' : 'status'">
           <ng-container *ngIf="errorAutoguardado; else estadoGuardado">{{ errorAutoguardado }}</ng-container>
-          <ng-template #estadoGuardado>{{ (autoguardando || guardandoBorrador ? 'INSCRIPCION_GRADO.vista.guardando' : tieneCambiosSinGuardar ? 'INSCRIPCION_GRADO.vista.cambios_pendientes' : 'INSCRIPCION_GRADO.vista.cambios_guardados') | translate }}</ng-template>
+          <ng-template #estadoGuardado>{{ (!borrador ? 'INSCRIPCION_GRADO.vista.creando_borrador' : autoguardando || guardandoBorrador ? 'INSCRIPCION_GRADO.vista.guardando' : tieneCambiosSinGuardar ? 'INSCRIPCION_GRADO.vista.cambios_pendientes' : 'INSCRIPCION_GRADO.vista.cambios_guardados') | translate }}</ng-template>
         </p>
       </div>
       <div class="acciones-borrador">
@@ -64,7 +64,7 @@
             {{ 'INSCRIPCION_GRADO.vista.recargar_borrador' | translate }}
           </button>
         </ng-container>
-        <ng-container *ngIf="!borrador || errorAutoguardado">
+        <ng-container *ngIf="errorAutoguardado">
           <button *appOpcion="borrador ? 'grado_actualizar_borrador' : 'grado_crear_borrador'" mat-stroked-button color="primary"
             type="button" (click)="guardarBorrador()" [disabled]="!puedeGuardarBorrador || autoguardando">
             {{ (guardandoBorrador ? 'INSCRIPCION_GRADO.vista.guardando' : borrador ? 'INSCRIPCION_GRADO.vista.reintentar_guardado' : 'INSCRIPCION_GRADO.vista.guardar_borrador') | translate }}
